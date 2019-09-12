@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FollowUP.Core\FollowUP.Core.csproj" />
+    <ProjectReference Include="..\FollowUP.Infrastructure\FollowUP.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
