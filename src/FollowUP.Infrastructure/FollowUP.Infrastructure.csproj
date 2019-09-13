@@ -17,4 +17,8 @@
     <ProjectReference Include="..\FollowUP.Core\FollowUP.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Handlers\Users\" />
+  </ItemGroup>
+
 </Project>

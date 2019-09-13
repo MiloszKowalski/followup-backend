@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FollowUP.Core.Domain;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -29,17 +30,19 @@ namespace FollowUP.Infrastructure.Services
             {
                 var userId = Guid.NewGuid();
                 var username = $"user{i}";
+                var fullname = $"Mr User";
                 await _userService.RegisterAsync(userId, $"user{i}@test.com",
-                                                 username, "secret", "user");
+                                                 username, fullname, "secret", Roles.User);
                 Console.WriteLine($"Adding user: '{username}'.");
             }
             for (var i = 1; i <= 3; i++)
             {
                 var userId = Guid.NewGuid();
                 var username = $"admin{i}";
+                var fullname = $"Mr Admin";
                 Console.WriteLine($"Adding admin: '{username}'.");
                 await _userService.RegisterAsync(userId, $"admin{i}@test.com",
-                    username, "secret", "admin");
+                    username, fullname, "secret", Roles.Admin);
             }
             Console.WriteLine("Data was initialized.");
         }

@@ -35,13 +35,5 @@ namespace FollowUP.Api.Controllers
 
             return Json(user);
         }
-
-        [HttpPost]
-        public async Task<IActionResult> Post([FromBody]CreateUser command)
-        {
-            await DispatchAsync(command);
-
-            return Created($"users/{command.Email}", null);
-        }
     }
 }

@@ -31,9 +31,9 @@ namespace FollowUP.Infrastructure.Services
 
         public async Task<IEnumerable<UserDto>> BrowseAsync()
         {
-            var drivers = await _userRepository.GetAllAsync();
+            var users = await _userRepository.GetAllAsync();
 
-            return _mapper.Map<IEnumerable<User>, IEnumerable<UserDto>>(drivers);
+            return _mapper.Map<IEnumerable<User>, IEnumerable<UserDto>>(users);
         }
 
         public async Task LoginAsync(string email, string password)
@@ -55,7 +55,7 @@ namespace FollowUP.Infrastructure.Services
         }
 
         public async Task RegisterAsync(Guid userId, string email,
-            string username, string password, string role)
+            string username, string fullname, string password, string role)
         {
             var user = await _userRepository.GetAsync(email);
             if (user != null)
@@ -66,7 +66,7 @@ namespace FollowUP.Infrastructure.Services
 
             var salt = _encrypter.GetSalt(password);
             var hash = _encrypter.GetHash(password, salt);
-            user = new User(userId, email, username, role, hash, salt);
+            user = new User(userId, email, username, fullname, role, hash, salt);
             await _userRepository.AddAsync(user);
         }
     }
