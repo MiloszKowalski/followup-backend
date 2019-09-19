@@ -31,7 +31,8 @@ namespace FollowUP.Infrastructure.Services
             };
 
             var expires = now.AddMinutes(_settings.ExpiryMinutes);
-            var signingCredentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Key)),
+            var signingCredentials = new SigningCredentials(
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Key)),
                 SecurityAlgorithms.HmacSha256);
             var jwt = new JwtSecurityToken(
                 issuer: _settings.Issuer,
@@ -39,7 +40,7 @@ namespace FollowUP.Infrastructure.Services
                 notBefore: now,
                 expires: expires,
                 signingCredentials: signingCredentials
-            );
+            ) ;
             var token = new JwtSecurityTokenHandler().WriteToken(jwt);
 
             return new JwtDto

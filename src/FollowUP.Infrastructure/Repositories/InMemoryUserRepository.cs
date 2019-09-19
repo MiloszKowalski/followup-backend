@@ -17,6 +17,9 @@ namespace FollowUP.Infrastructure.Repositories
         public async Task<User> GetAsync(string email)
             => await Task.FromResult(_users.SingleOrDefault(x => x.Email == email.ToLowerInvariant()));
 
+        public async Task<User> GetByUsernameAsync(string username)
+            => await Task.FromResult(_users.SingleOrDefault(x => x.Username == username.ToLowerInvariant()));
+
         public async Task<IEnumerable<User>> GetAllAsync()
             => await Task.FromResult(_users);
 

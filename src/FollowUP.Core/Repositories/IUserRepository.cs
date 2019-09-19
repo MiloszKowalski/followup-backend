@@ -9,6 +9,7 @@ namespace FollowUP.Core.Repositories
     {
         Task<User> GetAsync(Guid id);
         Task<User> GetAsync(string email);
+        Task<User> GetByUsernameAsync(string username);
         Task<IEnumerable<User>> GetAllAsync();
         Task AddAsync(User user);
         Task UpdateAsync(User user);

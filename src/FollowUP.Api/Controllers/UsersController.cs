@@ -1,7 +1,7 @@
 ﻿using FollowUP.Controllers;
 using FollowUP.Infrastructure.Commands;
-using FollowUP.Infrastructure.Commands.Users;
 using FollowUP.Infrastructure.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 
@@ -24,6 +24,7 @@ namespace FollowUP.Api.Controllers
             return Json(users);
         }
 
+        [Authorize]
         [HttpGet("{email}")]
         public async Task<IActionResult> Get(string email)
         {

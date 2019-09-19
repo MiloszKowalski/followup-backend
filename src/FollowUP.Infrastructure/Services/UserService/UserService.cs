@@ -29,6 +29,13 @@ namespace FollowUP.Infrastructure.Services
             return _mapper.Map<User, UserDto>(user);
         }
 
+        public async Task<UserDto> GetAsync(Guid userId)
+        {
+            var user = await _userRepository.GetAsync(userId);
+
+            return _mapper.Map<User, UserDto>(user);
+        }
+
         public async Task<IEnumerable<UserDto>> BrowseAsync()
         {
             var users = await _userRepository.GetAllAsync();

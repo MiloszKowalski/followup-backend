@@ -3,11 +3,13 @@ using Autofac.Extensions.DependencyInjection;
 using FollowUP.Infrastructure.IoC;
 using FollowUP.Infrastructure.Services;
 using FollowUP.Infrastructure.Settings;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using System;
@@ -19,6 +21,7 @@ namespace FollowUP
     {
         public Startup(IHostingEnvironment env)
         {
+            Environment = env;
             var builder = new ConfigurationBuilder()
                 .SetBasePath(env.ContentRootPath)
                 .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
@@ -29,6 +32,7 @@ namespace FollowUP
 
         public IConfiguration Configuration { get; }
         public IContainer ApplicationContainer { get; private set; }
+        public IHostingEnvironment Environment { get; set; }
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public IServiceProvider ConfigureServices(IServiceCollection services)
@@ -39,16 +43,20 @@ namespace FollowUP
                     .AddJsonOptions(x => x.SerializerSettings.Formatting = Formatting.Indented)
                     .SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
-            var serviceProvider = services.BuildServiceProvider();
-            var jwtSettings = serviceProvider.GetService<JwtSettings>();
-            services.AddAuthentication().AddJwtBearer(options => {
-                options.Audience = "http://localhost:5001/";
-                options.Authority = "http://localhost:5000/";
+            services.AddAuthentication(options => {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+                .AddJwtBearer(options => {
+                options.RequireHttpsMetadata = !Environment.IsDevelopment();
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    ValidIssuer = jwtSettings.Issuer,
+                    ValidateIssuer = true,
                     ValidateAudience = false,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key))
+                    ValidateLifetime = false,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = Configuration["jwt:issuer"],
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["jwt:key"]))
                 };
             });
 
@@ -66,6 +74,7 @@ namespace FollowUP
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
+                IdentityModelEventSource.ShowPII = true;
             }
             else
             {

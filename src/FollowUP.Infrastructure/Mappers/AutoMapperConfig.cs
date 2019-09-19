@@ -10,6 +10,7 @@ namespace FollowUP.Infrastructure.Mappers
             => new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<User, UserDto>();
+                cfg.CreateMap<InstagramAccount, AccountDto>();
             })
             .CreateMapper();
     }

@@ -1,6 +1,7 @@
 ﻿using FollowUP.Core.Domain;
 using FollowUP.Core.Repositories;
 using FollowUP.Infrastructure.Exceptions;
+using InstagramApiSharp.API;
 using System;
 using System.Threading.Tasks;
 
@@ -18,6 +19,16 @@ namespace FollowUP.Infrastructure.Extensions
             }
 
             return user;
+        }
+
+        public static void SaveSession(this IInstaApi instaApi)
+        {
+            // Save session
+            if (instaApi == null)
+                return;
+            if (!instaApi.IsUserAuthenticated)
+                return;
+            instaApi.SessionHandler.Save();
         }
     }
 }
