@@ -1,5 +1,6 @@
 ﻿using Autofac;
 using Autofac.Extensions.DependencyInjection;
+using FollowUP.Infrastructure.EF;
 using FollowUP.Infrastructure.IoC;
 using FollowUP.Infrastructure.Services;
 using FollowUP.Infrastructure.Settings;
@@ -59,6 +60,10 @@ namespace FollowUP
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["jwt:key"]))
                 };
             });
+
+            services.AddEntityFrameworkSqlServer()
+                    .AddEntityFrameworkInMemoryDatabase()
+                    .AddDbContext<FollowUPContext>();
 
             var builder = new ContainerBuilder();
             builder.Populate(services);

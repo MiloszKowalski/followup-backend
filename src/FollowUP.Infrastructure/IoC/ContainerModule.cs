@@ -22,6 +22,7 @@ namespace FollowUP.Infrastructure.IoC
             builder.RegisterModule<CommandModule>();
             builder.RegisterModule<RepositoryModule>();
             builder.RegisterModule<ServiceModule>();
+            builder.RegisterModule<SqlModule>();
             builder.RegisterModule(new SettingsModule(_configuration));
         }
     }

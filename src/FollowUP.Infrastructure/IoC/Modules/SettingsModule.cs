@@ -1,4 +1,5 @@
 ﻿using Autofac;
+using FollowUP.Infrastructure.EF;
 using FollowUP.Infrastructure.Extensions;
 using FollowUP.Infrastructure.Settings;
 using Microsoft.Extensions.Configuration;
@@ -19,6 +20,8 @@ namespace FollowUP.Infrastructure.IoC.Modules
             builder.RegisterInstance(_configuration.GetSettings<GeneralSettings>())
                    .SingleInstance();
             builder.RegisterInstance(_configuration.GetSettings<JwtSettings>())
+                   .SingleInstance();
+            builder.RegisterInstance(_configuration.GetSettings<SqlSettings>())
                    .SingleInstance();
         }
     }

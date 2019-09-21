@@ -84,14 +84,32 @@ namespace FollowUP.Infrastructure.Services
                                         .Build();
 
             // Check if there is an instaApi instance bound to the account...
-            var instaApiCache = (IInstaApi)_cache.Get(account);
+            var instaApiCache = (IInstaApi)_cache.Get(account.Id);
 
             if(instaApiCache != null)
             {
                 // ...if true, use it
                 instaApi = instaApiCache;
             }
+            
+            // Get appropriate directories of the folder and file
+            var fullPath = instaApi.SessionHandler.FilePath.Split(@"\");
+            var directory = $@"{fullPath[0]}\{fullPath[1]}";
+            
+            // Create directory if it doesn't exist yet
+            if (!Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
 
+            // Create file if it doesn't exist yet
+            if (!File.Exists(instaApi.SessionHandler.FilePath))
+            {
+                using (FileStream fs = File.Create(instaApi.SessionHandler.FilePath))
+                {
+                    Console.WriteLine($"Created file for {username}.");
+                }
+            }
 
             // Try logging in from session
             try
@@ -191,7 +209,7 @@ namespace FollowUP.Infrastructure.Services
                                         instaApi.SaveSession();
 
                                         // Remove unnecessary instaApi instance
-                                        _cache.Remove(account);
+                                        _cache.Remove(account.Id);
                                         await SetAuthenticationStepAndSaveAccount(AuthenticationStep.Authenticated, account);
                                         return;
                                     }
@@ -244,7 +262,7 @@ namespace FollowUP.Infrastructure.Services
             var requestPhoneVerify = await instaApi.RequestVerifyCodeToSMSForChallengeRequireAsync(replayChallenge);
             if (requestPhoneVerify.Succeeded)
             {
-                _cache.Set(account, instaApi);
+                _cache.Set(account.Id, instaApi);
                 await SetAuthenticationStepAndSaveAccount(AuthenticationStep.NeedCodeVerify, account);
                 return;
             }
@@ -260,7 +278,7 @@ namespace FollowUP.Infrastructure.Services
             var requestEmailVerify = await instaApi.RequestVerifyCodeToEmailForChallengeRequireAsync(replayChallenge);
             if (requestEmailVerify.Succeeded)
             {
-                _cache.Set(account, instaApi);
+                _cache.Set(account.Id, instaApi);
                 await SetAuthenticationStepAndSaveAccount(AuthenticationStep.NeedCodeVerify, account);
                 return;
             }
@@ -277,7 +295,7 @@ namespace FollowUP.Infrastructure.Services
             if (twoFactorCode.Empty())
             {
                 // Remember the instaApi instance
-                _cache.Set(account, instaApi);
+                _cache.Set(account.Id, instaApi);
                 await SetAuthenticationStepAndSaveAccount(AuthenticationStep.TwoFactorRequired, account);
                 return;
             }
@@ -290,7 +308,7 @@ namespace FollowUP.Infrastructure.Services
                 instaApi.SaveSession();
 
                 await SetAuthenticationStepAndSaveAccount(AuthenticationStep.Authenticated, account);
-                _cache.Remove(account);
+                _cache.Remove(account.Id);
                 return;
             }
             else
