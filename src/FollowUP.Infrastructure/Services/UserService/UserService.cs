@@ -71,6 +71,13 @@ namespace FollowUP.Infrastructure.Services
                     $"User with email: '{email}' already exists.");
             }
 
+            var userByUsername = await _userRepository.GetByUsernameAsync(username);
+            if(userByUsername != null)
+            {
+                throw new ServiceException(ErrorCodes.UsernameInUse,
+                    $"User with username: '{username}' already exists.");
+            }
+
             var salt = _encrypter.GetSalt(password);
             var hash = _encrypter.GetHash(password, salt);
             user = new User(userId, email, username, fullname, role, hash, salt);

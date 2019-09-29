@@ -125,7 +125,9 @@ namespace FollowUP.Infrastructure.Services
             if (!instaApi.IsUserAuthenticated)
             {
                 // Log in the user (only, if there is no two factor code)
-                var logInResult = twoFactorCode.Empty() ? await instaApi.LoginAsync() : new Result<InstaLoginResult>(false, InstaLoginResult.TwoFactorRequired);
+                var logInResult = twoFactorCode.Empty() ? verificationCode.Empty()
+                    ? await instaApi.LoginAsync() : new Result<InstaLoginResult>(false, InstaLoginResult.ChallengeRequired)
+                    : new Result<InstaLoginResult>(false, InstaLoginResult.TwoFactorRequired);
 
                 // If the login succeeded
                 if (logInResult.Succeeded)
@@ -211,6 +213,11 @@ namespace FollowUP.Infrastructure.Services
                                         // Remove unnecessary instaApi instance
                                         _cache.Remove(account.Id);
                                         await SetAuthenticationStepAndSaveAccount(AuthenticationStep.Authenticated, account);
+                                        return;
+                                    }
+                                    else if (verifyCodeLogin.Info.Message == "Two factor required.")
+                                    {
+                                        await SetAuthenticationStepAndSaveAccount(AuthenticationStep.TwoFactorRequired, account);
                                         return;
                                     }
                                 }

@@ -8,6 +8,8 @@ namespace FollowUP.Infrastructure.EF
         private readonly SqlSettings _settings;
         public DbSet<User> Users { get; set; }
         public DbSet<InstagramAccount> InstagramAccounts { get; set; }
+        public DbSet<Comment> Comments { get; set; }
+        public DbSet<ChildComment> ChildComments { get; set; }
 
         public FollowUPContext(DbContextOptions<FollowUPContext> options, SqlSettings settings) : base(options)
         {
@@ -32,6 +34,12 @@ namespace FollowUP.Infrastructure.EF
 
             var accountItemBuilder = modelBuilder.Entity<InstagramAccount>();
             accountItemBuilder.HasKey(x => x.Id);
+
+            var commentItemBuilder = modelBuilder.Entity<Comment>();
+            commentItemBuilder.HasKey(x => x.Id);
+
+            var childCommentItemBuilder = modelBuilder.Entity<ChildComment>();
+            childCommentItemBuilder.HasKey(x => x.Id);
         }
     }
 }

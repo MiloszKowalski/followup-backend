@@ -9,23 +9,14 @@ using System.Threading.Tasks;
 
 namespace FollowUP.Api.Controllers
 {
-    public class InstagramController : ApiControllerBase
+    public class InstagramAccountController : ApiControllerBase
     {
-        private readonly IUserService _userService;
         private readonly IInstagramAccountService _instagramAccountService;
 
-        public InstagramController(IUserService userService, IInstagramAccountService instagramAccountService,
+        public InstagramAccountController(IInstagramAccountService instagramAccountService,
             ICommandDispatcher commandDispatcher) : base(commandDispatcher)
         {
-            _userService = userService;
             _instagramAccountService = instagramAccountService;
-        }
-
-        public async Task<IActionResult> Get()
-        {
-            var users = await _userService.BrowseAsync();
-
-            return Json(users);
         }
 
         [Authorize]
