@@ -1,5 +1,6 @@
 ﻿using FollowUP.Core.Domain;
 using FollowUP.Core.Repositories;
+using FollowUP.Infrastructure.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,6 +21,12 @@ namespace FollowUP.Infrastructure.Repositories
 
         public async Task<IEnumerable<Comment>> GetAccountCommentsAsync(Guid accountId)
             => await Task.FromResult(_comments.Where(x => x.AccountId == accountId));
+
+        public async Task<IEnumerable<Comment>> GetAccountCommentsAsync(Guid accountId, int page, int pageSize)
+            => await Task.FromResult(_comments.Where(x => x.AccountId == accountId).Page(page, pageSize));
+
+        public async Task<int> GetAccountCommentsCountAsync(Guid accountId)
+            => await Task.FromResult(_comments.Where(x => x.AccountId == accountId).Count());
 
         public async Task<IEnumerable<ChildComment>> GetChildCommentsAsync(Guid commentId)
             => await Task.FromResult(_childComments.Where(x => x.ParentCommentId == commentId));

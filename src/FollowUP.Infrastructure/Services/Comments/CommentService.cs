@@ -29,19 +29,58 @@ namespace FollowUP.Infrastructure.Services
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<CommentDto>> GetAllRecentByAccountId(Guid accountId)
+        /// <summary>
+        /// Gets recent comments by given account ID with pagination 
+        /// </summary>
+        /// <param name="accountId">ID of the account from which the comments will be fetched</param>
+        /// <param name="page">The number of page to fetch</param>
+        /// <param name="pageSize">The number of comments fetched per page</param>
+        /// <returns>List of paginated comments</returns>
+        public async Task<IEnumerable<CommentDto>> GetByAccountId(Guid accountId, int page, int pageSize)
         {
             var account = await _instagramAccountRepository.GetAsync(accountId);
 
+            // Check if the account exists
             if (account == null)
-            {
                 throw new ServiceException(ErrorCodes.AccountDoesntExist, "Can't get comments for the account that doesn't exist.");
-            }
 
+            // Check if the account is authenticated
             if (account.AuthenticationStep != AuthenticationStep.Authenticated)
-            {
                 throw new ServiceException(ErrorCodes.AccountNotAuthenticated, "Account not authenticated. Please login first.");
+
+            // Get comments
+            var comments = await _commentRepository.GetAccountCommentsAsync(accountId, page, pageSize);
+            if (comments == null)
+            {
+                return new List<CommentDto>();
             }
+            var commentDtos = _mapper.Map<IEnumerable<Comment>, IEnumerable<CommentDto>>(comments);
+
+            // Get comments' child comments and assign them to corresponding comments
+            foreach (var c in commentDtos)
+            {
+                var childComments = await _commentRepository.GetChildCommentsAsync(c.Id);
+                c.ChildComments = (List<ChildComment>)childComments;
+            }
+            return commentDtos;
+        }
+
+        /// <summary>
+        /// Gets recent comments by given account ID
+        /// </summary>
+        /// <param name="accountId">ID of the account from which the comments will be fetched</param>
+        /// <returns>List of all comments</returns>
+        public async Task<IEnumerable<CommentDto>> GetAllByAccountId(Guid accountId)
+        {
+            var account = await _instagramAccountRepository.GetAsync(accountId);
+
+            // Check if the account exists
+            if (account == null)
+                throw new ServiceException(ErrorCodes.AccountDoesntExist, "Can't get comments for the account that doesn't exist.");
+
+            // Check if the account is authenticated
+            if (account.AuthenticationStep != AuthenticationStep.Authenticated)
+                throw new ServiceException(ErrorCodes.AccountNotAuthenticated, "Account not authenticated. Please login first.");
 
             // Get comments
             var comments = await _commentRepository.GetAccountCommentsAsync(accountId);
@@ -60,13 +99,31 @@ namespace FollowUP.Infrastructure.Services
             return commentDtos;
         }
 
-        public async Task<bool> UpdateAllRecentByAccountId(Guid accountId)
+        /// <summary>
+        /// Gets comments count for given account (used for pagination on the client side)
+        /// </summary>
+        /// <param name="accountId">ID of the account for counting comments</param>
+        /// <returns>Comments count</returns>
+        public async Task<int> GetCount(Guid accountId)
+        {
+            var count = await _commentRepository.GetAccountCommentsCountAsync(accountId);
+            return count;
+        }
+
+        /// <summary>
+        /// Updates all of the account's comments
+        /// </summary>
+        /// <param name="accountId">ID of the account to update the comments</param>
+        /// <returns>Bool indicating if the operation was successful</returns>
+        public async Task UpdateAllByAccountId(Guid accountId)
         {
             var account = await _instagramAccountRepository.GetAsync(accountId);
 
+            // Check if the account exists
             if (account == null)
                 throw new ServiceException(ErrorCodes.AccountDoesntExist, "Can't get comments for the account that doesn't exist.");
 
+            // Check if the account is authenticated
             if (account.AuthenticationStep != AuthenticationStep.Authenticated)
                 throw new ServiceException(ErrorCodes.AccountNotAuthenticated, "Account not authenticated. Please login first.");
 
@@ -116,9 +173,8 @@ namespace FollowUP.Infrastructure.Services
                 // Get post's comments
                 var commentResponse = await instaApi.CommentProcessor.GetMediaCommentsAsync(media.Pk, PaginationParameters.MaxPagesToLoad(999));
                 if (!commentResponse.Succeeded)
-                {
                     throw new ServiceException(ErrorCodes.CantGetComments, "Getting media comments failed. It may be Instagram's fault.");
-                }
+
                 var comments = commentResponse.Value.Comments;
 
                 // For each post's comment
@@ -158,7 +214,6 @@ namespace FollowUP.Infrastructure.Services
                     await _commentRepository.AddAsync(comment);
                 }
             }
-            return true;
         }
     }
 }
