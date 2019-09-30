@@ -34,29 +34,63 @@ namespace FollowUP.Infrastructure.Services
             _mapper = mapper;
             _cache = cache;
         }
+
+        /// <summary>
+        /// Create Instagram account to store it in the database for further authentication
+        /// </summary>
+        /// <param name="Id">ID of the account to create</param>
+        /// <param name="userId">ID of the user that owns the account</param>
+        /// <param name="username">Login to the Instagram account to create</param>
+        /// <param name="password">Password to the Instagram account to create</param>
+        /// <returns></returns>
         public async Task CreateAsync(Guid Id, Guid userId, string username, string password)
         {
-            var instagramAccountTest = await _instagramAccountRepository.GetAsync(userId);
-            if(instagramAccountTest != null)
-            {
-                throw new ServiceException(ErrorCodes.AccountAlreadyExists, "The account is already being used by You or another person.");
-            }
-
+            // Check if the user is registered and logged in
             var user = await _userRepository.GetAsync(userId);
             if (user == null)
-            {
                 throw new ServiceException(ErrorCodes.UserNotFound, "Cannot find desired user (not authenticated?)");
+
+            // Check if the account is already created, if yes, don't create a new one
+            // (as instagram accounts are unique and two users can't have the same one)
+            var instagramAccountTest = await _instagramAccountRepository.GetAsync(username);
+            if (instagramAccountTest != null)
+            {
+                if (instagramAccountTest.UserId != userId)
+                    throw new ServiceException(ErrorCodes.AccountAlreadyExists, "Account is already taken by another user");
+                else
+                    return;
             }
+
+            // If the given account doesn't exist, create one and save it to the database
             var instagramAccount = new InstagramAccount(Id, user, username, password);
             await _instagramAccountRepository.AddAsync(instagramAccount);
         }
 
+        /// <summary>
+        /// Gets all the accounts for given user ID
+        /// </summary>
+        /// <param name="userId">ID of the user that owns the accounts</param>
+        /// <returns>List of Accounts that the user owns</returns>
         public async Task<IEnumerable<AccountDto>> GetAllByUserId(Guid userId)
         {
+            // Get the accounts from repository
             var accounts = await _instagramAccountRepository.GetUsersAccountsAsync(userId);
+            // Map the accounts and return them as a list of AccountDTO
             return _mapper.Map<IEnumerable<InstagramAccount>, IEnumerable<AccountDto>>(accounts);
         }
 
+        /// <summary>
+        /// Attempt to login to the given Instagram account, save it's <see cref="AuthenticationStep"/>
+        /// and save the account's state to a file
+        /// </summary>
+        /// <param name="username">Login to the Instagram account to log in to</param>
+        /// <param name="password">Password to the Instagram account to log in to</param>
+        /// <param name="phoneNumber">Phone number associated with the account for further verification</param>
+        /// <param name="twoFactorCode">Two-factor-authentication code to provide if 2FA enabled</param>
+        /// <param name="verificationCode">Verification code received trough email or SMS</param>
+        /// <param name="preferSMSVerification">Do the user prefer verification via SMS</param>
+        /// <param name="replayChallenge">Determines if the user wants to resend the code to email or SMS</param>
+        /// <returns></returns>
         public async Task LoginAsync(string username, string password, string phoneNumber, string twoFactorCode,
                                      string verificationCode, bool preferSMSVerification, bool replayChallenge)
         {
@@ -64,11 +98,9 @@ namespace FollowUP.Infrastructure.Services
             var account = await _instagramAccountRepository.GetAsync(username);
 
             if(account == null)
-            {
                 throw new ServiceException(ErrorCodes.AccountDoesntExist, "Can't login to account that hasn't been created.");
-            }
 
-            // Create user credentials
+            // Set the user's credentials
             var userSession = new UserSessionData
             {
                 UserName = username,
@@ -98,9 +130,7 @@ namespace FollowUP.Infrastructure.Services
             
             // Create directory if it doesn't exist yet
             if (!Directory.Exists(directory))
-            {
                 Directory.CreateDirectory(directory);
-            }
 
             // Create file if it doesn't exist yet
             if (!File.Exists(instaApi.SessionHandler.FilePath))
@@ -170,11 +200,11 @@ namespace FollowUP.Infrastructure.Services
                                     {
                                         if (!challenge.Value.StepData.PhoneNumber.Empty())
                                         {
-                                            await RequestFromSMS(instaApi, account, verificationCode, replayChallenge);
+                                            await RequestFromSMS(instaApi, account, replayChallenge);
                                         }
                                         else if(!challenge.Value.StepData.Email.Empty())
                                         {
-                                            await RequestFromEmail(instaApi, account, verificationCode, replayChallenge);
+                                            await RequestFromEmail(instaApi, account, replayChallenge);
                                         }
                                         else
                                         {
@@ -186,11 +216,11 @@ namespace FollowUP.Infrastructure.Services
                                     {
                                         if (!challenge.Value.StepData.Email.Empty())
                                         {
-                                            await RequestFromEmail(instaApi, account, verificationCode, replayChallenge);
+                                            await RequestFromEmail(instaApi, account, replayChallenge);
                                         }
                                         else if (!challenge.Value.StepData.PhoneNumber.Empty())
                                         {
-                                            await RequestFromSMS(instaApi, account, verificationCode, replayChallenge);
+                                            await RequestFromSMS(instaApi, account, replayChallenge);
                                         }
                                         else
                                         {
@@ -255,6 +285,12 @@ namespace FollowUP.Infrastructure.Services
             return;
         }
 
+        /// <summary>
+        /// Sets account's authentication step and saves it to the repository
+        /// </summary>
+        /// <param name="step">Authentication step of the account to set</param>
+        /// <param name="account">The account whose <see cref="AuthenticationStep"/> we want to set</param>
+        /// <returns></returns>
         public async Task SetAuthenticationStepAndSaveAccount(AuthenticationStep step, InstagramAccount account)
         {
             // Set account's authentication step
@@ -264,7 +300,14 @@ namespace FollowUP.Infrastructure.Services
             await _instagramAccountRepository.UpdateAsync(account);
         }
 
-        public async Task RequestFromSMS(IInstaApi instaApi, InstagramAccount account, string verificationCode, bool replayChallenge = false)
+        /// <summary>
+        /// Request to send verification code via SMS
+        /// </summary>
+        /// <param name="instaApi">The instance of <see cref="IInstaApi"/> to use</param>
+        /// <param name="account">The Instagram account to authenticate</param>
+        /// <param name="replayChallenge">Whether to resend the code</param>
+        /// <returns></returns>
+        public async Task RequestFromSMS(IInstaApi instaApi, InstagramAccount account, bool replayChallenge = false)
         {
             var requestPhoneVerify = await instaApi.RequestVerifyCodeToSMSForChallengeRequireAsync(replayChallenge);
             if (requestPhoneVerify.Succeeded)
@@ -280,7 +323,14 @@ namespace FollowUP.Infrastructure.Services
             }
         }
 
-        public async Task RequestFromEmail(IInstaApi instaApi, InstagramAccount account, string verificationCode, bool replayChallenge = false)
+        /// <summary>
+        /// Request to send verification code via Email
+        /// </summary>
+        /// <param name="instaApi">The instance of <see cref="IInstaApi"/> to use</param>
+        /// <param name="account">The Instagram account to authenticate</param>
+        /// <param name="replayChallenge">Whether to resend the code</param>
+        /// <returns></returns>
+        public async Task RequestFromEmail(IInstaApi instaApi, InstagramAccount account, bool replayChallenge = false)
         {
             var requestEmailVerify = await instaApi.RequestVerifyCodeToEmailForChallengeRequireAsync(replayChallenge);
             if (requestEmailVerify.Succeeded)
@@ -296,6 +346,13 @@ namespace FollowUP.Infrastructure.Services
             }
         }
 
+        /// <summary>
+        /// Attempt to login account via Two Factor Authentication
+        /// </summary>
+        /// <param name="instaApi">The instance of <see cref="IInstaApi"/> to use</param>
+        /// <param name="account">The Instagram account to authenticate</param>
+        /// <param name="twoFactorCode">The 2FA code received via SMS</param>
+        /// <returns></returns>
         public async Task TwoFactorLogin(IInstaApi instaApi, InstagramAccount account, string twoFactorCode)
         {
             // If this is the first time and we don't have the two factor code
@@ -326,6 +383,13 @@ namespace FollowUP.Infrastructure.Services
             }
         }
 
+        /// <summary>
+        /// Submit phone number for further verification if it hasn't been set yet
+        /// </summary>
+        /// <param name="instaApi">The instance of <see cref="IInstaApi"/> to use</param>
+        /// <param name="account">The Instagram account to add the number to</param>
+        /// <param name="phoneNumber">The phone number that we want to add to the account</param>
+        /// <returns></returns>
         public async Task SubmitPhone(IInstaApi instaApi, InstagramAccount account, string phoneNumber)
         {
             // Return phone required if it's empty

@@ -12,5 +12,6 @@
         public static string InvalidEmail => "invalid_email";
         public static string UsernameInUse => "username_in_use";
         public static string UserNotFound => "user_not_found";
+        public static string UserNotPermitted => "user_not_permitted";
     }
 }

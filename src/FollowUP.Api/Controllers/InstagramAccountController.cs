@@ -20,15 +20,6 @@ namespace FollowUP.Api.Controllers
         }
 
         [Authorize]
-        [HttpPost]
-        public async Task<IActionResult> Post([FromBody]CreateInstagramAccount command)
-        {
-            await DispatchAsync(command);
-
-            return Created($"accounts/{command.Username}", null);
-        }
-
-        [Authorize]
         [HttpPost("login")]
         public async Task<IActionResult> LoginToInstagram([FromBody]LoginToInstagram command)
         {
@@ -42,6 +33,16 @@ namespace FollowUP.Api.Controllers
             }
 
             return Json(account);
+        }
+
+        [Authorize]
+        [HttpPost("delete")]
+        public async Task<IActionResult> DeleteInstagramAccount([FromBody]DeleteInstagramAccount command)
+        {
+            await DispatchAsync(command);
+            var accounts = await _instagramAccountService.GetAllByUserId(command.UserId);
+
+            return Json(accounts);
         }
 
         [Authorize]

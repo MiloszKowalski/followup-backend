@@ -1,7 +1,7 @@
-﻿using FollowUP.Infrastructure.Commands;
-using FollowUP.Infrastructure.Extensions;
+﻿using FollowUP.Core.Repositories;
+using FollowUP.Infrastructure.Commands;
 using FollowUP.Infrastructure.Services;
-using Microsoft.Extensions.Caching.Memory;
+using System;
 using System.Threading.Tasks;
 
 namespace FollowUP.Infrastructure.Handlers.Accounts
@@ -9,17 +9,20 @@ namespace FollowUP.Infrastructure.Handlers.Accounts
     public class LoginToInstagramHandler : ICommandHandler<LoginToInstagram>
     {
         private readonly IInstagramAccountService _instagramAccountService;
-        private readonly IMemoryCache _cache;
+        private readonly IInstagramAccountRepository _instagramAccountRepository;
 
-        public LoginToInstagramHandler(IInstagramAccountService instagramAccountService, IMemoryCache cache)
+        public LoginToInstagramHandler(IInstagramAccountService instagramAccountService,
+                                        IInstagramAccountRepository instagramAccountRepository)
         {
             _instagramAccountService = instagramAccountService;
-            _cache = cache;
+            _instagramAccountRepository = instagramAccountRepository;
         }
 
         public async Task HandleAsync(LoginToInstagram command)
         {
-                await _instagramAccountService.LoginAsync(command.Username, command.Password, command.PhoneNumber, command.TwoFactorCode,
+            var accountId = Guid.NewGuid();
+            await _instagramAccountService.CreateAsync(accountId, command.UserId, command.Username, command.Password);
+            await _instagramAccountService.LoginAsync(command.Username, command.Password, command.PhoneNumber, command.TwoFactorCode,
                                                       command.VerificationCode, command.PreferSMSVerification, command.ReplayChallenge);
         }
     }

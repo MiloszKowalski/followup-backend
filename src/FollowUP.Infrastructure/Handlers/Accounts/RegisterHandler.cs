@@ -1,9 +1,7 @@
 ﻿using FollowUP.Core.Domain;
 using FollowUP.Infrastructure.Commands;
 using FollowUP.Infrastructure.Commands.Accounts;
-using FollowUP.Infrastructure.Extensions;
 using FollowUP.Infrastructure.Services;
-using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Threading.Tasks;
 
