@@ -11,5 +11,7 @@ namespace FollowUP.Infrastructure.Services
         Task LoginAsync(string username, string password, string phoneNumber, string twoFactorCode,
                         string verificationCode, bool preferSMSVerification, bool replayChallenge);
         Task<IEnumerable<AccountDto>> GetAllByUserId(Guid userId);
+        Task BuyComments(Guid accountId, double daysToAdd);
+        Task BuyPromotions(Guid accountId, double daysToAdd);
     }
 }

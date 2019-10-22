@@ -30,10 +30,5 @@ namespace FollowUP.Core.Domain
             ParentCommentId = parentCommentId;
             CreatedAt = createdAt;
         }
-
-        public ChildComment NewComment(Guid accountId, long authorId, string author, string profilePictureUri, string content,
-                        int likesCount, Guid parentCommentId, DateTimeOffset createdAt)
-            => new ChildComment(accountId, authorId, author, profilePictureUri, content,
-                            likesCount, parentCommentId, createdAt);
     }
 }

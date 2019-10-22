@@ -3,6 +3,7 @@ using Autofac.Extensions.DependencyInjection;
 using FollowUP.Infrastructure.EF;
 using FollowUP.Infrastructure.IoC;
 using FollowUP.Infrastructure.Services;
+using FollowUP.Infrastructure.Services.Background;
 using FollowUP.Infrastructure.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
@@ -48,6 +49,9 @@ namespace FollowUP
                            .AllowAnyMethod()
                            .AllowAnyHeader();
             }));
+
+            services.AddHostedService<CommentsUpdater>();
+            services.AddHostedService<Promoter>();
 
             services.AddMvc()
                     .AddJsonOptions(x => x.SerializerSettings.Formatting = Formatting.Indented)

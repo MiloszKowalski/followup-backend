@@ -62,7 +62,8 @@ namespace FollowUP.Infrastructure.Services
             }
 
             // If the given account doesn't exist, create one and save it to the database
-            var instagramAccount = new InstagramAccount(Id, user, username, password);
+            // TODO: PROXY SERVICE
+            var instagramAccount = new InstagramAccount(Id, user, username, password, "");
             await _instagramAccountRepository.AddAsync(instagramAccount);
         }
 
@@ -245,10 +246,17 @@ namespace FollowUP.Infrastructure.Services
                                         await SetAuthenticationStepAndSaveAccount(AuthenticationStep.Authenticated, account);
                                         return;
                                     }
-                                    else if (verifyCodeLogin.Info.Message == "Two factor required.")
+                                    else if (verifyCodeLogin.Value == InstaLoginResult.TwoFactorRequired)
                                     {
                                         await SetAuthenticationStepAndSaveAccount(AuthenticationStep.TwoFactorRequired, account);
                                         return;
+                                    }
+                                    else if (verifyCodeLogin.Value == InstaLoginResult.ChallengeRequired)
+                                    {
+                                        var acceptRepsonse = await instaApi.AcceptChallengeAsync();
+                                        if (acceptRepsonse.Succeeded)
+                                            await LoginAsync(username, password, phoneNumber, twoFactorCode,
+                                            verificationCode, preferSMSVerification, replayChallenge);
                                     }
                                 }
                                 else
@@ -425,6 +433,36 @@ namespace FollowUP.Infrastructure.Services
                 await SetAuthenticationStepAndSaveAccount(AuthenticationStep.PhoneRequired, account);
                 return;
             }
+        }
+
+        public async Task BuyComments(Guid accountId, double daysToAdd)
+        {
+            var account = await _instagramAccountRepository.GetAsync(accountId);
+
+            if (account == null)
+                throw new ServiceException(ErrorCodes.AccountDoesntExist, $"Cannot find account with given id: {accountId}.");
+
+            if (daysToAdd <= 0)
+                throw new ServiceException(ErrorCodes.DaysNotPositive, "Days to add must be a positive number");
+
+            account.BuyComments(daysToAdd);
+
+            await _instagramAccountRepository.UpdateAsync(account);
+        }
+
+        public async Task BuyPromotions(Guid accountId, double daysToAdd)
+        {
+            var account = await _instagramAccountRepository.GetAsync(accountId);
+
+            if (account == null)
+                throw new ServiceException(ErrorCodes.AccountDoesntExist, $"Cannot find account with given id: {accountId}.");
+
+            if (daysToAdd <= 0)
+                throw new ServiceException(ErrorCodes.DaysNotPositive, "Days to add must be a positive number.");
+
+            account.BuyPromotions(daysToAdd);
+
+            await _instagramAccountRepository.UpdateAsync(account);
         }
     }
 }

@@ -4,6 +4,7 @@ using FollowUP.Infrastructure.EF;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace FollowUP.Infrastructure.Repositories
@@ -28,6 +29,7 @@ namespace FollowUP.Infrastructure.Repositories
 
         public async Task<IEnumerable<User>> GetAllAsync()
             => await _context.Users.ToListAsync();
+
         public async Task AddAsync(User user)
         {
             await _context.Users.AddAsync(user);

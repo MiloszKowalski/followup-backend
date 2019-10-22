@@ -155,7 +155,6 @@ namespace FollowUP.Infrastructure.Services
             if(!instaApi.IsUserAuthenticated)
                 throw new ServiceException(ErrorCodes.AccountNotAuthenticated, "Account not authenticated. Please login first.");
 
-            // TODO: PaginationParemeters min and max id
             // Get given user's media (every user post)
             var userMediaResponse = await instaApi.UserProcessor.GetUserMediaAsync(account.Username, PaginationParameters.MaxPagesToLoad(999));
             if (!userMediaResponse.Succeeded)

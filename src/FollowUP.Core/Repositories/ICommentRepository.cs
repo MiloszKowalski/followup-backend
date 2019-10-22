@@ -9,8 +9,8 @@ namespace FollowUP.Core.Repositories
     {
         Task<IEnumerable<Comment>> GetAllAsync();
         Task<Comment> GetAsync(Guid Id);
-        Task<IEnumerable<Comment>> GetAccountCommentsAsync(Guid userId);
-        Task<IEnumerable<Comment>> GetAccountCommentsAsync(Guid userId, int page, int pageSize);
+        Task<IEnumerable<Comment>> GetAccountCommentsAsync(Guid accountId);
+        Task<IEnumerable<Comment>> GetAccountCommentsAsync(Guid accountId, int page, int pageSize);
         Task<int> GetAccountCommentsCountAsync(Guid accountId);
         Task<IEnumerable<ChildComment>> GetChildCommentsAsync(Guid commentId);
         Task AddAsync(Comment comment);

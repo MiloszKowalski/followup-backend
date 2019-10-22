@@ -53,5 +53,23 @@ namespace FollowUP.Api.Controllers
 
             return Json(accounts);
         }
+
+        [Authorize]
+        [HttpPost("comments")]
+        public async Task<IActionResult> BuyCommentModule([FromBody]BuyComments command)
+        {
+            await DispatchAsync(command);
+
+            return Ok();
+        }
+
+        [Authorize]
+        [HttpPost("promotions")]
+        public async Task<IActionResult> BuyPromotionsModule([FromBody]BuyPromotions command)
+        {
+            await DispatchAsync(command);
+
+            return Ok();
+        }
     }
 }

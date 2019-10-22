@@ -1,6 +1,5 @@
 ﻿using FollowUP.Core.Domain;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -25,7 +24,6 @@ namespace FollowUP.Infrastructure.Services
                 return;
             }
             Console.WriteLine("Initializing data...");
-            var tasks = new List<Task>();
             for (var i = 1; i <= 10; i++)
             {
                 var userId = Guid.NewGuid();

@@ -27,6 +27,12 @@ namespace FollowUP.Infrastructure.Repositories
         public async Task<IEnumerable<InstagramAccount>> GetUsersAccountsAsync(Guid userId)
             => await _context.InstagramAccounts.Where(x => x.UserId == userId).ToListAsync();
 
+        public async Task<IEnumerable<InstagramAccount>> GetAllWithCommentsAsync()
+            => await _context.InstagramAccounts.Where(x => x.CommentsModuleExpiry > DateTime.UtcNow).ToListAsync();
+
+        public async Task<IEnumerable<InstagramAccount>> GetAllWithPromotionsAsync()
+            => await _context.InstagramAccounts.Where(x => x.PromotionsModuleExpiry > DateTime.UtcNow).ToListAsync();
+
         public async Task<IEnumerable<InstagramAccount>> GetAllAsync()
             => await _context.InstagramAccounts.ToListAsync();
 

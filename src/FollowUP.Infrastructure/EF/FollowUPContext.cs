@@ -10,6 +10,9 @@ namespace FollowUP.Infrastructure.EF
         public DbSet<InstagramAccount> InstagramAccounts { get; set; }
         public DbSet<Comment> Comments { get; set; }
         public DbSet<ChildComment> ChildComments { get; set; }
+        public DbSet<Promotion> Promotions { get; set; }
+        public DbSet<PromotionComment> PromotionComments { get; set; }
+        public DbSet<CompletedMedia> MediaBlacklist { get; set; }
 
         public FollowUPContext(DbContextOptions<FollowUPContext> options, SqlSettings settings) : base(options)
         {
@@ -40,6 +43,15 @@ namespace FollowUP.Infrastructure.EF
 
             var childCommentItemBuilder = modelBuilder.Entity<ChildComment>();
             childCommentItemBuilder.HasKey(x => x.Id);
+
+            var promotionItemBuilder = modelBuilder.Entity<Promotion>();
+            promotionItemBuilder.HasKey(x => x.Id);
+
+            var promotionCommentItemBuilder = modelBuilder.Entity<PromotionComment>();
+            promotionCommentItemBuilder.HasKey(x => x.Id);
+
+            var completedMediaItemBuilder = modelBuilder.Entity<CompletedMedia>();
+            completedMediaItemBuilder.HasKey(x => x.Id);
         }
     }
 }

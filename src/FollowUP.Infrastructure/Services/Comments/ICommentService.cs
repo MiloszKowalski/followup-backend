@@ -10,6 +10,6 @@ namespace FollowUP.Infrastructure.Services
         Task<IEnumerable<CommentDto>> GetAllByAccountId(Guid userId);
         Task<IEnumerable<CommentDto>> GetByAccountId(Guid accountId, int page, int pageSize);
         Task<int> GetCount(Guid accountId);
-        Task UpdateAllByAccountId(Guid userId);
+        Task UpdateAllByAccountId(Guid accountId);
     }
 }
