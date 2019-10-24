@@ -72,13 +72,6 @@ namespace FollowUP.Infrastructure.Services.Background
                 {
                     var task = Task.Run(async () =>
                     {
-                        if (account.AuthenticationStep != AuthenticationStep.Authenticated)
-                        {
-                            Console.WriteLine($"User {account.Username} not logged in, please authenticate first.");
-                            await Task.Delay(10000);
-                            return;
-                        }
-
                         var _promotionRepository = new PromotionRepository(new FollowUPContext(options, _sqlSettings));
                         // Divide proxy to proper proxy parts
                         var proxySplit = account.Proxy.Split(':');
