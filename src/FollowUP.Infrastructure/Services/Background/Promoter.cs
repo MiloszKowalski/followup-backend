@@ -222,7 +222,6 @@ namespace FollowUP.Infrastructure.Services.Background
                                         await Task.Delay(TimeSpan.FromHours(24));
                                     }
 
-
                                     var blackListMedia = new CompletedMedia(Guid.NewGuid(), account.Id, media.Code, DateTime.UtcNow);
 
                                     mediasToRemove.Add(media);

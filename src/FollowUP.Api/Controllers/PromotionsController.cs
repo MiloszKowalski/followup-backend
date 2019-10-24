@@ -1,6 +1,5 @@
 ﻿using FollowUP.Controllers;
 using FollowUP.Infrastructure.Commands;
-using FollowUP.Infrastructure.DTO;
 using FollowUP.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
