@@ -330,97 +330,113 @@ namespace FollowUP.Infrastructure.Services
             chromeOptions.AddArgument("--headless");
             chromeOptions.AddArgument("--lang=en");
             chromeOptions.AddArgument("ignore-certificate-errors");
-            var chromeDriver = new ChromeDriver(".", chromeOptions);
-            string browserKey = $"{account.Id}-browser";
-            var cacheCookies = (ReadOnlyCollection<Cookie>)_cache.Get(browserKey);
-
-            string loginUrl = "https://www.instagram.com";
-            chromeDriver.Navigate().GoToUrl(loginUrl);
-
-            if (cacheCookies != null)
+            using (var chromeDriver = new ChromeDriver(".", chromeOptions))
             {
-                foreach (var cookie in cacheCookies)
-                {
-                    chromeDriver.Manage().Cookies.AddCookie(cookie);
-                }
+                string browserKey = $"{account.Id}-browser";
+                var cacheCookies = (ReadOnlyCollection<Cookie>)_cache.Get(browserKey);
+
+                string loginUrl = "https://www.instagram.com";
                 chromeDriver.Navigate().GoToUrl(loginUrl);
-            }
 
-            // Check if the explore button-svg is present on the page
-            // to prevent throwing errors - if not, continue logging
-            try
-            {
-                var exploreSvg = chromeDriver.FindElementByCssSelector("svg");
-                _cache.Set(browserKey, chromeDriver.Manage().Cookies.AllCookies);
-                chromeDriver.Close();
-                return;
-            } catch
-            {
-                Console.WriteLine($"Logging user {username}...");
-            }
-            
-            var buttons = chromeDriver.FindElementsByCssSelector("button");
-            await Task.Delay(250);
-            if (buttons.Count >= 2)
-            {
-                if (buttons[2].Text == "Switch accounts")
-                    buttons[2].Click();
-            }
-            else
-                Console.WriteLine($"Something went wrong");
-
-            var switchToLoginButton = chromeDriver.FindElementByCssSelector("a[href=\"/accounts/login/?source=auth_switcher\"]");
-            if (switchToLoginButton.Text == "Log in")
-                switchToLoginButton.Click();
-
-            await Task.Delay(250);
-
-            var inputs = chromeDriver.FindElementsByCssSelector("input");
-            inputs[0].SendKeys(username);
-            inputs[1].SendKeys(password);
-
-            await Task.Delay(500);
-
-            var loginButton = chromeDriver.FindElementByCssSelector("button[type=\"submit\"]");
-            loginButton.Click();
-
-            _cache.Set($"{browserKey}-sessionid", chromeDriver.SessionId);
-            _cache.Set(browserKey, chromeDriver.Manage().Cookies.AllCookies);
-            await Task.Delay(3000);
-            var codeInput = chromeDriver.FindElementByCssSelector("input");
-            if (codeInput != null)
-            {
-                if (verificationCode.Empty())
+                if (cacheCookies != null)
                 {
+                    foreach (var cookie in cacheCookies)
+                    {
+                        chromeDriver.Manage().Cookies.AddCookie(cookie);
+                    }
+                    chromeDriver.Navigate().GoToUrl(loginUrl);
+                }
+
+                // Check if the explore button-svg is present on the page
+                // to prevent throwing errors - if not, continue logging
+                try
+                {
+                    var exploreSvg = chromeDriver.FindElementByCssSelector("svg");
                     _cache.Set(browserKey, chromeDriver.Manage().Cookies.AllCookies);
                     chromeDriver.Close();
                     return;
                 }
-                else
+                catch
                 {
-                    try
+                    Console.WriteLine($"Logging user {username}...");
+                }
+
+                try
+                {
+                    var buttons = chromeDriver.FindElementsByCssSelector("button");
+                    await Task.Delay(250);
+                    if (buttons.Count >= 2)
                     {
-                        codeInput.SendKeys(verificationCode);
+                        if (buttons[2].Text == "Switch accounts")
+                            buttons[2].Click();
                     }
-                    catch
-                    {
-                        codeInput = chromeDriver.FindElementByCssSelector("input");
-                        codeInput.SendKeys(verificationCode);
-                    }
-                    finally
-                    {
-                        await Task.Delay(500);
-                        var verificationButton = chromeDriver.FindElementByCssSelector("button");
-                        verificationButton.Click();
-                        _cache.Set(browserKey, chromeDriver.Manage().Cookies.AllCookies);
-                    }
-                    _cache.Set(browserKey, chromeDriver.Manage().Cookies.AllCookies);
-                    chromeDriver.Close();
-                    return;
+                }
+                catch
+                {
+                    Console.WriteLine($"Swtiching accounts not needed");
+                }
+
+                try
+                {
+                    var switchToLoginButton = chromeDriver.FindElementByCssSelector("a[href=\"/accounts/login/?source=auth_switcher\"]");
+                    if (switchToLoginButton.Text == "Log in")
+                        switchToLoginButton.Click();
+                }
+                catch
+                {
+                    Console.WriteLine($"Couldn't find login button");
                 }
                 
+
+                await Task.Delay(250);
+
+                var inputs = chromeDriver.FindElementsByCssSelector("input");
+                inputs[0].SendKeys(username);
+                inputs[1].SendKeys(password);
+
+                await Task.Delay(500);
+
+                var loginButton = chromeDriver.FindElementByCssSelector("button[type=\"submit\"]");
+                loginButton.Click();
+
+                _cache.Set($"{browserKey}-sessionid", chromeDriver.SessionId);
+                _cache.Set(browserKey, chromeDriver.Manage().Cookies.AllCookies);
+                await Task.Delay(3000);
+                var codeInput = chromeDriver.FindElementByCssSelector("input");
+                if (codeInput != null)
+                {
+                    if (verificationCode.Empty())
+                    {
+                        _cache.Set(browserKey, chromeDriver.Manage().Cookies.AllCookies);
+                        chromeDriver.Close();
+                        return;
+                    }
+                    else
+                    {
+                        try
+                        {
+                            codeInput.SendKeys(verificationCode);
+                        }
+                        catch
+                        {
+                            codeInput = chromeDriver.FindElementByCssSelector("input");
+                            codeInput.SendKeys(verificationCode);
+                        }
+                        finally
+                        {
+                            await Task.Delay(500);
+                            var verificationButton = chromeDriver.FindElementByCssSelector("button");
+                            verificationButton.Click();
+                            await Task.Delay(5000);
+                            _cache.Set(browserKey, chromeDriver.Manage().Cookies.AllCookies);
+                        }
+                        _cache.Set(browserKey, chromeDriver.Manage().Cookies.AllCookies);
+                        chromeDriver.Close();
+                        return;
+                    }
+
+                }
             }
-            
         }
 
         /// <summary>

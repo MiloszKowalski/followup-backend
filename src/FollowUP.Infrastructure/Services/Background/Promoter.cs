@@ -260,24 +260,25 @@ namespace FollowUP.Infrastructure.Services.Background
                                     chromeOptions.AddArgument("--lang=en");
                                     chromeOptions.AddArgument("--headless");
                                     chromeOptions.AddArgument("ignore-certificate-errors");
-                                    var chromeDriver = new ChromeDriver(".", chromeOptions);
-                                    string followUrl = $@"https://www.instagram.com/p/{media.Code}";
-                                    chromeDriver.Navigate().GoToUrl(followUrl);
-
-                                    foreach (var cookie in cacheCookies)
+                                    using (var chromeDriver = new ChromeDriver(".", chromeOptions))
                                     {
-                                        chromeDriver.Manage().Cookies.AddCookie(cookie);
-                                    }
-                                    chromeDriver.Navigate().GoToUrl(followUrl);
-                                    await Task.Delay(3000);
-                                    var followButton = chromeDriver.FindElementByCssSelector("button");
-                                    if(followButton.Text == "Follow")
-                                    {
-                                        followButton.Click();
-                                    }
+                                        string followUrl = $@"https://www.instagram.com/p/{media.Code}";
+                                        chromeDriver.Navigate().GoToUrl(followUrl);
 
-                                    chromeDriver.Close();
+                                        foreach (var cookie in cacheCookies)
+                                        {
+                                            chromeDriver.Manage().Cookies.AddCookie(cookie);
+                                        }
+                                        chromeDriver.Navigate().GoToUrl(followUrl);
+                                        await Task.Delay(3000);
+                                        var followButton = chromeDriver.FindElementByCssSelector("button");
+                                        if (followButton.Text == "Follow")
+                                        {
+                                            followButton.Click();
+                                        }
 
+                                        chromeDriver.Close();
+                                    }
                                     var blackListMedia = new CompletedMedia(Guid.NewGuid(), account.Id, media.Code, DateTime.UtcNow);
 
                                     mediasToRemove.Add(media);
