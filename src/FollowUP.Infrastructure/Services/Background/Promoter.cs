@@ -13,8 +13,12 @@ using InstagramApiSharp.Logger;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -39,6 +43,8 @@ namespace FollowUP.Infrastructure.Services.Background
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            // Wait 10 secs to load
+            await Task.Delay(10000);
             int whileIterations = 0;
             var previousSeconds = 0;
 
@@ -61,10 +67,10 @@ namespace FollowUP.Infrastructure.Services.Background
                     continue;
                 }
                 var rand = new Random();
-                var seconds = rand.Next(50, 150);
+                var seconds = rand.Next(30000, 60000);
 
-                while(Math.Abs(previousSeconds - seconds) < 15)
-                    seconds = rand.Next(50, 150);
+                while(Math.Abs(previousSeconds - seconds) < 10000)
+                    seconds = rand.Next(30000, 60000);
 
                 previousSeconds = seconds;
 
@@ -80,6 +86,16 @@ namespace FollowUP.Infrastructure.Services.Background
                         proxyIp = $"http://{proxyIp}:{proxyPort}";
                         string proxyLogin = proxySplit[2];
                         string proxyPassword = proxySplit[3];
+
+                        string browserKey = $"{account.Id}-browser";
+                        var cacheCookies = (ReadOnlyCollection<OpenQA.Selenium.Cookie>)_cache.Get(browserKey);
+
+                        if (cacheCookies == null)
+                        {
+                            Console.WriteLine("User not authenticated to a embedded browser, skipping...");
+                            await Task.Delay(5000);
+                            return;
+                        }
 
                         // Set up proxy used in promotion
                         var proxy = new WebProxy()
@@ -108,7 +124,7 @@ namespace FollowUP.Infrastructure.Services.Background
                         // Create new instance of InstaApi with given credentials, setting request delay and session handler for user
                         var instaApi = InstaApiBuilder.CreateBuilder()
                                                     .SetUser(userSession)
-                                                    .UseLogger(new DebugLogger(LogLevel.Exceptions))
+                                                    .UseLogger(new DebugLogger(InstagramApiSharp.Logger.LogLevel.Exceptions))
                                                     .SetRequestDelay(RequestDelay.FromSeconds(0, 1))
                                                     .SetSessionHandler(new FileSessionHandler() { FilePath = account.FilePath })
                                                     .UseHttpClientHandler(httpClientHandler)
@@ -140,7 +156,7 @@ namespace FollowUP.Infrastructure.Services.Background
                         if(!instaApi.IsUserAuthenticated)
                         {
                             Console.WriteLine($"User {account.Username} not logged in, please authenticate first.");
-                            await Task.Delay(10000);
+                            await Task.Delay(1000);
                             return;
                         }
 
@@ -163,7 +179,8 @@ namespace FollowUP.Infrastructure.Services.Background
                                 List<InstaMedia> medias = (List<InstaMedia>)_cache.Get(searchKey);
                                 if(medias == null || !medias.Any())
                                 {
-                                    medias = _cache.Set(searchKey, await GetMediaByHashtagAsync(instaApi, account, promotion, _promotionRepository));
+                                    var downloadedMedia = await GetMediaByHashtagAsync(instaApi, account, promotion, _promotionRepository);
+                                    _cache.Set(searchKey, downloadedMedia);
                                     continue;
                                 }
 
@@ -182,16 +199,24 @@ namespace FollowUP.Infrastructure.Services.Background
                                             continue;
                                         }
                                     Console.WriteLine();
-                                    var likeResponse = await instaApi.MediaProcessor.LikeMediaAsync(media.InstaIdentifier);
-                                    if (likeResponse.Succeeded)
-                                        Console.WriteLine($"[{account.Username}](#{promotion.Label}) -> [{media.User.UserName}] Like media: {media.Caption?.Text?.ToString().Truncate(20)} - Success");
-                                    else
-                                    {
-                                        Console.WriteLine($"[{account.Username}](#{promotion.Label}) -> [{media.User.UserName}] Like media: {media.Caption?.Text?.ToString().Truncate(20)} - Error: {likeResponse.Info.Message} - {likeResponse.Info.ResponseType}");
-                                        Console.WriteLine("Waiting a day...");
-                                        await Task.Delay(TimeSpan.FromHours(24));
-                                    }
 
+                                    // LIKE
+                                    //var likeResponse = await instaApi.MediaProcessor.LikeMediaAsync(media.InstaIdentifier);
+                                    //if (likeResponse.Succeeded)
+                                    //    Console.WriteLine($"[{account.Username}](#{promotion.Label}) -> [{media.User.UserName}] Like media: {media.Caption?.Text?.ToString().Truncate(20)} - Success");
+                                    //else
+                                    //{
+                                    //    Console.WriteLine($"[{account.Username}](#{promotion.Label}) -> [{media.User.UserName}] Like media: {media.Caption?.Text?.ToString().Truncate(20)} - Error: {likeResponse.Info.Message} - {likeResponse.Info.ResponseType}");
+                                    //    if(likeResponse.Info.ResponseType != ResponseType.UnExpectedResponse)
+                                    //    {
+                                    //        Console.WriteLine("Turning off promotion...");
+                                    //        account.PromotionsModuleExpiry = DateTime.UtcNow;
+                                    //        await _accountRepository.UpdateAsync(account);
+                                    //    }
+                                    //}
+
+
+                                    // API Follow
                                     //Console.WriteLine();
                                     //var commentResponse = await instaApi.CommentProcessor.CommentMediaAsync(media.InstaIdentifier, comments.ElementAt(rand.Next(0, comments.Count())).Content);
                                     //if (commentResponse.Succeeded)
@@ -201,19 +226,57 @@ namespace FollowUP.Infrastructure.Services.Background
 
                                     //await Task.Delay(TimeSpan.FromSeconds(10));
 
-                                    Console.WriteLine($"Waiting {seconds/1.25} seconds for following");
-                                    await Task.Delay(TimeSpan.FromSeconds(seconds/1.25));
+                                    //Console.WriteLine($"Waiting {seconds/1.25} seconds for following");
+                                    //await Task.Delay(TimeSpan.FromSeconds(seconds/1.25));
 
-                                    Console.WriteLine();
-                                    var followResponse = await instaApi.UserProcessor.FollowUserAsync(media.User.Pk);
-                                    if (followResponse.Succeeded)
-                                        Console.WriteLine($"[{account.Username}](#{promotion.Label}) Follow user: {media.User.UserName} - Success!");
-                                    else
+                                    //Console.WriteLine();
+                                    //var followResponse = await instaApi.UserProcessor.FollowUserAsync(media.User.Pk);
+                                    //if (followResponse.Succeeded)
+                                    //    Console.WriteLine($"[{account.Username}](#{promotion.Label}) Follow user: {media.User.UserName} - Success!");
+                                    //else
+                                    //{
+                                    //    Console.WriteLine($"[{account.Username}](#{promotion.Label}) Follow user: {media.User.UserName} - Failed: {followResponse.Info.Message} - {followResponse.Info.ResponseType}");
+                                    //    if (followResponse.Info.ResponseType != ResponseType.UnExpectedResponse)
+                                    //    {
+                                    //        Console.WriteLine($"[{account.Username}](#{promotion.Label}) Follow user: {media.User.UserName} - Failed: {followResponse.Info.Message} - {followResponse.Info.ResponseType}");
+                                    //        Console.WriteLine("Turning off promotion...");
+                                    //        account.PromotionsModuleExpiry = DateTime.UtcNow;
+                                    //        await _accountRepository.UpdateAsync(account);
+                                    //    }
+                                    //}
+
+                                    ChromeOptions chromeOptions = new ChromeOptions();
+                                    var chromeProxy = new Proxy
                                     {
-                                        Console.WriteLine($"[{account.Username}](#{promotion.Label}) Follow user: {media.User.UserName} - Failed: {followResponse.Info.Message} - {followResponse.Info.ResponseType}");
-                                        Console.WriteLine("Waiting a day...");
-                                        await Task.Delay(TimeSpan.FromHours(24));
+                                        Kind = ProxyKind.Manual,
+                                        IsAutoDetect = false,
+                                        SocksUserName = proxyLogin,
+                                        SocksPassword = proxyPassword,
+                                        HttpProxy = proxyIp
+                                    };
+                                    var cookiesPath = Path.Combine(Directory.GetCurrentDirectory(), "ebaccounts", account.Id.ToString());
+                                    chromeOptions.Proxy = chromeProxy;
+                                    chromeOptions.AddArgument("user-data-dir=" + cookiesPath);
+                                    chromeOptions.AddArgument("--lang=en");
+                                    chromeOptions.AddArgument("--headless");
+                                    chromeOptions.AddArgument("ignore-certificate-errors");
+                                    var chromeDriver = new ChromeDriver(".", chromeOptions);
+                                    string followUrl = $@"https://www.instagram.com/p/{media.Code}";
+                                    chromeDriver.Navigate().GoToUrl(followUrl);
+
+                                    foreach (var cookie in cacheCookies)
+                                    {
+                                        chromeDriver.Manage().Cookies.AddCookie(cookie);
                                     }
+                                    chromeDriver.Navigate().GoToUrl(followUrl);
+                                    await Task.Delay(3000);
+                                    var followButton = chromeDriver.FindElementByCssSelector("button");
+                                    if(followButton.Text == "Follow")
+                                    {
+                                        followButton.Click();
+                                    }
+
+                                    chromeDriver.Close();
 
                                     var blackListMedia = new CompletedMedia(Guid.NewGuid(), account.Id, media.Code, DateTime.UtcNow);
 
@@ -245,7 +308,7 @@ namespace FollowUP.Infrastructure.Services.Background
                                     
                                     completed = true;
                                     Console.WriteLine($"Waiting {seconds} seconds");
-                                    await Task.Delay(TimeSpan.FromSeconds(seconds));
+                                    await Task.Delay(TimeSpan.FromMilliseconds(seconds));
                                 }
                                 
                                 foreach (var media in mediasToRemove)

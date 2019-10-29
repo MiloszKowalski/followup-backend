@@ -36,6 +36,22 @@ namespace FollowUP.Api.Controllers
         }
 
         [Authorize]
+        [HttpPost("eblogin")]
+        public async Task<IActionResult> LoginToEBInstagram([FromBody]LoginToEBInstagram command)
+        {
+            await DispatchAsync(command);
+            var accounts = await _instagramAccountService.GetAllByUserId(command.UserId);
+            var account = new AccountDto();
+            foreach (var x in accounts)
+            {
+                if (x.Username == command.Username)
+                    account = x;
+            }
+
+            return Json(account);
+        }
+
+        [Authorize]
         [HttpPost("delete")]
         public async Task<IActionResult> DeleteInstagramAccount([FromBody]DeleteInstagramAccount command)
         {
