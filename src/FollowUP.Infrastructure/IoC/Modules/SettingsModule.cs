@@ -23,6 +23,8 @@ namespace FollowUP.Infrastructure.IoC.Modules
                    .SingleInstance();
             builder.RegisterInstance(_configuration.GetSettings<SqlSettings>())
                    .SingleInstance();
+            builder.RegisterInstance(_configuration.GetSettings<PromotionSettings>())
+                   .SingleInstance();
         }
     }
 }

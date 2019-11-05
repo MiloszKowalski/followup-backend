@@ -4,19 +4,22 @@ using FollowUP.Core.Repositories;
 using FollowUP.Infrastructure.DTO;
 using FollowUP.Infrastructure.Exceptions;
 using FollowUP.Infrastructure.Extensions;
+using FollowUP.Infrastructure.Settings;
 using InstagramApiSharp.API;
 using InstagramApiSharp.API.Builder;
 using InstagramApiSharp.Classes;
+using InstagramApiSharp.Classes.Android.DeviceInfo;
 using InstagramApiSharp.Classes.SessionHandlers;
+using InstagramApiSharp.Enums;
 using InstagramApiSharp.Logger;
 using Microsoft.Extensions.Caching.Memory;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
-using OpenQA.Selenium.Remote;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace FollowUP.Infrastructure.Services
@@ -26,17 +29,21 @@ namespace FollowUP.Infrastructure.Services
 
         private readonly IUserRepository _userRepository;
         private readonly IInstagramAccountRepository _instagramAccountRepository;
+        private readonly IProxyRepository _proxyRepository;
         private readonly IMapper _mapper;
         private readonly IMemoryCache _cache;
+        private readonly PromotionSettings _settings;
 
         public InstagramAccountService(IUserRepository userRepository,
-                IInstagramAccountRepository instagramAccountRepository,
-                IMapper mapper, IMemoryCache cache)
+                IInstagramAccountRepository instagramAccountRepository, IProxyRepository proxyRepository,
+                IMapper mapper, IMemoryCache cache, PromotionSettings settings)
         {
             _userRepository = userRepository;
             _instagramAccountRepository = instagramAccountRepository;
+            _proxyRepository = proxyRepository;
             _mapper = mapper;
             _cache = cache;
+            _settings = settings;
         }
 
         /// <summary>
@@ -65,10 +72,29 @@ namespace FollowUP.Infrastructure.Services
                     return;
             }
 
+            var proxies = await _proxyRepository.GetAllAsync();
+            InstagramProxy instaProxy = null;
+            foreach(var proxy in proxies)
+            {
+                if (proxy.ExpiryDate.ToUniversalTime() < DateTime.UtcNow)
+                    continue;
+
+                var accounts = await _proxyRepository.GetProxiesAccountsAsync(proxy.Id);
+                if (accounts.Count() >= 10)
+                    continue;
+
+                instaProxy = proxy;
+                break;
+            }
+
+            if (instaProxy == null)
+                throw new ServiceException(ErrorCodes.NoProxyAvailable, "There is no proxy available for account creation.");
+
             // If the given account doesn't exist, create one and save it to the database
-            // TODO: PROXY SERVICE
-            var instagramAccount = new InstagramAccount(Id, user, username, password, "");
+            var instagramAccount = new InstagramAccount(Id, user, username, password);
             await _instagramAccountRepository.AddAsync(instagramAccount);
+            var accountProxy = new AccountProxy(Guid.NewGuid(), instaProxy.Id, instagramAccount.Id);
+            await _proxyRepository.AddAccountsProxyAsync(accountProxy);
         }
 
         /// <summary>
@@ -132,7 +158,10 @@ namespace FollowUP.Infrastructure.Services
                 // ...if true, use it
                 instaApi = instaApiCache;
             }
-            
+
+            instaApi.SetApiVersion(InstaApiVersionType.Version35);
+            instaApi.SetDevice(AndroidDeviceGenerator.GetByName("xiaomi-mi-4w"));
+
             // Get appropriate directories of the folder and file
             var fullPath = instaPath.Split(Path.DirectorySeparatorChar);
             var directory = Path.Combine(fullPath[0], fullPath[1]); ;
@@ -308,26 +337,36 @@ namespace FollowUP.Infrastructure.Services
             if (account == null)
                 throw new ServiceException(ErrorCodes.AccountDoesntExist, "Can't login to account that hasn't been created.");
 
-            var proxySplit = account.Proxy.Split(':');
-            string proxyIp = proxySplit[0];
-            string proxyPort = proxySplit[1];
-            proxyIp = $"http://{proxyIp}:{proxyPort}";
-            string proxyLogin = proxySplit[2];
-            string proxyPassword = proxySplit[3];
+            var accountProxy = await _proxyRepository.GetAccountsProxyAsync(account.Id);
+            var proxyInfo = await _proxyRepository.GetAsync(accountProxy.ProxyId);
+
+            if (accountProxy == null)
+            {
+                Console.WriteLine($"User {account.Username} doesn't have any working proxy, skipping...");
+                await Task.Delay(5000);
+                return;
+            }
+            else if (proxyInfo.ExpiryDate < DateTime.UtcNow)
+            {
+                Console.WriteLine($"Proxy {proxyInfo.Ip} for user {account.Username} is expired, skipping...");
+                await Task.Delay(5000);
+                return;
+            }
 
             ChromeOptions chromeOptions = new ChromeOptions();
             var chromeProxy = new Proxy
             {
                 Kind = ProxyKind.Manual,
                 IsAutoDetect = false,
-                SocksUserName = proxyLogin,
-                SocksPassword = proxyPassword,
-                HttpProxy = proxyIp
+                SocksUserName = proxyInfo.Username,
+                SocksPassword = proxyInfo.Password,
+                HttpProxy = $"http://{proxyInfo.Ip}:{proxyInfo.Port}"
             };
             var cookiesPath = Path.Combine(Directory.GetCurrentDirectory(), "ebaccounts", account.Id.ToString()); 
             chromeOptions.Proxy = chromeProxy;
             chromeOptions.AddArgument("user-data-dir=" + cookiesPath);
-            chromeOptions.AddArgument("--headless");
+            if(_settings.HeadlessBrowser)
+                chromeOptions.AddArgument("--headless");
             chromeOptions.AddArgument("--lang=en");
             chromeOptions.AddArgument("ignore-certificate-errors");
             using (var chromeDriver = new ChromeDriver(".", chromeOptions))

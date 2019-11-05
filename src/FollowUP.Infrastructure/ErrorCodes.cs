@@ -18,6 +18,7 @@
         public static string LabelTooLong => "label_too_long";
         public static string NoComments => "no_comments";
         public static string NoPromotions => "no_promotions";
+        public static string NoProxyAvailable => "no_proxy_available";
         public static string UsernameInUse => "username_in_use";
         public static string UserNotFound => "user_not_found";
         public static string UserNotPermitted => "user_not_permitted";

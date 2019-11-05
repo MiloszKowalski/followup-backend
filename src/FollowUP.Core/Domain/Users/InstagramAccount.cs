@@ -11,7 +11,6 @@ namespace FollowUP.Core.Domain
         public string Password { get; protected set; }
         public string PhoneNumber { get; protected set; }
         public string FilePath { get; protected set; }
-        public string Proxy { get; protected set; }
         public AuthenticationStep AuthenticationStep { get; protected set; }
         public DateTime CommentsModuleExpiry { get; protected set; }
         // TODO protected set
@@ -21,13 +20,12 @@ namespace FollowUP.Core.Domain
         {
         }
 
-        public InstagramAccount(Guid id, User user, string username, string password, string proxy)
+        public InstagramAccount(Guid id, User user, string username, string password)
         {
             Id = id;
             UserId = user.Id;
             Username = username;
             Password = password;
-            Proxy = proxy;
             AuthenticationStep = AuthenticationStep.NotAuthenticated;
             FilePath = Path.Combine("Accounts", user.Username, $"{username}-state.bin");
             CommentsModuleExpiry = DateTime.UtcNow;

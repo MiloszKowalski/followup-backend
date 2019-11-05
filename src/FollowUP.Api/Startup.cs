@@ -50,7 +50,7 @@ namespace FollowUP
                            .AllowAnyHeader();
             }));
 
-            services.AddHostedService<CommentsUpdater>();
+            //services.AddHostedService<CommentsUpdater>();
             services.AddHostedService<Promoter>();
 
             services.AddMvc()
