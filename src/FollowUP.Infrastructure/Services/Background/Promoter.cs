@@ -74,13 +74,20 @@ namespace FollowUP.Infrastructure.Services.Background
                 {
                     var task = Task.Run(async () =>
                     {
+                        if(account.BannedUntil != null)
+                            if (account.BannedUntil > DateTime.UtcNow)
+                            {
+                                //Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account banned until {account.BannedUntil}, skipping...");
+                                await Task.Delay(TimeSpan.FromSeconds(5));
+                                return;
+                            }
                         var _promotionRepository = new PromotionRepository(new FollowUPContext(options, _sqlSettings));
                         // Divide proxy to proper proxy parts
                         var accountProxy = await _proxyRepository.GetAccountsProxyAsync(account.Id);
 
                         if (accountProxy == null)
                         {
-                            Console.WriteLine($"User {account.Username} doesn't have any working proxy, skipping...");
+                            Console.WriteLine($"[{DateTime.Now}][{account.Username}] Can't find any working proxy, skipping...");
                             await Task.Delay(5000);
                             return;
                         }
@@ -89,7 +96,7 @@ namespace FollowUP.Infrastructure.Services.Background
 
                         if (proxyInfo.ExpiryDate < DateTime.UtcNow)
                         {
-                            Console.WriteLine($"Proxy {proxyInfo.Ip} for user {account.Username} is expired, skipping...");
+                            Console.WriteLine($"[{DateTime.Now}][{account.Username}] Proxy {proxyInfo.Ip} is expired, skipping...");
                             await Task.Delay(5000);
                             return;
                         }
@@ -142,28 +149,27 @@ namespace FollowUP.Infrastructure.Services.Background
                         }
                         catch (Exception e)
                         {
-                            Console.WriteLine($"Could not load state from file for user {account.Username}, error info: {e.Message}");
+                            Console.WriteLine($"[{DateTime.Now}][{account.Username}] Could not load state from file, error info: {e.Message}");
                             await Task.Delay(10000);
                             return;
                         }
 
                         if(!instaApi.IsUserAuthenticated)
                         {
-                            Console.WriteLine($"User {account.Username} not logged in, please authenticate first.");
+                            Console.WriteLine($"[{DateTime.Now}][{account.Username}] User not logged in, please authenticate first.");
                             await Task.Delay(1000);
                             return;
                         }
 
-
-                        string promotionKey = $"{account.Id}-latest-promotion";
                         // Get all account's promotions
+                        string promotionKey = $"{account.Id}{_settings.PromotionKey}";
                         var promotions = await _promotionRepository.GetAccountPromotionsAsync(account.Id);
 
                         Console.WriteLine();
 
                         if (promotions == null || !promotions.Any())
                         {
-                            Console.WriteLine($"Couldn't find any promotions for user: {account.Username}, skipping");
+                            Console.WriteLine($"[{DateTime.Now}][{account.Username}] Couldn't find any promotions, skipping");
                             await Task.Delay(5000);
                             return;
                         }
@@ -263,7 +269,8 @@ namespace FollowUP.Infrastructure.Services.Background
                                         {
                                             try
                                             {
-                                                account.PromotionsModuleExpiry = DateTime.UtcNow;
+                                                account.BannedUntil = DateTime.UtcNow.AddDays(_settings.BanDurationInDays);
+                                                account.PromotionsModuleExpiry = account.PromotionsModuleExpiry.AddDays(_settings.BanDurationInDays);
                                                 await _accountRepository.UpdateAsync(account);
                                                 saveSuccessful = true;
                                                 return;

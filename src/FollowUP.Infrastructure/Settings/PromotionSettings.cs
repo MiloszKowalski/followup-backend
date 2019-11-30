@@ -7,5 +7,7 @@
         public int MinActionInterval { get; set; }
         public int MaxActionInterval { get; set; }
         public int MinIntervalDifference { get; set; }
+        public int BanDurationInDays { get; set; }
+        public string PromotionKey { get; set; }
     }
 }

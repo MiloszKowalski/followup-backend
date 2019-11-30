@@ -15,6 +15,7 @@ namespace FollowUP.Core.Domain
         public DateTime CommentsModuleExpiry { get; protected set; }
         // TODO protected set
         public DateTime PromotionsModuleExpiry { get;  set; }
+        public DateTime BannedUntil { get;  set; }
 
         protected InstagramAccount()
         {
@@ -30,6 +31,7 @@ namespace FollowUP.Core.Domain
             FilePath = Path.Combine("Accounts", user.Username, $"{username}-state.bin");
             CommentsModuleExpiry = DateTime.UtcNow;
             PromotionsModuleExpiry = DateTime.UtcNow;
+            BannedUntil = user.CreatedAt;
         }
 
         public void SetAuthenticationStep(AuthenticationStep step)
