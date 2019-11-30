@@ -11,6 +11,7 @@ using InstagramApiSharp.Classes;
 using InstagramApiSharp.Classes.Android.DeviceInfo;
 using InstagramApiSharp.Classes.SessionHandlers;
 using InstagramApiSharp.Enums;
+using InstagramApiSharp.Helpers;
 using InstagramApiSharp.Logger;
 using Microsoft.Extensions.Caching.Memory;
 using OpenQA.Selenium;
@@ -20,6 +21,8 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace FollowUP.Infrastructure.Services
@@ -142,12 +145,42 @@ namespace FollowUP.Infrastructure.Services
             instaPath = instaPath.Replace('\\', Path.DirectorySeparatorChar);
             instaPath = instaPath.Replace('/', Path.DirectorySeparatorChar);
 
+            var accountProxy = await _proxyRepository.GetAccountsProxyAsync(account.Id);
+
+            if (accountProxy == null)
+            {
+                Console.WriteLine($"User {account.Username} doesn't have any working proxy, skipping...");
+                await Task.Delay(5000);
+                return;
+            }
+
+            var proxyInfo = await _proxyRepository.GetAsync(accountProxy.ProxyId);
+
+            if (proxyInfo.ExpiryDate < DateTime.UtcNow)
+            {
+                Console.WriteLine($"Proxy {proxyInfo.Ip} for user {account.Username} is expired, skipping...");
+                await Task.Delay(5000);
+                return;
+            }
+
+            var proxy = new InstaProxy(proxyInfo.Ip, proxyInfo.Port)
+            {
+                Credentials = new NetworkCredential(proxyInfo.Username, proxyInfo.Password)
+            };
+
+            // Now create a client handler which uses that proxy
+            var httpClientHandler = new HttpClientHandler()
+            {
+                Proxy = proxy,
+            };
+
             // Create new instance of InstaApi with given credentials, setting request delay and session handler for user
             var instaApi =  InstaApiBuilder.CreateBuilder()
                                         .SetUser(userSession)
                                         .UseLogger(new DebugLogger(InstagramApiSharp.Logger.LogLevel.Exceptions))
                                         .SetRequestDelay(RequestDelay.FromSeconds(0, 1))
                                         .SetSessionHandler(new FileSessionHandler() { FilePath = instaPath })
+                                        .UseHttpClientHandler(httpClientHandler)
                                         .Build();
 
             // Check if there is an instaApi instance bound to the account...
@@ -159,8 +192,8 @@ namespace FollowUP.Infrastructure.Services
                 instaApi = instaApiCache;
             }
 
-            instaApi.SetApiVersion(InstaApiVersionType.Version35);
-            instaApi.SetDevice(AndroidDeviceGenerator.GetByName("xiaomi-mi-4w"));
+            instaApi.SetApiVersion(InstaApiVersionType.Version117);
+            instaApi.SetDevice(AndroidDeviceGenerator.GetByName(AndroidDevices.XIAOMI_REDMI_NOTE_4X));
 
             // Get appropriate directories of the folder and file
             var fullPath = instaPath.Split(Path.DirectorySeparatorChar);
@@ -372,7 +405,7 @@ namespace FollowUP.Infrastructure.Services
             using (var chromeDriver = new ChromeDriver(".", chromeOptions))
             {
                 string browserKey = $"{account.Id}-browser";
-                var cacheCookies = (ReadOnlyCollection<Cookie>)_cache.Get(browserKey);
+                var cacheCookies = (ReadOnlyCollection<OpenQA.Selenium.Cookie>)_cache.Get(browserKey);
 
                 string loginUrl = "https://www.instagram.com";
                 chromeDriver.Navigate().GoToUrl(loginUrl);

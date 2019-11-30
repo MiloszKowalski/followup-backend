@@ -9,13 +9,13 @@ namespace FollowUP.Core.Domain
         public string Port { get; protected set; }
         public string Username { get; protected set; }
         public string Password { get; protected set; }
-        public DateTime ExpiryDate { get; protected set; }
+        public DateTimeOffset ExpiryDate { get; protected set; }
 
         protected InstagramProxy()
         {
         }
 
-        public InstagramProxy(Guid id, string ip, string port, string username, string password, DateTime expiryDate)
+        public InstagramProxy(Guid id, string ip, string port, string username, string password, DateTimeOffset expiryDate)
         {
             Id = id;
             Ip = ip;

@@ -12,16 +12,13 @@ using InstagramApiSharp.Classes.Android.DeviceInfo;
 using InstagramApiSharp.Classes.Models;
 using InstagramApiSharp.Classes.SessionHandlers;
 using InstagramApiSharp.Enums;
+using InstagramApiSharp.Helpers;
 using InstagramApiSharp.Logger;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
-using OpenQA.Selenium;
-using OpenQA.Selenium.Chrome;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -52,8 +49,6 @@ namespace FollowUP.Infrastructure.Services.Background
         {
             // Wait 10 secs to load
             await Task.Delay(10000);
-            int whileIterations = 0;
-            var previousMillieconds = 0;
 
             // Options for the promotion repository instances
             var options = new DbContextOptionsBuilder<FollowUPContext>()
@@ -62,9 +57,6 @@ namespace FollowUP.Infrastructure.Services.Background
 
             while (!stoppingToken.IsCancellationRequested)
             {
-                whileIterations++;
-                Console.WriteLine($"Getting users accounts for the {whileIterations} time...");
-
                 // Get all the accounts with promotion module activated
                 var accounts = await _accountRepository.GetAllWithPromotionsAsync();
 
@@ -77,14 +69,6 @@ namespace FollowUP.Infrastructure.Services.Background
 
                 // Get random sleep time for calls' intervals
                 var rand = new Random();
-                var milliseconds = rand.Next(150000, 300000);
-
-                // If the difference between this interval and the previous
-                // one is less than 30 seconds, randomize interval again
-                while (Math.Abs(previousMillieconds - milliseconds) < 30000)
-                    milliseconds = rand.Next(150000, 300000);
-
-                previousMillieconds = milliseconds;
 
                 Parallel.ForEach(accounts, (account) =>
                 {
@@ -93,7 +77,6 @@ namespace FollowUP.Infrastructure.Services.Background
                         var _promotionRepository = new PromotionRepository(new FollowUPContext(options, _sqlSettings));
                         // Divide proxy to proper proxy parts
                         var accountProxy = await _proxyRepository.GetAccountsProxyAsync(account.Id);
-                        var proxyInfo = await _proxyRepository.GetAsync(accountProxy.ProxyId);
 
                         if (accountProxy == null)
                         {
@@ -101,35 +84,19 @@ namespace FollowUP.Infrastructure.Services.Background
                             await Task.Delay(5000);
                             return;
                         }
-                        else if (proxyInfo.ExpiryDate.ToUniversalTime() < DateTime.UtcNow)
+
+                        var proxyInfo = await _proxyRepository.GetAsync(accountProxy.ProxyId);
+
+                        if (proxyInfo.ExpiryDate < DateTime.UtcNow)
                         {
                             Console.WriteLine($"Proxy {proxyInfo.Ip} for user {account.Username} is expired, skipping...");
                             await Task.Delay(5000);
                             return;
                         }
 
-                        // Try getting EB user's cookies
-                        string browserKey = $"{account.Id}-browser";
-                        var cacheCookies = (ReadOnlyCollection<OpenQA.Selenium.Cookie>)_cache.Get(browserKey);
-
-                        if (cacheCookies == null)
+                        var proxy = new InstaProxy(proxyInfo.Ip, proxyInfo.Port)
                         {
-                            Console.WriteLine($"User {account.Username} not authenticated to a embedded browser, skipping...");
-                            await Task.Delay(5000);
-                            return;
-                        }
-
-                        await Task.Delay(5000);
-
-                        // Set up proxy used in promotion
-                        var proxy = new WebProxy()
-                        {
-                            Address = new Uri($"http://{proxyInfo.Ip}:{proxyInfo.Port}"),
-                            BypassProxyOnLocal = false,
-                            UseDefaultCredentials = false,
-                            Credentials = new NetworkCredential(
-                                userName: proxyInfo.Username,
-                                password: proxyInfo.Password)
+                            Credentials = new NetworkCredential(proxyInfo.Username, proxyInfo.Password)
                         };
 
                         // Now create a client handler which uses that proxy
@@ -163,8 +130,10 @@ namespace FollowUP.Infrastructure.Services.Background
                             instaApi = instaApiCache;
                         }
 
-                        instaApi.SetApiVersion(InstaApiVersionType.Version35);
-                        instaApi.SetDevice(AndroidDeviceGenerator.GetByName("xiaomi-mi-4w"));
+
+                        // TODO: Device service
+                        instaApi.SetApiVersion(InstaApiVersionType.Version117);
+                        instaApi.SetDevice(AndroidDeviceGenerator.GetByName(AndroidDevices.XIAOMI_REDMI_NOTE_4X));
 
                         // Try logging in from session
                         try
@@ -173,7 +142,7 @@ namespace FollowUP.Infrastructure.Services.Background
                         }
                         catch (Exception e)
                         {
-                            Console.WriteLine($"Could not load state from file for user {account.Username}, error info: {e}");
+                            Console.WriteLine($"Could not load state from file for user {account.Username}, error info: {e.Message}");
                             await Task.Delay(10000);
                             return;
                         }
@@ -190,12 +159,16 @@ namespace FollowUP.Infrastructure.Services.Background
                         // Get all account's promotions
                         var promotions = await _promotionRepository.GetAccountPromotionsAsync(account.Id);
 
-                        if (!promotions.Any())
+                        Console.WriteLine();
+
+                        if (promotions == null || !promotions.Any())
                         {
                             Console.WriteLine($"Couldn't find any promotions for user: {account.Username}, skipping");
                             await Task.Delay(5000);
                             return;
                         }
+
+                        await Task.Delay(3000);
 
                         // Queue the promotions to make only one per iteration
                         var currentPromotion = promotions.First();
@@ -205,16 +178,38 @@ namespace FollowUP.Infrastructure.Services.Background
                         if (previousPromotion != null)
                         {
                             var promotionList = promotions.ToList();
-                            var previousPromotionIndex = promotionList.IndexOf(previousPromotion);
-                            if (previousPromotionIndex > promotionList.Count - 1)
-                                previousPromotionIndex = -1;
-                            currentPromotion = promotionList[previousPromotionIndex + 1];
+
+                            int previousPromotionIndex = -1;
+                            foreach(var promo in promotionList)
+                            {
+                                if (promo.Id == previousPromotion.Id)
+                                {
+                                    previousPromotionIndex = promotionList.IndexOf(promo);
+                                    break;
+                                }
+                            }
+                            if (previousPromotionIndex > -1 && promotionList[previousPromotionIndex].ActionCooldown > DateTime.UtcNow)
+                            {
+                                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Promotion is on ActionCooldown. Waiting for {(promotionList[previousPromotionIndex].ActionCooldown - DateTime.Now).TotalMilliseconds} more milliseconds");
+                                return;
+                            }
+                            currentPromotion = promotionList[previousPromotionIndex >= promotionList.Count - 1 ? 0 : (previousPromotionIndex + 1)];
+                            var timeDifference = (int)previousPromotion.ActionCooldown.Subtract(DateTime.UtcNow).TotalMilliseconds;
+                            if(timeDifference > 0)
+                                currentPromotion.SetActionCooldown(timeDifference);
                         }
                         _cache.Set(promotionKey, currentPromotion);
 
                         // Get all account's comments templates
                         var comments = await _promotionRepository.GetAccountsPromotionCommentsAsync(account.Id);
                         var promotion = currentPromotion;
+
+                        if (promotion.ActionCooldown != null && promotion.ActionCooldown > DateTime.UtcNow)
+                        {
+                            Console.WriteLine($"[{DateTime.Now}][{account.Username}] Promotion is on ActionCooldown. Waiting for {(promotion.ActionCooldown - DateTime.Now).TotalMilliseconds} more milliseconds");
+                            await Task.Delay(5000);
+                            return;
+                        }
                         
                         if (promotion.PromotionType == PromotionType.Hashtag)
                         {
@@ -231,10 +226,14 @@ namespace FollowUP.Infrastructure.Services.Background
 
                             var mediasToRemove = new List<InstaMedia>();
                             bool completed = false;
+                            var randomMediaIndex = rand.Next(0, medias.Count() - 1);
+                            var randomMedia = medias[randomMediaIndex];
                             foreach (var media in medias)
                             {
                                 if (completed)
                                     break;
+                                if (media != randomMedia)
+                                    continue;
                                 var mediaCheck = await _promotionRepository.GetMediaAsync(media.Code, account.Id);
                                 if (mediaCheck != null)
                                     if (media.Code == mediaCheck.Code && mediaCheck.AccountId == account.Id)
@@ -244,107 +243,79 @@ namespace FollowUP.Infrastructure.Services.Background
                                         continue;
                                     }
 
-                                ChromeOptions chromeOptions = new ChromeOptions();
-                                var chromeProxy = new Proxy
+                                var followResponse = await instaApi.UserProcessor.FollowUserAsync(media.User.Pk);
+                                if (followResponse.Succeeded)
+                                    Console.WriteLine($"[{account.Username}](#{promotion.Label}) Follow user: {media.User.UserName} - Success!");
+                                else
                                 {
-                                    Kind = ProxyKind.Manual,
-                                    IsAutoDetect = false,
-                                    SocksUserName = proxyInfo.Username,
-                                    SocksPassword = proxyInfo.Password,
-                                    HttpProxy = $"http://{proxyInfo.Ip}:{proxyInfo.Port}"
-                                };
-                                var cookiesPath = Path.Combine(Directory.GetCurrentDirectory(), "ebaccounts", account.Id.ToString());
-                                chromeOptions.Proxy = chromeProxy;
-                                chromeOptions.AddArgument("user-data-dir=" + cookiesPath);
-                                chromeOptions.AddArgument("--lang=en");
-                                if (_settings.HeadlessBrowser)
-                                    chromeOptions.AddArgument("--headless");
-                                chromeOptions.AddArgument("ignore-certificate-errors");
-                                using (var chromeDriver = new ChromeDriver(".", chromeOptions))
-                                {
-                                    try
+                                    Console.WriteLine($"[{account.Username}](#{promotion.Label}) Follow user: {media.User.UserName} - Failed: {followResponse.Info.Message} - {followResponse.Info.ResponseType}");
+                                    if (followResponse.Info.ResponseType != ResponseType.UnExpectedResponse)
                                     {
-                                        string followUrl = $@"https://www.instagram.com/p/{media.Code}";
-                                        chromeDriver.Navigate().GoToUrl(followUrl);
+                                        Console.WriteLine("Turning off promotion...");
 
-                                        foreach (var cookie in cacheCookies)
+                                        // HACK: As the database operations weren't thread safe, it occasionally would crash
+                                        // when two threads were saving at the same time. So we repeat this operation
+                                        // until it no longer crashes
+
+                                        bool saveSuccessful = false;
+
+                                        while (!saveSuccessful)
                                         {
-                                            chromeDriver.Manage().Cookies.AddCookie(cookie);
-                                        }
-                                        chromeDriver.Navigate().GoToUrl(followUrl);
-                                        bool previouslyFollowed = false;
-                                        var followButton = chromeDriver.FindElementByCssSelector("button");
-                                        if (followButton.Text == "Follow")
-                                            followButton.Click();
-                                        else if (followButton.Text == "Following")
-                                            previouslyFollowed = true;
-                                        await Task.Delay(3000);
-
-                                        if (followButton.Text == "Following" && !previouslyFollowed)
-                                            Console.WriteLine($"[{DateTime.Now}][{account.Username}](#{promotion.Label}) Follow user: {media.User.UserName} - Success!");
-                                        else if (previouslyFollowed)
-                                            Console.WriteLine($"[{DateTime.Now}][{account.Username}](#{promotion.Label}) Follow user: {media.User.UserName} - User previously followed!");
-                                        else
-                                        {
-                                            Console.WriteLine($"[{DateTime.Now}][{account.Username}](#{promotion.Label}) Follow user: {media.User.UserName} - Banned :(");
-                                            Console.WriteLine("Turning off promotion...");
-
-
-                                            // HACK: As the database operations weren't thread safe, it occasionally would crash
-                                            // when two threads were saving at the same time. So we repeat this operation
-                                            // until it no longer crashes
-
-                                            bool saveSuccessful = false;
-
-                                            while (!saveSuccessful)
+                                            try
                                             {
-                                                try
-                                                {
-                                                    account.PromotionsModuleExpiry = DateTime.UtcNow;
-                                                    await _accountRepository.UpdateAsync(account);
-                                                    return;
-                                                }
-                                                catch
-                                                {
-                                                    saveSuccessful = false;
-                                                    Console.WriteLine("Turning off promotion failed. Retrying...");
-                                                }
+                                                account.PromotionsModuleExpiry = DateTime.UtcNow;
+                                                await _accountRepository.UpdateAsync(account);
                                                 saveSuccessful = true;
+                                                return;
+                                            }
+                                            catch
+                                            {
+                                                saveSuccessful = false;
+                                                Console.WriteLine("Turning off promotion failed. Retrying...");
                                             }
                                         }
-
-                                        chromeDriver.Close();
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Console.WriteLine(ex);
-                                        Console.WriteLine($"[{DateTime.Now}][{account.Username}](#{promotion.Label}) Follow user: {media.User.UserName} - Failed :(");
                                     }
                                 }
+
+                                if (rand.Next(0, 100) > 75)
+                                {
+                                    await LookupExploreFeed(instaApi, account, promotion);
+                                }
+
+                                if(rand.Next(0, 100) > 75)
+                                {
+                                    await LookupActivityFeed(instaApi, account, promotion);
+                                }
+
 
                                 var blackListMedia = new CompletedMedia(Guid.NewGuid(), account.Id, media.Code, DateTime.UtcNow);
 
                                 mediasToRemove.Add(media);
 
-                                Console.WriteLine($"Current media list count: {medias.Count()}");
+                                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Current media list count: {medias.Count()}");
 
                                 promotion.SetNexMinId(media.InstaIdentifier);
+
+                                var milliseconds = rand.Next(_settings.MinActionInterval, _settings.MaxActionInterval);
+                                var previousMilliseconds = promotion.PreviousCooldownMilliseconds;
+                                // If the difference between this interval and the previous
+                                // one is less than 30 seconds, randomize interval again
+                                while (Math.Abs(previousMilliseconds - milliseconds) < _settings.MinIntervalDifference)
+                                    milliseconds = rand.Next(_settings.MinActionInterval, _settings.MaxActionInterval);
+                                promotion.SetActionCooldown(milliseconds);
+
                                 await _promotionRepository.UpdateAsync(promotion);
                                 await _promotionRepository.AddToBlacklistAsync(blackListMedia);
                                     
                                 completed = true;
-                                Console.WriteLine($"Waiting {milliseconds} milliseconds");
-                                await Task.Delay(milliseconds);
+                                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Waiting {milliseconds} milliseconds");
                             }
                                 
                             // Remove media from cache
                             foreach (var media in mediasToRemove)
-                            {
                                 medias.Remove(media);
-                            }
 
                             _cache.Set(searchKey, medias);
-                            
                         }
                     });
 
@@ -353,7 +324,6 @@ namespace FollowUP.Infrastructure.Services.Background
                 });
 
                 Console.WriteLine("-------------------------------------------------------------------");
-                Console.WriteLine("Done one full iteration");
             }
         }
 
@@ -361,18 +331,21 @@ namespace FollowUP.Infrastructure.Services.Background
         {
             int firstHashtagCount = 0;
 
-            var firstHashtagResponse = await instaApi.FeedProcessor.GetTagFeedAsync(promotion.Label, PaginationParameters.MaxPagesToLoad(5));
+            var firstHashtagResponse = await instaApi.FeedProcessor.GetTagFeedAsync(promotion.Label, PaginationParameters.MaxPagesToLoad(1));
             if (firstHashtagResponse.Info.Message == "challenge_required")
             {
                 await instaApi.GetLoggedInChallengeDataInfoAsync();
                 await instaApi.AcceptChallengeAsync();
-                firstHashtagResponse = await instaApi.FeedProcessor.GetTagFeedAsync(promotion.Label, PaginationParameters.MaxPagesToLoad(5));
+                firstHashtagResponse = await instaApi.FeedProcessor.GetTagFeedAsync(promotion.Label, PaginationParameters.MaxPagesToLoad(1));
             }
             
             if (!firstHashtagResponse.Succeeded)
                 return new List<InstaMedia>();
 
             var firstMedia = firstHashtagResponse.Value.Medias;
+
+            
+            Console.WriteLine($"[{DateTime.Now}][{account.Username}] Getting media by tag {promotion.Label}...");
 
             foreach (var media in firstMedia)
             {
@@ -396,6 +369,90 @@ namespace FollowUP.Infrastructure.Services.Background
                 return new List<InstaMedia>();
 
             return hashtagResponse.Value.Medias;
+        }
+
+        private async Task<bool> LookupActivityFeed(IInstaApi instaApi, InstagramAccount account, Promotion promotion)
+        {
+            Console.WriteLine($"[{DateTime.Now}][{account.Username}](#{promotion.Label}) Activity - Start");
+
+            var rand = new Random();
+            string activityKey = $"{account.Id}-activity";
+            var lastActivity = (List<InstaRecentActivityFeed>)_cache.Get(activityKey);
+
+            if (lastActivity == null)
+            {
+                lastActivity = new List<InstaRecentActivityFeed>();
+            }
+
+            var activity = await instaApi.FeedProcessor.GetRecentActivityFeedAsync(PaginationParameters.MaxPagesToLoad(1));
+            if (!activity.Succeeded)
+            {
+                Console.WriteLine($"[{DateTime.Now}][{account.Username}](#{promotion.Label}) Activity - Getting recent activity - Error: {activity.Info.ResponseType} - {activity.Info.Message}");
+                return false;
+            }
+
+            var activityNotifications = activity.Value?.Items;
+            if (activityNotifications.Count <= 0 || activityNotifications.Count <= lastActivity.Count)
+            {
+                Console.WriteLine($"[{DateTime.Now}][{account.Username}](#{promotion.Label}) Activity - No new posts");
+                return false;
+            }
+
+            _cache.Set(activityKey, activityNotifications);
+
+            var firstActivity = activityNotifications[0];
+            if (firstActivity == null)
+                return false;
+
+            if (firstActivity.Links == null)
+                return false;
+
+            foreach (var link in firstActivity.Links)
+            {
+                if (link.Type != "user")
+                    continue;
+                
+                long.TryParse(link.Id, out long userId);
+                var userMedia = await instaApi.UserProcessor.GetUserMediaByIdAsync(userId, PaginationParameters.MaxPagesToLoad(1));
+                if (!userMedia.Succeeded)
+                    continue;
+
+                if (userMedia == null)
+                    continue;
+                
+                if (userMedia.Value.Count > 0)
+                {
+                    var activityMedia = await instaApi.MediaProcessor.GetMediaByIdAsync(userMedia.Value[0].Pk);
+                    if (rand.Next(100) > 50 && userMedia.Value.Count > 1)
+                        await instaApi.MediaProcessor.GetMediaByIdAsync(userMedia.Value[1].Pk);
+
+                    if (activityMedia.Succeeded)
+                    {
+                        Console.WriteLine($"[{DateTime.Now}][{account.Username}](#{promotion.Label}) Activity - Success");
+                        return true;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[{DateTime.Now}][{account.Username}](#{promotion.Label}) Activity - Failed: {activityMedia.Info.Message} - {activityMedia.Info.ResponseType}");
+                        return false;
+                    }
+                }
+            }
+            return false;
+        }
+        private async Task<bool> LookupExploreFeed(IInstaApi instaApi, InstagramAccount account, Promotion promotion)
+        {
+            var explore = await instaApi.FeedProcessor.GetExploreFeedAsync(PaginationParameters.MaxPagesToLoad(1));
+            if (explore.Succeeded)
+            {
+                Console.WriteLine($"[{DateTime.Now}][{account.Username}](#{promotion.Label}) Explore - Success");
+                return true;
+            }
+            else
+            {
+                Console.WriteLine($"[{DateTime.Now}][{account.Username}](#{promotion.Label}) Explore - Failed: {explore.Info.Message} - {explore.Info.ResponseType}");
+                return false;
+            }
         }
     }
 }
