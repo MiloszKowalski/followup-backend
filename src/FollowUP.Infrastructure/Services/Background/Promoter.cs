@@ -85,6 +85,19 @@ namespace FollowUP.Infrastructure.Services.Background
                                 await Task.Delay(TimeSpan.FromSeconds(5));
                                 return;
                             }
+
+                        var accountSettings = await _accountRepository.GetAccountSettingsAsync(account.Id);
+
+                        // Meantime to check how many likes were made
+                        _cache.TryGetValue($"{account.Id}-follows-count", out int followsDone);
+
+                        if(followsDone >= accountSettings.FollowsPerDay)
+                        {
+                            Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily follow limit! Yay!");
+                            await Task.Delay(TimeSpan.FromSeconds(5));
+                            return;
+                        }
+
                         var _promotionRepository = new PromotionRepository(new FollowUPContext(options, _sqlSettings));
                         // Divide proxy to proper proxy parts
                         var accountProxy = await _proxyRepository.GetAccountsProxyAsync(account.Id);
@@ -222,7 +235,7 @@ namespace FollowUP.Infrastructure.Services.Background
                         if (promotion.PromotionType == PromotionType.Hashtag)
                         {
                             // Try getting media list from cache
-                            var searchKey = $"{account.Id}-{promotion.Label}{_settings.searchKey}";
+                            var searchKey = $"{account.Id}-{promotion.Label}{_settings.SearchKey}";
                             List<InstaMedia> medias = (List<InstaMedia>)_cache.Get(searchKey);
                             if(medias == null || !medias.Any())
                             {
@@ -254,8 +267,6 @@ namespace FollowUP.Infrastructure.Services.Background
                                 var followResponse = await instaApi.UserProcessor.FollowUserAsync(media.User.Pk);
                                 if (followResponse.Succeeded)
                                 {
-                                    // Meantime to check how many likes were made
-                                    _cache.TryGetValue($"{account.Id}-follows-count", out int followsDone);
                                     followsDone++;
                                     _cache.Set($"{account.Id}-follows-count", followsDone);
                                     Console.WriteLine($"[{account.Username}](#{promotion.Label}) Follow user: {media.User.UserName} - Success! - number of follows: {followsDone}");

@@ -75,6 +75,7 @@ namespace FollowUP.Infrastructure.Services
                     return;
             }
 
+
             var proxies = await _proxyRepository.GetAllAsync();
             InstagramProxy instaProxy = null;
             foreach (var proxy in proxies)
@@ -94,6 +95,12 @@ namespace FollowUP.Infrastructure.Services
             // If the given account doesn't exist, create one and save it to the database
             var instagramAccount = new InstagramAccount(Id, user, username, password);
             await _instagramAccountRepository.AddAsync(instagramAccount);
+
+            // Create account's settings and store it in the database
+            var accountSettings = new AccountSettings(Guid.NewGuid(), instagramAccount.Id);
+            await _instagramAccountRepository.AddAccountSettingsAsync(accountSettings);
+
+            // Give the account proper proxy
             var accountProxy = new AccountProxy(Guid.NewGuid(), instaProxy.Id, instagramAccount.Id);
             await _proxyRepository.AddAccountsProxyAsync(accountProxy);
         }
