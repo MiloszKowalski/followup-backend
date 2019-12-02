@@ -15,6 +15,7 @@ namespace FollowUP.Infrastructure.EF
         public DbSet<CompletedMedia> MediaBlacklist { get; set; }
         public DbSet<InstagramProxy> InstagramProxies { get; set; }
         public DbSet<AccountProxy> AccountProxies { get; set; }
+        public DbSet<AccountSettings> AccountSettings { get; set; }
 
         public FollowUPContext(DbContextOptions<FollowUPContext> options, SqlSettings settings) : base(options)
         {
@@ -60,6 +61,9 @@ namespace FollowUP.Infrastructure.EF
 
             var accountProxyItemBuilder = modelBuilder.Entity<AccountProxy>();
             accountProxyItemBuilder.HasKey(x => x.Id);
+
+            var accountSettingsItemBuilder = modelBuilder.Entity<AccountSettings>();
+            accountSettingsItemBuilder.HasKey(x => x.Id);
         }
     }
 }

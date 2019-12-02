@@ -36,6 +36,28 @@ namespace FollowUP.Infrastructure.Repositories
         public async Task<IEnumerable<InstagramAccount>> GetAllAsync()
             => await _context.InstagramAccounts.ToListAsync();
 
+        public async Task<AccountSettings> GetAccountSettingsAsync(Guid accountId)
+            => await _context.AccountSettings.SingleOrDefaultAsync(x => x.AccountId == accountId);
+
+        public async Task AddAccountSettingsAsync(AccountSettings settings)
+        {
+            await _context.AccountSettings.AddAsync(settings);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateAccountSettingsAsync(AccountSettings settings)
+        {
+            _context.AccountSettings.Update(settings);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task RemoveAccountSettingsAsync(Guid accountId)
+        {
+            var settings = await GetAccountSettingsAsync(accountId);
+            _context.AccountSettings.Remove(settings);
+            await _context.SaveChangesAsync();
+        }
+
         public async Task AddAsync(InstagramAccount account)
         {
             await _context.InstagramAccounts.AddAsync(account);
