@@ -10,6 +10,7 @@ namespace FollowUP.Core.Domain
         public string Username { get; protected set; }
         public string Password { get; protected set; }
         public DateTimeOffset ExpiryDate { get; protected set; }
+        public bool IsTaken { get; set; }
 
         protected InstagramProxy()
         {
@@ -23,6 +24,7 @@ namespace FollowUP.Core.Domain
             Username = username;
             Password = password;
             ExpiryDate = expiryDate;
+            IsTaken = false;
         }
     }
 }

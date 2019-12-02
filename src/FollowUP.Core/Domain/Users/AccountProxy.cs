@@ -5,7 +5,7 @@ namespace FollowUP.Core.Domain
     public class AccountProxy
     {
         public Guid Id { get; protected set; }
-        public Guid ProxyId { get; protected set; }
+        public Guid ProxyId { get; set; }
         public Guid AccountId { get; protected set; }
 
         protected AccountProxy()

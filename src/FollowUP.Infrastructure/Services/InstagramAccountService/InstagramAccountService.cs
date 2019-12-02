@@ -77,16 +77,14 @@ namespace FollowUP.Infrastructure.Services
 
             var proxies = await _proxyRepository.GetAllAsync();
             InstagramProxy instaProxy = null;
-            foreach(var proxy in proxies)
+            foreach (var proxy in proxies)
             {
-                if (proxy.ExpiryDate.ToUniversalTime() < DateTime.UtcNow)
-                    continue;
-
-                var accounts = await _proxyRepository.GetProxiesAccountsAsync(proxy.Id);
-                if (accounts.Count() >= 10)
+                if (proxy.ExpiryDate.ToUniversalTime() < DateTime.UtcNow || proxy.IsTaken)
                     continue;
 
                 instaProxy = proxy;
+                proxy.IsTaken = true;
+                await _proxyRepository.UpdateAsync(proxy);
                 break;
             }
 
@@ -197,7 +195,7 @@ namespace FollowUP.Infrastructure.Services
 
             // Get appropriate directories of the folder and file
             var fullPath = instaPath.Split(Path.DirectorySeparatorChar);
-            var directory = Path.Combine(fullPath[0], fullPath[1]); ;
+            var directory = Path.Combine(fullPath[0], fullPath[1]);
             
             // Create directory if it doesn't exist yet
             if (!Directory.Exists(directory))
