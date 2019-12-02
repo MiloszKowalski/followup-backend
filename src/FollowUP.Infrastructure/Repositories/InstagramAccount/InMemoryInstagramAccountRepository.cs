@@ -10,6 +10,7 @@ namespace FollowUP.Infrastructure.Repositories
     public class InMemoryInstagramAccountRepository : IInstagramAccountRepository
     {
         private static readonly ISet<InstagramAccount> _accounts = new HashSet<InstagramAccount>();
+        private static readonly ISet<AccountSettings> _settings = new HashSet<AccountSettings>();
 
         public async Task<IEnumerable<InstagramAccount>> GetAllAsync()
             => await Task.FromResult(_accounts);
@@ -27,6 +28,8 @@ namespace FollowUP.Infrastructure.Repositories
             => await Task.FromResult(_accounts.Where(x => x.CommentsModuleExpiry > DateTime.UtcNow));
         public async Task<IEnumerable<InstagramAccount>> GetAllWithPromotionsAsync()
             => await Task.FromResult(_accounts.Where(x => x.PromotionsModuleExpiry > DateTime.UtcNow));
+        public async Task<AccountSettings> GetAccountSettingsAsync(Guid accountId)
+            => await Task.FromResult(_settings.SingleOrDefault(x => x.AccountId == accountId));
 
         public async Task AddAsync(InstagramAccount account)
         {
@@ -34,10 +37,29 @@ namespace FollowUP.Infrastructure.Repositories
             await Task.CompletedTask;
         }
 
+        public async Task AddAccountSettingsAsync(AccountSettings settings)
+        {
+            _settings.Add(settings);
+            await Task.CompletedTask;
+        }
+
         public async Task UpdateAsync(InstagramAccount account)
         {
             await RemoveAsync(account.Id);
             await AddAsync(account);
+        }
+
+        public async Task UpdateAccountSettingsAsync(AccountSettings settings)
+        {
+            await RemoveAccountSettingsAsync(settings.Id);
+            await AddAccountSettingsAsync(settings);
+        }
+
+        public async Task RemoveAccountSettingsAsync(Guid id)
+        {
+            var settings = await GetAccountSettingsAsync(id);
+            _settings.Remove(settings);
+            await Task.CompletedTask;
         }
 
         public async Task RemoveAsync(Guid id)
