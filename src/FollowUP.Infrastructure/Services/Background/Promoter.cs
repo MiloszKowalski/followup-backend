@@ -178,6 +178,7 @@ namespace FollowUP.Infrastructure.Services.Background
                             return;
                         }
 
+
                         // Get all account's promotions
                         string promotionKey = $"{account.Id}{_settings.PromotionKey}";
                         var promotions = await _promotionRepository.GetAccountPromotionsAsync(account.Id);
@@ -269,7 +270,10 @@ namespace FollowUP.Infrastructure.Services.Background
                                 {
                                     followsDone++;
                                     _cache.Set($"{account.Id}-follows-count", followsDone);
-                                    Console.WriteLine($"[{account.Username}](#{promotion.Label}) Follow user: {media.User.UserName} - Success! - number of follows: {followsDone}");
+                                    string userPk = media.User.Pk.ToString();
+                                    var followedProfile = new FollowedProfile(Guid.NewGuid(), account.Id, userPk);
+                                    await _promotionRepository.AddFollowedProfileAsync(followedProfile);
+                                    Console.WriteLine($"[{DateTime.Now}][{account.Username}](#{promotion.Label}) Follow user: {media.User.UserName} - Success! - number of follows: {followsDone}");
                                 }
                                 else
                                 {
