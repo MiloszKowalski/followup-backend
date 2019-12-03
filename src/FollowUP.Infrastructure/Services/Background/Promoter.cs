@@ -31,27 +31,27 @@ namespace FollowUP.Infrastructure.Services.Background
     public class Promoter : BackgroundService
     {
         private readonly IInstagramAccountRepository _accountRepository;
-        private readonly IProxyRepository _proxyRepository;
-        private readonly IMemoryCache _cache;
-        private readonly SqlSettings _sqlSettings;
-        private readonly PromotionSettings _settings;
         private readonly IInstagramAccountService _accountService;
+        private readonly IProxyRepository _proxyRepository;
+        private readonly PromotionSettings _settings;
+        private readonly SqlSettings _sqlSettings;
+        private readonly IMemoryCache _cache;
 
         public Promoter(IInstagramAccountRepository accountRepository, IProxyRepository proxyRepository,
             IMemoryCache cache, SqlSettings sqlSettings, PromotionSettings settings, IInstagramAccountService accountService)
         {
             _accountRepository = accountRepository;
+            _accountService = accountService;
             _proxyRepository = proxyRepository;
-            _cache = cache;
             _sqlSettings = sqlSettings;
             _settings = settings;
-            _accountService = accountService;
+            _cache = cache;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            // Wait 10 secs to load
-            await Task.Delay(10000);
+            // Wait 5 secs to load
+            await Task.Delay(TimeSpan.FromSeconds(5));
 
             // Options for the promotion repository instances
             var options = new DbContextOptionsBuilder<FollowUPContext>()
@@ -99,6 +99,7 @@ namespace FollowUP.Infrastructure.Services.Background
                         }
 
                         var _promotionRepository = new PromotionRepository(new FollowUPContext(options, _sqlSettings));
+
                         // Divide proxy to proper proxy parts
                         var accountProxy = await _proxyRepository.GetAccountsProxyAsync(account.Id);
 
@@ -114,7 +115,7 @@ namespace FollowUP.Infrastructure.Services.Background
                         if (proxyInfo.ExpiryDate < DateTime.UtcNow)
                         {
                             Console.WriteLine($"[{DateTime.Now}][{account.Username}] Proxy {proxyInfo.Ip} is expired, skipping...");
-                            await Task.Delay(5000);
+                            await Task.Delay(TimeSpan.FromSeconds(5));
                             return;
                         }
 
@@ -154,7 +155,6 @@ namespace FollowUP.Infrastructure.Services.Background
                             instaApi = instaApiCache;
                         }
 
-
                         // TODO: Device service
                         instaApi.SetApiVersion(InstaApiVersionType.Version117);
                         instaApi.SetDevice(AndroidDeviceGenerator.GetByName(AndroidDevices.XIAOMI_REDMI_NOTE_4X));
@@ -167,14 +167,14 @@ namespace FollowUP.Infrastructure.Services.Background
                         catch (Exception e)
                         {
                             Console.WriteLine($"[{DateTime.Now}][{account.Username}] Could not load state from file, error info: {e.Message}");
-                            await Task.Delay(10000);
+                            await Task.Delay(TimeSpan.FromSeconds(10));
                             return;
                         }
 
                         if(!instaApi.IsUserAuthenticated)
                         {
                             Console.WriteLine($"[{DateTime.Now}][{account.Username}] User not logged in, please authenticate first.");
-                            await Task.Delay(1000);
+                            await Task.Delay(TimeSpan.FromSeconds(1));
                             return;
                         }
 
@@ -185,11 +185,11 @@ namespace FollowUP.Infrastructure.Services.Background
                         if (promotions == null || !promotions.Any())
                         {
                             Console.WriteLine($"[{DateTime.Now}][{account.Username}] Couldn't find any promotions, skipping");
-                            await Task.Delay(5000);
+                            await Task.Delay(TimeSpan.FromSeconds(5));
                             return;
                         }
 
-                        await Task.Delay(3000);
+                        await Task.Delay(TimeSpan.FromSeconds(3));
 
                         // Queue the promotions to make only one per iteration
                         var currentPromotion = promotions.First();
@@ -228,7 +228,7 @@ namespace FollowUP.Infrastructure.Services.Background
                         if (promotion.ActionCooldown != null && promotion.ActionCooldown > DateTime.UtcNow)
                         {
                             Console.WriteLine($"[{DateTime.Now}][{account.Username}] Promotion is on ActionCooldown. Waiting for {(promotion.ActionCooldown - DateTime.Now).TotalMilliseconds} more milliseconds");
-                            await Task.Delay(5000);
+                            await Task.Delay(TimeSpan.FromSeconds(5));
                             return;
                         }
                         
@@ -344,6 +344,7 @@ namespace FollowUP.Infrastructure.Services.Background
                             foreach (var media in mediasToRemove)
                                 medias.Remove(media);
 
+                            // Update remaining media list in cache
                             _cache.Set(searchKey, medias);
                         }
                     });
@@ -351,7 +352,6 @@ namespace FollowUP.Infrastructure.Services.Background
                     // Wait for each of the tasks to complete
                     task.Wait();
                 });
-
                 Console.WriteLine("-------------------------------------------------------------------");
             }
         }
