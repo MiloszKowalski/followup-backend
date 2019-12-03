@@ -64,5 +64,25 @@ namespace FollowUP.Infrastructure.Repositories
             _promotions.Clear();
             await Task.CompletedTask;
         }
+
+        public Task<FollowedProfile> GetFollowedProfileAsync(Guid accountId, string profileId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<IEnumerable<FollowedProfile>> GetFollowedProfilesAsync(Guid accountId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task AddFollowedProfileAsync(FollowedProfile profile)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task RemoveFollowedProfileAsync(Guid accountId, string profileId)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

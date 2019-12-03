@@ -16,6 +16,7 @@ namespace FollowUP.Infrastructure.EF
         public DbSet<InstagramProxy> InstagramProxies { get; set; }
         public DbSet<AccountProxy> AccountProxies { get; set; }
         public DbSet<AccountSettings> AccountSettings { get; set; }
+        public DbSet<FollowedProfile> FollowedProfiles { get; set; }
 
         public FollowUPContext(DbContextOptions<FollowUPContext> options, SqlSettings settings) : base(options)
         {
@@ -64,6 +65,9 @@ namespace FollowUP.Infrastructure.EF
 
             var accountSettingsItemBuilder = modelBuilder.Entity<AccountSettings>();
             accountSettingsItemBuilder.HasKey(x => x.Id);
+
+            var followedProfileItemBuilder = modelBuilder.Entity<FollowedProfile>();
+            followedProfileItemBuilder.HasKey(x => x.Id);
         }
     }
 }
