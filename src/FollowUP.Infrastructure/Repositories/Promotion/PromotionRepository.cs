@@ -1,6 +1,7 @@
 ﻿using FollowUP.Core.Domain;
 using FollowUP.Core.Repositories;
 using FollowUP.Infrastructure.EF;
+using FollowUP.Infrastructure.Settings;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -12,10 +13,12 @@ namespace FollowUP.Infrastructure.Repositories
     public class PromotionRepository : IPromotionRepository, ISqlRepository
     {
         private readonly FollowUPContext _context;
+        private readonly PromotionSettings _settings;
 
-        public PromotionRepository(FollowUPContext context)
+        public PromotionRepository(FollowUPContext context, PromotionSettings settings)
         {
             _context = context;
+            _settings = settings;
         }
 
         public async Task<IEnumerable<Promotion>> GetAllAsync()
@@ -80,6 +83,9 @@ namespace FollowUP.Infrastructure.Repositories
 
         public async Task<FollowedProfile> GetFollowedProfileAsync(Guid accountId, string profileId)
             => await _context.FollowedProfiles.SingleOrDefaultAsync(x => x.AccountId == accountId && x.ProfileId == profileId);
+
+        public async Task<FollowedProfile> GetRandomFollowedProfileAsync(Guid accountId)
+            => await _context.FollowedProfiles.FirstOrDefaultAsync(x => x.AccountId == accountId && x.CreatedAt.AddDays(_settings.MinDaysToUnfollow) < DateTime.UtcNow);
 
         public async Task<IEnumerable<FollowedProfile>> GetFollowedProfilesAsync(Guid accountId)
             => await _context.FollowedProfiles.Where(x => x.AccountId == accountId).ToListAsync();

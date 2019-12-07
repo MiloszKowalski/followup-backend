@@ -1,5 +1,6 @@
 ﻿using FollowUP.Core.Domain;
 using FollowUP.Core.Repositories;
+using FollowUP.Infrastructure.Settings;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,9 +10,16 @@ namespace FollowUP.Infrastructure.Repositories
 {
     public class InMemoryPromotionRepository : IPromotionRepository
     {
+        private readonly PromotionSettings _settings;
         private static readonly List<Promotion> _promotions = new List<Promotion>();
         private static readonly List<PromotionComment> _promotionComments = new List<PromotionComment>();
         private static readonly List<CompletedMedia> _media = new List<CompletedMedia>();
+        private static readonly List<FollowedProfile> _followedProfiles = new List<FollowedProfile>();
+
+        public InMemoryPromotionRepository(PromotionSettings settings)
+        {
+            _settings = settings;
+        }
 
         public async Task<IEnumerable<Promotion>> GetAllAsync()
             => await Task.FromResult(_promotions);
@@ -65,24 +73,26 @@ namespace FollowUP.Infrastructure.Repositories
             await Task.CompletedTask;
         }
 
-        public Task<FollowedProfile> GetFollowedProfileAsync(Guid accountId, string profileId)
+        public async Task<FollowedProfile> GetFollowedProfileAsync(Guid accountId, string profileId)
+            => await Task.FromResult(_followedProfiles.SingleOrDefault(x => x.AccountId == accountId && x.ProfileId == profileId));
+
+        public async Task<FollowedProfile> GetRandomFollowedProfileAsync(Guid accountId)
+            => await Task.FromResult(_followedProfiles.FirstOrDefault(x => x.AccountId == accountId && x.CreatedAt.AddDays(_settings.MinDaysToUnfollow) < DateTime.UtcNow));
+
+        public async Task<IEnumerable<FollowedProfile>> GetFollowedProfilesAsync(Guid accountId)
+            => await Task.FromResult(_followedProfiles.Where(x => x.AccountId == accountId));
+
+        public async Task AddFollowedProfileAsync(FollowedProfile profile)
         {
-            throw new NotImplementedException();
+            _followedProfiles.Add(profile);
+            await Task.CompletedTask;
         }
 
-        public Task<IEnumerable<FollowedProfile>> GetFollowedProfilesAsync(Guid accountId)
+        public async Task RemoveFollowedProfileAsync(Guid accountId, string profileId)
         {
-            throw new NotImplementedException();
-        }
-
-        public Task AddFollowedProfileAsync(FollowedProfile profile)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task RemoveFollowedProfileAsync(Guid accountId, string profileId)
-        {
-            throw new NotImplementedException();
+            var profile = await GetFollowedProfileAsync(accountId, profileId);
+            _followedProfiles.Remove(profile);
+            await Task.CompletedTask;
         }
     }
 }

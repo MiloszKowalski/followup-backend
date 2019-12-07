@@ -7,7 +7,7 @@ namespace FollowUP.Core.Domain
         public Guid Id { get; protected set; }
         public Guid AccountId { get; protected set; }
         public string ProfileId { get; protected set; }
-        public DateTimeOffset CreatedAt { get; protected set; }
+        public DateTime CreatedAt { get; protected set; }
 
         protected FollowedProfile() { }
 
