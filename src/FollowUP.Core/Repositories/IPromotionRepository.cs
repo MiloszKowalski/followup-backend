@@ -13,6 +13,7 @@ namespace FollowUP.Core.Repositories
         Task<IEnumerable<Promotion>> GetAccountPromotionsAsync(Guid accountId);
         Task<IEnumerable<PromotionComment>> GetAccountsPromotionCommentsAsync(Guid accountId);
         Task<FollowedProfile> GetFollowedProfileAsync(Guid accountId, string profileId);
+        Task<FollowedProfile> GetRandomFollowedProfileAsync(Guid accountId);
         Task<IEnumerable<FollowedProfile>> GetFollowedProfilesAsync(Guid accountId);
         Task AddAsync(Promotion promotion);
         Task AddFollowedProfileAsync(FollowedProfile profile);
