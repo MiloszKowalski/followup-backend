@@ -16,6 +16,9 @@ namespace FollowUP.Core.Domain
         // TODO protected set
         public DateTime PromotionsModuleExpiry { get;  set; }
         public DateTime BannedUntil { get;  set; }
+        public DateTimeOffset ActionCooldown { get; protected set; }
+        public int PreviousCooldownMilliseconds { get; protected set; }
+
 
         protected InstagramAccount()
         {
@@ -31,6 +34,8 @@ namespace FollowUP.Core.Domain
             FilePath = Path.Combine("Accounts", user.Username, $"{username}-state.bin");
             CommentsModuleExpiry = DateTime.UtcNow;
             PromotionsModuleExpiry = DateTime.UtcNow;
+            ActionCooldown = DateTime.UtcNow;
+            PreviousCooldownMilliseconds = 0;
             BannedUntil = user.CreatedAt;
         }
 
@@ -53,6 +58,20 @@ namespace FollowUP.Core.Domain
                 PromotionsModuleExpiry = PromotionsModuleExpiry.AddDays(days);
             else
                 PromotionsModuleExpiry = DateTime.UtcNow.AddDays(days);
+        }
+        public void SetActionCooldown(int milliseconds)
+        {
+            if (milliseconds < 0)
+                return;
+
+            var dateAfterCooldown = DateTime.UtcNow;
+            dateAfterCooldown = dateAfterCooldown.AddMilliseconds(milliseconds);
+
+            if (dateAfterCooldown < DateTime.UtcNow)
+                return;
+
+            ActionCooldown = dateAfterCooldown;
+            PreviousCooldownMilliseconds = milliseconds;
         }
     }
 }

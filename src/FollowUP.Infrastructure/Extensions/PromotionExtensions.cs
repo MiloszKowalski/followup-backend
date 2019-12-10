@@ -11,9 +11,8 @@ namespace FollowUP.Infrastructure.Extensions
 {
     public static class PromotionExtensions
     {
-        public static async Task<List<InstaMedia>> GetMediaByHashtagAsync(this IInstaApi instaApi, InstagramAccount account, Promotion promotion, IPromotionRepository promotionRepository)
+        public static async Task<List<InstaMedia>> GetMediaByHashtagAsync(this IInstaApi instaApi, InstagramAccount account, Promotion promotion)
         {
-            int firstHashtagCount = 0;
             var firstHashtagResponse = await instaApi.FeedProcessor.GetTagFeedAsync(promotion.Label, PaginationParameters.MaxPagesToLoad(1));
             if (firstHashtagResponse.Info.Message == "challenge_required")
             {
@@ -25,35 +24,24 @@ namespace FollowUP.Infrastructure.Extensions
             if (!firstHashtagResponse.Succeeded)
                 return null;
 
-            var firstMediaList = firstHashtagResponse.Value.Medias;
-            var mediaToRemoveList = new List<InstaMedia>();
+            var firstMediaResponseList = firstHashtagResponse.Value.Medias;
+            var firstMediaList = new List<InstaMedia>();
 
             Console.WriteLine($"[{DateTime.Now}][{account.Username}] Getting media by tag {promotion.Label}...");
 
-            foreach (var media in firstMediaList)
+            foreach (var media in firstMediaResponseList)
             {
-                var blackMedia = await promotionRepository.GetMediaAsync(media.Code, account.Id);
-
-                if (media.Code == blackMedia?.Code && blackMedia?.AccountId == account.Id)
-                {
-                    firstHashtagCount++;
-                    mediaToRemoveList.Add(media);
-                }
+                if (media.InstaIdentifier != promotion.LastMediaId)
+                    firstMediaList.Add(media);
+                else break;
             }
 
-            if (firstMediaList.Count > firstHashtagCount)
-            {
-                foreach (var mediaToRemove in mediaToRemoveList)
-                    firstMediaList.Remove(mediaToRemove);
-
+            if (firstMediaList.Count > 0)
                 return firstMediaList;
-            }
 
             var pagination = PaginationParameters.MaxPagesToLoad(1);
             pagination.StartFromMinId(promotion.NextMinId);
 
-
-            int hashtagCount = 0;
             var hashtagResponse = await instaApi.FeedProcessor.GetTagFeedAsync(promotion.Label, pagination);
 
             if (!hashtagResponse.Succeeded)
@@ -61,26 +49,56 @@ namespace FollowUP.Infrastructure.Extensions
 
             var hashtagMediaList = hashtagResponse.Value.Medias;
 
-            foreach (var media in hashtagMediaList)
-            {
-                var blackMedia = await promotionRepository.GetMediaAsync(media.Code, account.Id);
+            return hashtagMediaList;
+        }
 
-                if (media.Code == blackMedia?.Code && blackMedia?.AccountId == account.Id)
+        public static async Task<InstaFriendshipShortStatusList> GetRelationshipsByPromotionAsync(this IInstaApi instaApi, InstagramAccount account, Promotion promotion)
+        {
+            var followersRelationships = new InstaFriendshipShortStatusList();
+            var pagination = PaginationParameters.MaxPagesToLoad(1);
+            do
+            {
+                var followersRequest = await instaApi.UserProcessor.GetUserFollowersAsync(promotion.Label, pagination);
+                if (followersRequest.Info.Message == "challenge_required")
                 {
-                    hashtagCount++;
-                    mediaToRemoveList.Add(media);
+                    await instaApi.GetLoggedInChallengeDataInfoAsync();
+                    await instaApi.AcceptChallengeAsync();
+                    followersRequest = await instaApi.UserProcessor.GetUserFollowersAsync(promotion.Label, pagination);
                 }
+
+                if (!followersRequest.Succeeded)
+                    return null;
+
+                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Getting relationships by user {promotion.Label}...");
+
+                var userIds = new List<long>();
+
+                var followers = followersRequest.Value;
+
+                foreach (var follower in followers)
+                    userIds.Add(follower.Pk);
+
+                var followersRelationshipRequest = await instaApi.UserProcessor.GetFriendshipStatusesAsync(userIds.ToArray());
+
+                if (!followersRelationshipRequest.Succeeded)
+                    return null;
+
+                followersRelationships = followersRelationshipRequest.Value;
+
+                var relationshipsToRemove = new InstaFriendshipShortStatusList();
+
+                foreach (var relationship in followersRelationships)
+                    if (relationship.Following)
+                        relationshipsToRemove.Add(relationship);
+
+                foreach (var relationship in relationshipsToRemove)
+                    followersRelationships.Remove(relationship);
+
+                pagination.NextMaxId = followersRequest.Value.NextMaxId;
             }
+            while (followersRelationships.Count <= 0);
 
-            if (hashtagMediaList.Count > hashtagCount)
-            {
-                foreach (var mediaToRemove in mediaToRemoveList)
-                    hashtagMediaList.Remove(mediaToRemove);
-
-                return hashtagMediaList;
-            }
-
-            return null;
+            return followersRelationships;
         }
     }
 }
