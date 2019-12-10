@@ -9,9 +9,9 @@ namespace FollowUP.Core.Domain
         public PromotionType PromotionType { get; protected set; }
         public string Label { get; protected set; }
         public string NextMinId { get; protected set; }
+        public string LastMediaId { get; protected set; }
+        public DateTimeOffset NextMinIdDate { get; protected set; }
         public DateTimeOffset CreatedAt { get; protected set; }
-        public DateTimeOffset ActionCooldown { get; protected set; }
-        public int PreviousCooldownMilliseconds { get; protected set; }
 
         protected Promotion() { }
 
@@ -23,11 +23,10 @@ namespace FollowUP.Core.Domain
             PromotionType = promotionType;
             Label = label;
             CreatedAt = createdAt;
-            ActionCooldown = DateTime.UtcNow;
-            PreviousCooldownMilliseconds = 0;
+            NextMinIdDate = DateTime.UtcNow;
         }
 
-        public void SetNexMinId(string nextMinId)
+        public void SetNextMinId(string nextMinId)
         {
             if (string.IsNullOrWhiteSpace(nextMinId))
                 return;
@@ -35,19 +34,21 @@ namespace FollowUP.Core.Domain
             NextMinId = nextMinId;
         }
 
-        public void SetActionCooldown(int milliseconds)
+        public void SetNextMinIdDate(DateTime date)
         {
-            if (milliseconds < 0)
+            if (date > DateTime.UtcNow)
                 return;
 
-            var dateAfterCooldown = DateTime.UtcNow;
-            dateAfterCooldown = dateAfterCooldown.AddMilliseconds(milliseconds);
-
-            if (dateAfterCooldown < DateTime.UtcNow)
-                return;
-
-            ActionCooldown = dateAfterCooldown;
-            PreviousCooldownMilliseconds = milliseconds;
+            NextMinIdDate = date;
         }
+
+        public void SetLastMediaId(string lastMediaId)
+        {
+            if (string.IsNullOrWhiteSpace(lastMediaId))
+                return;
+
+            LastMediaId = lastMediaId;
+        }
+
     }
 }

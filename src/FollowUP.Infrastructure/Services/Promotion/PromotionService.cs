@@ -121,20 +121,20 @@ namespace FollowUP.Infrastructure.Services
 
             await _promotionRepository.AddPromotionCommentAsync(comment);
         }
-        public async Task SetPromotionCooldown(InstagramAccount account, PromotionRepository promotionRepository, Promotion promotion)
+        public async Task SetPromotionCooldown(InstagramAccount account, InstagramAccountRepository accountRepository)
         {
             var rand = new Random();
             var milliseconds = rand.Next(_settings.MinActionInterval, _settings.MaxActionInterval);
-            var previousMilliseconds = promotion.PreviousCooldownMilliseconds;
+            var previousMilliseconds = account.PreviousCooldownMilliseconds;
 
             // If the difference between this interval and the previous
             // one is less than given number of milliseconds, randomize interval again
             while (Math.Abs(previousMilliseconds - milliseconds) < _settings.MinIntervalDifference)
                 milliseconds = rand.Next(_settings.MinActionInterval, _settings.MaxActionInterval);
-            promotion.SetActionCooldown(milliseconds);
+            account.SetActionCooldown(milliseconds);
 
-            await promotionRepository.UpdateAsync(promotion);
-            Console.WriteLine($"[{DateTime.Now}][{account.Username}](#{promotion.Label}) Waiting {milliseconds} milliseconds");
+            await accountRepository.UpdateAsync(account);
+            Console.WriteLine($"[{DateTime.Now}][{account.Username}] Waiting {milliseconds} milliseconds");
         }
         public async Task ReLoginUser(InstagramAccount account)
         {
@@ -317,7 +317,7 @@ namespace FollowUP.Infrastructure.Services
             }
         }
         public async Task FollowProfile(IInstaApi instaApi, InstagramAccount account, Promotion promotion,
-            PromotionRepository promotionRepository, InstaMedia media, int followsDone)
+            PromotionRepository promotionRepository, InstagramAccountRepository accountRepository, InstaMedia media, int followsDone)
         {
             var followResponse = await instaApi.UserProcessor.FollowUserAsync(media.User.Pk);
             if (followResponse.Succeeded)
@@ -325,10 +325,16 @@ namespace FollowUP.Infrastructure.Services
                 followsDone++;
                 _cache.Set($"{account.Id}-follows-count", followsDone);
                 string userPk = media.User.Pk.ToString();
-                var followedProfile = new FollowedProfile(Guid.NewGuid(), account.Id, userPk);
-                await _promotionRepository.AddFollowedProfileAsync(followedProfile);
+
+                var followedCheck = await promotionRepository.GetFollowedProfileAsync(account.Id, userPk);
+                if(followedCheck == null)
+                {
+                    var followedProfile = new FollowedProfile(Guid.NewGuid(), account.Id, userPk);
+                    await promotionRepository.AddFollowedProfileAsync(followedProfile);
+                }
+
                 Console.WriteLine($"[{DateTime.Now}][{account.Username}](#{promotion.Label}) Follow user: {media.User.UserName} - Success! - number of follows: {followsDone}");
-                await SetPromotionCooldown(account, promotionRepository, promotion);
+                await SetPromotionCooldown(account, accountRepository);
             }
             else
             {
@@ -339,8 +345,8 @@ namespace FollowUP.Infrastructure.Services
                 }
             }
         }
-        public async Task<bool> UnfollowProfile(IInstaApi instaApi, InstagramAccount account, Promotion promotion, 
-            PromotionRepository promotionRepository, int unFollowsDone)
+        public async Task<bool> UnfollowProfile(IInstaApi instaApi, InstagramAccount account,
+            PromotionRepository promotionRepository, InstagramAccountRepository accountRepository, int unFollowsDone)
         {
             // Dummy request to simulate app following search
             await instaApi.UserProcessor.GetUserFollowingAsync(account.Username, PaginationParameters.MaxPagesToLoad(1));
@@ -375,7 +381,8 @@ namespace FollowUP.Infrastructure.Services
             {
                 unFollowsDone++;
                 _cache.Set($"{account.Id}-unfollows-count", unFollowsDone);
-                await SetPromotionCooldown(account, promotionRepository, promotion);
+                await promotionRepository.RemoveFollowedProfileAsync(account.Id, profileToUnfollow.ProfileId);
+                await SetPromotionCooldown(account, accountRepository);
                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] Unfollow user: {profileName} - Success! - number of unfollows: {unFollowsDone}");
                 return true;
             }
@@ -503,15 +510,7 @@ namespace FollowUP.Infrastructure.Services
                         break;
                     }
                 }
-                if (previousPromotionIndex > -1 && promotionList[previousPromotionIndex].ActionCooldown > DateTime.UtcNow)
-                {
-                    Console.WriteLine($"[{DateTime.Now}][{account.Username}] Promotion is on ActionCooldown. Waiting for {(promotionList[previousPromotionIndex].ActionCooldown - DateTime.Now).TotalMilliseconds} more milliseconds");
-                    return null;
-                }
                 currentPromotion = promotionList[previousPromotionIndex >= promotionList.Count - 1 ? 0 : (previousPromotionIndex + 1)];
-                var timeDifference = (int)previousPromotion.ActionCooldown.Subtract(DateTime.UtcNow).TotalMilliseconds;
-                if (timeDifference > 0)
-                    currentPromotion.SetActionCooldown(timeDifference);
             }
             _cache.Set(promotionKey, currentPromotion);
 

@@ -15,7 +15,7 @@ namespace FollowUP.Infrastructure.Services
         Task<IEnumerable<PromotionDto>> GetAllPromotionsByAccountId(Guid accountId);
         Task CreatePromotion(Guid accountId, PromotionType promotionType, string Label);
         Task CreatePromotionComment(Guid accountId, string content);
-        Task SetPromotionCooldown(InstagramAccount account, PromotionRepository promotionRepository, Promotion promotion);
+        Task SetPromotionCooldown(InstagramAccount account, InstagramAccountRepository accountRepository);
         Task ReLoginUser(InstagramAccount account);
         Task ProceedBan(InstagramAccount account);
         Task<bool> LookupActivityFeed(IInstaApi instaApi, InstagramAccount account, Promotion promotion);
@@ -23,9 +23,9 @@ namespace FollowUP.Infrastructure.Services
         Task LikeMedia(IInstaApi instaApi, InstagramAccount account, Promotion promotion,
             PromotionRepository promotionRepository, InstaMedia media, int likesDone);
         Task FollowProfile(IInstaApi instaApi, InstagramAccount account, Promotion promotion,
-            PromotionRepository promotionRepository, InstaMedia media, int unFollowsDone);
-        Task<bool> UnfollowProfile(IInstaApi instaApi, InstagramAccount account, Promotion promotion,
-            PromotionRepository promotionRepository, int unFollowsDone);
+            PromotionRepository promotionRepository, InstagramAccountRepository accountRepository, InstaMedia media, int unFollowsDone);
+        Task<bool> UnfollowProfile(IInstaApi instaApi, InstagramAccount account,
+            PromotionRepository promotionRepository, InstagramAccountRepository accountRepository, int unFollowsDone);
         Task<IInstaApi> GetInstaApi(InstagramAccount account);
         Task<Promotion> GetCurrentPromotion(InstagramAccount account);
     }
