@@ -1,5 +1,6 @@
 ﻿using Autofac;
 using Autofac.Extensions.DependencyInjection;
+using FollowUP.Api.Framework;
 using FollowUP.Infrastructure.EF;
 using FollowUP.Infrastructure.IoC;
 using FollowUP.Infrastructure.Services;
@@ -116,7 +117,7 @@ namespace FollowUP
             }
 
             app.UseCors("FollowUPCorsPolicy");
-            app.UseExceptionHandler();
+            app.UseCustomExceptionHandler();
             app.UseMvc();
         }
     }

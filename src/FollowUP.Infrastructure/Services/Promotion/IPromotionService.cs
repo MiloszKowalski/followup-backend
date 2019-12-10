@@ -21,11 +21,11 @@ namespace FollowUP.Infrastructure.Services
         Task<bool> LookupActivityFeed(IInstaApi instaApi, InstagramAccount account, Promotion promotion);
         Task<bool> LookupExploreFeed(IInstaApi instaApi, InstagramAccount account, Promotion promotion);
         Task LikeMedia(IInstaApi instaApi, InstagramAccount account, Promotion promotion,
-            PromotionRepository promotionRepository, InstaMedia media, int likesDone);
-        Task FollowProfile(IInstaApi instaApi, InstagramAccount account, Promotion promotion,
-            PromotionRepository promotionRepository, InstagramAccountRepository accountRepository, InstaMedia media, int unFollowsDone);
-        Task<bool> UnfollowProfile(IInstaApi instaApi, InstagramAccount account,
-            PromotionRepository promotionRepository, InstagramAccountRepository accountRepository, int unFollowsDone);
+            PromotionRepository promotionRepository, StatisticsService statisticsService, InstaMedia media, int likesDone);
+        Task FollowProfile(IInstaApi instaApi, InstagramAccount account, Promotion promotion, PromotionRepository promotionRepository,
+            StatisticsService statisticsService, InstagramAccountRepository accountRepository, InstaMedia media, int unFollowsDone);
+        Task<bool> UnfollowProfile(IInstaApi instaApi, InstagramAccount account, PromotionRepository promotionRepository,
+            StatisticsService statisticsService, InstagramAccountRepository accountRepository, int unFollowsDone);
         Task<IInstaApi> GetInstaApi(InstagramAccount account);
         Task<Promotion> GetCurrentPromotion(InstagramAccount account);
     }
