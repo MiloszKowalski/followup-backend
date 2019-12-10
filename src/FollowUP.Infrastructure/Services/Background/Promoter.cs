@@ -76,13 +76,28 @@ namespace FollowUP.Infrastructure.Services.Background
                         // Get the account's settings to obey the limits
                         var accountSettings = await _accountRepository.GetAccountSettingsAsync(account.Id);
 
-                        // Meantime to check how many follows, unfollows, likes were made by cache
-                        _cache.TryGetValue($"{account.Id}-follows-count", out int followsDone);
-                        _cache.TryGetValue($"{account.Id}-unfollows-count", out int unFollowsDone);
-                        _cache.TryGetValue($"{account.Id}-likes-count", out int likesDone);
+                        // Instantiate new repository for each account to fix async save problem
+                        var promotionRepository = new PromotionRepository(new FollowUPContext(options, _sqlSettings), _settings);
+                        var accountRepository = new InstagramAccountRepository(new FollowUPContext(options, _sqlSettings));
+                        var statisticsRepository = new StatisticsRepository(new FollowUPContext(options, _sqlSettings));
+                        var statisticsService = new StatisticsService(statisticsRepository);
+                        var accountStatistics = await statisticsService.GetTodayAccountStatistics(account.Id);
 
+                        // Get account's statistics
+                        if (accountStatistics == null)
+                        {
+                            var statistics = new AccountStatistics(Guid.NewGuid(), account.Id);
+                            await statisticsRepository.AddAsync(statistics);
+                            accountStatistics = statistics;
+                        }
+
+                        var actionsDone = accountStatistics.ActionsCount;
+                        var likesDone = accountStatistics.LikesCount;
+                        var followsDone = accountStatistics.FollowsCount;
+                        var unFollowsDone = accountStatistics.UnfollowsCount;
+                        
                         // Check if we reached the account's limits
-                        if(followsDone + unFollowsDone + likesDone >= accountSettings.ActionsPerDay)
+                        if(actionsDone >= accountSettings.ActionsPerDay)
                         {
                             Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily action limit! Yay!");
                             await Task.Delay(TimeSpan.FromSeconds(5));
@@ -92,12 +107,9 @@ namespace FollowUP.Infrastructure.Services.Background
                         if (account.ActionCooldown > DateTime.UtcNow)
                         {
                             Console.WriteLine($"[{DateTime.Now}][{account.Username}] Promotion is on ActionCooldown. Waiting for {(account.ActionCooldown - DateTime.Now).TotalMilliseconds} more milliseconds");
+                            await Task.Delay(TimeSpan.FromSeconds(5));
                             return;
                         }
-
-                        // Instantiate new repository for each account to fix async save problem
-                        var promotionRepository = new PromotionRepository(new FollowUPContext(options, _sqlSettings), _settings);
-                        var accountRepository = new InstagramAccountRepository(new FollowUPContext(options, _sqlSettings));
 
                         // Create IInstaApi instance for the given account
                         var instaApi = await _promotionService.GetInstaApi(account);
@@ -107,7 +119,7 @@ namespace FollowUP.Infrastructure.Services.Background
                         // Random chance to unfollow; if successful, then don't go further
                         if (rand.Next(0, 100) > 50)
                         {
-                            var succesfullyUnfollowed = await _promotionService.UnfollowProfile(instaApi, account, promotionRepository, accountRepository, unFollowsDone);
+                            var succesfullyUnfollowed = await _promotionService.UnfollowProfile(instaApi, account, promotionRepository, statisticsService, accountRepository, unFollowsDone);
                             if (succesfullyUnfollowed)
                                 return;
                         }
@@ -137,8 +149,8 @@ namespace FollowUP.Infrastructure.Services.Background
                                 return;
                             }
 
+                            // Get random media
                             var lastMediaIndex = medias.Count() - 1;
-
                             var randomMediaIndex = rand.Next(0, lastMediaIndex);
                             var media = medias[randomMediaIndex];
 
@@ -153,7 +165,7 @@ namespace FollowUP.Infrastructure.Services.Background
 
                             // Like the media if it hasn't hit the limits
                             if(likesDone < accountSettings.LikesPerDay)
-                                await _promotionService.LikeMedia(instaApi, account, promotion, promotionRepository, media, likesDone);
+                                await _promotionService.LikeMedia(instaApi, account, promotion, promotionRepository, statisticsService, media, likesDone);
                             else
                                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily likes limit! Yay!");
 
@@ -162,7 +174,7 @@ namespace FollowUP.Infrastructure.Services.Background
 
                             // Follow media's author profile if it hasn't hit the limits
                             if(followsDone < accountSettings.FollowsPerDay)
-                                await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, accountRepository, media, followsDone);
+                                await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, statisticsService, accountRepository, media, followsDone);
                             else
                                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily follows limit! Yay!");
 
@@ -192,22 +204,16 @@ namespace FollowUP.Infrastructure.Services.Background
                             var followerStatus = followersRelationships[randomRelationshipIndex];
 
                             var userMedia = await instaApi.UserProcessor.GetUserMediaByIdAsync(followerStatus.Pk, PaginationParameters.MaxPagesToLoad(1));
-                            
-                            if(!userMedia.Succeeded)
-                            {
-                                //error
+
+                            if (!userMedia.Succeeded)
                                 return;
-                            }
-                            
-                            if(!userMedia.Value.Any())
-                            {
-                                //error
+
+                            if (!userMedia.Value.Any())
                                 return;
-                            }
 
                             // Like the media if it hasn't hit the limits
                             if (likesDone < accountSettings.LikesPerDay)
-                                await _promotionService.LikeMedia(instaApi, account, promotion, promotionRepository, userMedia.Value[0], likesDone);
+                                await _promotionService.LikeMedia(instaApi, account, promotion, promotionRepository, statisticsService, userMedia.Value[0], likesDone);
                             else
                                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily likes limit! Yay!");
                                     
@@ -215,7 +221,7 @@ namespace FollowUP.Infrastructure.Services.Background
                                     
                             // Follow media's author profile if it hasn't hit the limits
                             if (followsDone < accountSettings.FollowsPerDay)
-                                await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, accountRepository, userMedia.Value[0], followsDone);
+                                await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, statisticsService, accountRepository, userMedia.Value[0], followsDone);
                             else
                                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily follows limit! Yay!");
 

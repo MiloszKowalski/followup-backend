@@ -298,13 +298,13 @@ namespace FollowUP.Infrastructure.Services
             }
         }
         public async Task LikeMedia(IInstaApi instaApi, InstagramAccount account, Promotion promotion,
-            PromotionRepository promotionRepository, InstaMedia media, int likesDone)
+            PromotionRepository promotionRepository, StatisticsService statisticsService, InstaMedia media, int likesDone)
         {
             var likeResponse = await instaApi.MediaProcessor.LikeMediaAsync(media.InstaIdentifier);
             if (likeResponse.Succeeded)
             {
                 likesDone++;
-                _cache.Set($"{account.Id}-likes-count", likesDone);
+                await statisticsService.AddLike(account.Id);
                 Console.WriteLine($"[{DateTime.Now}][{account.Username}](#{promotion.Label}) Like media {media.Code} by user: {media.User.UserName} - Success! - number of likes: {likesDone}");
             }
             else
@@ -317,13 +317,13 @@ namespace FollowUP.Infrastructure.Services
             }
         }
         public async Task FollowProfile(IInstaApi instaApi, InstagramAccount account, Promotion promotion,
-            PromotionRepository promotionRepository, InstagramAccountRepository accountRepository, InstaMedia media, int followsDone)
+            PromotionRepository promotionRepository, StatisticsService statisticsService, InstagramAccountRepository accountRepository, InstaMedia media, int followsDone)
         {
             var followResponse = await instaApi.UserProcessor.FollowUserAsync(media.User.Pk);
             if (followResponse.Succeeded)
             {
                 followsDone++;
-                _cache.Set($"{account.Id}-follows-count", followsDone);
+                await statisticsService.AddFollow(account.Id);
                 string userPk = media.User.Pk.ToString();
 
                 var followedCheck = await promotionRepository.GetFollowedProfileAsync(account.Id, userPk);
@@ -346,7 +346,7 @@ namespace FollowUP.Infrastructure.Services
             }
         }
         public async Task<bool> UnfollowProfile(IInstaApi instaApi, InstagramAccount account,
-            PromotionRepository promotionRepository, InstagramAccountRepository accountRepository, int unFollowsDone)
+            PromotionRepository promotionRepository, StatisticsService statisticsService, InstagramAccountRepository accountRepository, int unFollowsDone)
         {
             // Dummy request to simulate app following search
             await instaApi.UserProcessor.GetUserFollowingAsync(account.Username, PaginationParameters.MaxPagesToLoad(1));
@@ -380,7 +380,7 @@ namespace FollowUP.Infrastructure.Services
             if (unFollowResponse.Succeeded)
             {
                 unFollowsDone++;
-                _cache.Set($"{account.Id}-unfollows-count", unFollowsDone);
+                await statisticsService.AddUnfollow(account.Id);
                 await promotionRepository.RemoveFollowedProfileAsync(account.Id, profileToUnfollow.ProfileId);
                 await SetPromotionCooldown(account, accountRepository);
                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] Unfollow user: {profileName} - Success! - number of unfollows: {unFollowsDone}");

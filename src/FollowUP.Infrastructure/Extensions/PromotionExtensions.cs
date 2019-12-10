@@ -54,7 +54,7 @@ namespace FollowUP.Infrastructure.Extensions
 
         public static async Task<InstaFriendshipShortStatusList> GetRelationshipsByPromotionAsync(this IInstaApi instaApi, InstagramAccount account, Promotion promotion)
         {
-            var followersRelationships = new InstaFriendshipShortStatusList();
+            InstaFriendshipShortStatusList followersRelationships;
             var pagination = PaginationParameters.MaxPagesToLoad(1);
             do
             {
