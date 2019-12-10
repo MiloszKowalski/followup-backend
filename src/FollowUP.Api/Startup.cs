@@ -116,7 +116,7 @@ namespace FollowUP
             }
 
             app.UseCors("FollowUPCorsPolicy");
-
+            app.UseExceptionHandler();
             app.UseMvc();
         }
     }
