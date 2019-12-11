@@ -114,7 +114,7 @@ namespace FollowUP.Infrastructure.Services.Background
 
                         if (account.ActionCooldown > DateTime.UtcNow)
                         {
-                            Console.WriteLine($"[{DateTime.Now}][{account.Username}] Promotion is on ActionCooldown. Waiting for {(account.ActionCooldown - DateTime.Now).TotalMilliseconds} more milliseconds");
+                            //Console.WriteLine($"[{DateTime.Now}][{account.Username}] Promotion is on ActionCooldown. Waiting for {(account.ActionCooldown - DateTime.Now).TotalMilliseconds} more milliseconds");
                             await Task.Delay(TimeSpan.FromSeconds(5));
                             return;
                         }
@@ -127,9 +127,14 @@ namespace FollowUP.Infrastructure.Services.Background
                         // Random chance to unfollow; if successful, then don't go further
                         if (rand.Next(0, 100) > 65)
                         {
-                            var succesfullyUnfollowed = await _promotionService.UnfollowProfile(instaApi, account, promotionRepository, statisticsService, accountRepository, unFollowsDone);
-                            if (succesfullyUnfollowed)
-                                return;
+                            if(accountStatistics.UnfollowsCount < accountSettings.UnfollowsPerDay)
+                            {
+                                var succesfullyUnfollowed = await _promotionService.UnfollowProfile(instaApi, account, promotionRepository, statisticsService, accountRepository, unFollowsDone);
+                                if (succesfullyUnfollowed)
+                                    return;
+                            }
+                            else
+                                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily unfollows limit! Yay!");
                         }
 
                         // Get the current promotion for the given account
@@ -139,8 +144,7 @@ namespace FollowUP.Infrastructure.Services.Background
 
                         if (account.ActionCooldown != null && account.ActionCooldown > DateTime.UtcNow)
                         {
-                            //Console.WriteLine($"[{DateTime.Now}][{account.Username}] Promotion is on ActionCooldown. Waiting for {(promotion.ActionCooldown - DateTime.Now).TotalMilliseconds} more milliseconds");
-                            await Task.Delay(TimeSpan.FromSeconds(5));
+                            Console.WriteLine($"[{DateTime.Now}][{account.Username}] Promotion is on ActionCooldown. Waiting for {(account.ActionCooldown - DateTime.Now).TotalMilliseconds} more milliseconds");
                             return;
                         }
 
@@ -178,11 +182,14 @@ namespace FollowUP.Infrastructure.Services.Background
                                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily likes limit! Yay!");
 
                             // Three seconds interval between actions to be more organic
-                            await Task.Delay(TimeSpan.FromSeconds(rand.Next(1000, 4000)));
+                            await Task.Delay(rand.Next(1000, 4000));
 
                             // Follow media's author profile if it hasn't hit the limits
-                            if(followsDone < accountSettings.FollowsPerDay && rand.Next(0, 100) > 50)
-                                await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, statisticsService, accountRepository, media, followsDone);
+                            if(followsDone < accountSettings.FollowsPerDay)
+                            {
+                                if(rand.Next(0, 100) > 50)
+                                    await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, statisticsService, accountRepository, media, followsDone);
+                            }
                             else
                                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily follows limit! Yay!");
 
@@ -225,11 +232,14 @@ namespace FollowUP.Infrastructure.Services.Background
                             else
                                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily likes limit! Yay!");
                                     
-                            await Task.Delay(TimeSpan.FromMilliseconds(rand.Next(1000, 4000)));
+                            await Task.Delay(rand.Next(1000, 4000));
                                     
                             // Follow media's author profile if it hasn't hit the limits
-                            if (followsDone < accountSettings.FollowsPerDay && rand.Next(0, 100) > 50)
-                                await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, statisticsService, accountRepository, userMedia.Value[0], followsDone);
+                            if (followsDone < accountSettings.FollowsPerDay)
+                            {
+                                if(rand.Next(0, 100) > 50)
+                                    await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, statisticsService, accountRepository, userMedia.Value[0], followsDone);
+                            }
                             else
                                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily follows limit! Yay!");
 
@@ -254,6 +264,7 @@ namespace FollowUP.Infrastructure.Services.Background
                     // Wait for each of the tasks to complete
                     task.Wait();
                 });
+                await Task.Delay(TimeSpan.FromSeconds(10));
                 Console.WriteLine("-------------------------------------------------------------------");
             }
         }
