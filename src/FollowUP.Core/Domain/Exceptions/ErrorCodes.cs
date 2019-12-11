@@ -11,5 +11,6 @@
         public static string NegativeLikes => "negative_likes";
         public static string NegativeActions => "negative_actions";
         public static string NegativeFollows => "negative_follows";
+        public static string NegativeUnfollows => "negative_unfollows";
     }
 }
