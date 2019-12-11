@@ -6,6 +6,7 @@
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>..\..</DockerfileContext>
     <Platforms>AnyCPU;x64;x86</Platforms>
+    <UserSecretsId>97cc6e9f-30de-4181-be96-81bc75e43f5c</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,8 +25,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\InstagramApiSharp-master\src\InstagramApiSharp\InstagramApiSharp.csproj" />
     <ProjectReference Include="..\FollowUP.Infrastructure\FollowUP.Infrastructure.csproj" />
+    <ProjectReference Include="..\InstagramApiSharp\InstagramApiSharp.csproj" />
   </ItemGroup>
 
 </Project>
