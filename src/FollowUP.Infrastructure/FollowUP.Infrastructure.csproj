@@ -6,6 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="InstagramApiSharp.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Autofac" Version="4.9.4" />
     <PackageReference Include="AutoMapper" Version="9.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="2.2.0" />
@@ -19,8 +23,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\InstagramApiSharp-master\src\InstagramApiSharp\InstagramApiSharp.csproj" />
     <ProjectReference Include="..\FollowUP.Core\FollowUP.Core.csproj" />
+    <ProjectReference Include="..\InstagramApiSharp\InstagramApiSharp.csproj" />
   </ItemGroup>
 
 </Project>
