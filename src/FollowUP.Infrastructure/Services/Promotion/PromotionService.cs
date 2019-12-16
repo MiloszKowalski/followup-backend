@@ -349,6 +349,7 @@ namespace FollowUP.Infrastructure.Services
             PromotionRepository promotionRepository, StatisticsService statisticsService, InstagramAccountRepository accountRepository, int unFollowsDone)
         {
             // Dummy request to simulate app following search
+            await instaApi.UserProcessor.GetCurrentUserAsync();
             await instaApi.UserProcessor.GetUserFollowingAsync(account.Username, PaginationParameters.MaxPagesToLoad(1));
             var profileToUnfollow = await promotionRepository.GetRandomFollowedProfileAsync(account.Id);
             if (profileToUnfollow == null)
@@ -440,7 +441,6 @@ namespace FollowUP.Infrastructure.Services
             var instaApi = InstaApiBuilder.CreateBuilder()
                                         .SetUser(userSession)
                                         .UseLogger(new DebugLogger(InstagramApiSharp.Logger.LogLevel.Exceptions))
-                                        .SetRequestDelay(RequestDelay.FromSeconds(0, 1))
                                         .SetSessionHandler(new FileSessionHandler() { FilePath = account.FilePath })
                                         .UseHttpClientHandler(httpClientHandler)
                                         .Build();

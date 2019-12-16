@@ -64,7 +64,7 @@ namespace FollowUP.Infrastructure.Services.Background
                 {
                     Console.WriteLine($"[{DateTime.Now}] Night break. - (22:00 - 6:00) - Come back at 6 o' clock!");
                     await Task.Delay(TimeSpan.FromHours(1));
-                    return;
+                    continue;
                 }
 
                 // Parallel task for each account with promotion for true asynchrony
@@ -76,7 +76,7 @@ namespace FollowUP.Infrastructure.Services.Background
                         if(account.BannedUntil != null)
                             if (account.BannedUntil > DateTime.UtcNow)
                             {
-                                //Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account banned until {account.BannedUntil}, skipping...");
+                                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account banned until {account.BannedUntil}, skipping...");
                                 await Task.Delay(TimeSpan.FromSeconds(5));
                                 return;
                             }
