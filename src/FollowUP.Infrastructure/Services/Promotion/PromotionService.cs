@@ -214,8 +214,11 @@ namespace FollowUP.Infrastructure.Services
                 }
             }
         }
-        public async Task<bool> LookupActivityFeed(IInstaApi instaApi, InstagramAccount account, Promotion promotion)
+        public async Task<bool> LookupActivityFeed(IInstaApi instaApi, InstagramAccount account, Promotion promotion = null)
         {
+            if (promotion == null)
+                promotion = new Promotion(Guid.NewGuid(), Guid.NewGuid(), PromotionType.Hashtag, "Unfollow", DateTime.Now);
+
             Console.WriteLine($"[{DateTime.Now}][{account.Username}](#{promotion.Label}) Activity - Start");
 
             var rand = new Random();
@@ -283,8 +286,11 @@ namespace FollowUP.Infrastructure.Services
             }
             return false;
         }
-        public async Task<bool> LookupExploreFeed(IInstaApi instaApi, InstagramAccount account, Promotion promotion)
+        public async Task<bool> LookupExploreFeed(IInstaApi instaApi, InstagramAccount account, Promotion promotion = null)
         {
+            if (promotion == null)
+                promotion = new Promotion(Guid.NewGuid(), Guid.NewGuid(), PromotionType.Hashtag, "Unfollow", DateTime.Now);
+
             var explore = await instaApi.FeedProcessor.GetExploreFeedAsync(PaginationParameters.MaxPagesToLoad(1));
             if (explore.Succeeded)
             {
