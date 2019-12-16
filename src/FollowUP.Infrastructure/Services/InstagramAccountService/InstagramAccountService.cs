@@ -5,6 +5,7 @@ using FollowUP.Infrastructure.DTO;
 using FollowUP.Infrastructure.Exceptions;
 using FollowUP.Infrastructure.Extensions;
 using FollowUP.Infrastructure.Settings;
+using InstagramApiSharp;
 using InstagramApiSharp.API;
 using InstagramApiSharp.API.Builder;
 using InstagramApiSharp.Classes;
@@ -227,118 +228,82 @@ namespace FollowUP.Infrastructure.Services
             }
 
             // If user isn't authenticated (the session didn't work out)
-            if (!instaApi.IsUserAuthenticated)
+            if (instaApi.IsUserAuthenticated)
             {
-                // Log in the user (only, if there is no two factor code)
-                var logInResult = twoFactorCode.Empty() ? verificationCode.Empty()
-                    ? await instaApi.LoginAsync() : new Result<InstaLoginResult>(false, InstaLoginResult.ChallengeRequired)
-                    : new Result<InstaLoginResult>(false, InstaLoginResult.TwoFactorRequired);
+                account.SetAuthenticationStep(AuthenticationStep.Authenticated);
+                await _instagramAccountRepository.UpdateAsync(account);
+                await SendMockupRequests(instaApi);
+                return;
+            }
+            // Log in the user (only, if there is no two factor code)
+            var logInResult = twoFactorCode.Empty() ? verificationCode.Empty()
+                ? await instaApi.LoginAsync() : new Result<InstaLoginResult>(false, InstaLoginResult.ChallengeRequired)
+                : new Result<InstaLoginResult>(false, InstaLoginResult.TwoFactorRequired);
 
-                // If the login succeeded
-                if (logInResult.Succeeded)
+            // If the login succeeded
+            if (logInResult.Succeeded)
+            {
+                instaApi.SaveSession();
+
+                // Set the authentiaction step to authenticated
+                await SetAuthenticationStepAndSaveAccount(AuthenticationStep.Authenticated, account);
+                await SendMockupRequests(instaApi);
+                return;
+            }
+            // If the challenge is required
+            if (logInResult.Value != InstaLoginResult.ChallengeRequired)
+            {
+                // If the user has two factor authentication enabled
+                if (logInResult.Value == InstaLoginResult.TwoFactorRequired)
                 {
-                    instaApi.SaveSession();
-
-                    // Set the authentiaction step to authenticated
-                    await SetAuthenticationStepAndSaveAccount(AuthenticationStep.Authenticated, account);
-                    return;
+                    // Authenticate with two factor code
+                    await TwoFactorLogin(instaApi, account, twoFactorCode);
                 }
-                // If the login failed
+                // Every other error during logging in
                 else
                 {
-                    // If the challenge is required
-                    if (logInResult.Value == InstaLoginResult.ChallengeRequired)
+                    Console.WriteLine($"Unable to login: {logInResult.Info.Message}");
+                    await SetAuthenticationStepAndSaveAccount(AuthenticationStep.NotAuthenticated, account);
+                    return;
+                }
+            }
+
+            // Start the challenge response
+            var challenge = await instaApi.GetChallengeRequireVerifyMethodAsync();
+
+            // If it succeeded
+            if (!challenge.Succeeded)
+            {
+                await SetAuthenticationStepAndSaveAccount(AuthenticationStep.ChallengeRequired, account);
+                return;
+            }
+
+            // If the phone number submit is required
+            if (challenge.Value.SubmitPhoneRequired)
+            {
+                // Try submitting the phone number
+                try
+                {
+                    await SubmitPhone(instaApi, account, phoneNumber);
+                    return;
+                }
+                catch (Exception ex) { Console.WriteLine(ex.Message); }
+            }
+            else
+            {
+                // If we have valid email or phone number
+                if (challenge.Value.StepData != null && verificationCode.Empty())
+                {
+                    // If the user prefers verification via SMS
+                    if (preferSMSVerification)
                     {
-                        // Start the challenge response
-                        var challenge = await instaApi.GetChallengeRequireVerifyMethodAsync();
-
-                        // If it succeeded
-                        if (challenge.Succeeded)
+                        if (!challenge.Value.StepData.PhoneNumber.Empty())
                         {
-                            // If the phone number submit is required
-                            if (challenge.Value.SubmitPhoneRequired)
-                            {
-                                // Try submitting the phone number
-                                try
-                                {
-                                    await SubmitPhone(instaApi, account, phoneNumber);
-                                }
-                                catch (Exception ex) { Console.WriteLine(ex.Message); }
-                            }
-                            else
-                            {
-                                // If we have valid email or phone number
-                                if (challenge.Value.StepData != null && verificationCode.Empty())
-                                {
-                                    // If the user prefers verification via SMS
-                                    if(preferSMSVerification)
-                                    {
-                                        if (!challenge.Value.StepData.PhoneNumber.Empty())
-                                        {
-                                            await RequestFromSMS(instaApi, account, replayChallenge);
-                                        }
-                                        else if(!challenge.Value.StepData.Email.Empty())
-                                        {
-                                            await RequestFromEmail(instaApi, account, replayChallenge);
-                                        }
-                                        else
-                                        {
-                                            await SetAuthenticationStepAndSaveAccount(AuthenticationStep.ChallengeRequired, account);
-                                            return;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        if (!challenge.Value.StepData.Email.Empty())
-                                        {
-                                            await RequestFromEmail(instaApi, account, replayChallenge);
-                                        }
-                                        else if (!challenge.Value.StepData.PhoneNumber.Empty())
-                                        {
-                                            await RequestFromSMS(instaApi, account, replayChallenge);
-                                        }
-                                        else
-                                        {
-                                            await SetAuthenticationStepAndSaveAccount(AuthenticationStep.ChallengeRequired, account);
-                                            return;
-                                        }
-                                    }
-                                }
-                                // If we have verification code
-                                else if(!verificationCode.Empty())
-                                {
-                                    // Verify if the code is correct
-                                    var verifyCodeLogin = await instaApi.VerifyCodeForChallengeRequireAsync(verificationCode);
-
-                                    // If the login succeeded...
-                                    if (verifyCodeLogin.Succeeded)
-                                    {
-                                        instaApi.SaveSession();
-
-                                        // Remove unnecessary instaApi instance
-                                        _cache.Remove(account.Id);
-                                        await SetAuthenticationStepAndSaveAccount(AuthenticationStep.Authenticated, account);
-                                        return;
-                                    }
-                                    else if (verifyCodeLogin.Value == InstaLoginResult.TwoFactorRequired)
-                                    {
-                                        await SetAuthenticationStepAndSaveAccount(AuthenticationStep.TwoFactorRequired, account);
-                                        return;
-                                    }
-                                    else if (verifyCodeLogin.Value == InstaLoginResult.ChallengeRequired)
-                                    {
-                                        var acceptRepsonse = await instaApi.AcceptChallengeAsync();
-                                        if (acceptRepsonse.Succeeded)
-                                            await LoginAsync(username, password, phoneNumber, twoFactorCode,
-                                            verificationCode, preferSMSVerification, replayChallenge);
-                                    }
-                                }
-                                else
-                                {
-                                    await SetAuthenticationStepAndSaveAccount(AuthenticationStep.ChallengeRequired, account);
-                                    return;
-                                }
-                            }
+                            await RequestFromSMS(instaApi, account, replayChallenge);
+                        }
+                        else if (!challenge.Value.StepData.Email.Empty())
+                        {
+                            await RequestFromEmail(instaApi, account, replayChallenge);
                         }
                         else
                         {
@@ -346,25 +311,69 @@ namespace FollowUP.Infrastructure.Services
                             return;
                         }
                     }
-                    // If the user has two factor authentication enabled
-                    else if (logInResult.Value == InstaLoginResult.TwoFactorRequired)
-                    {
-                        // Authenticate with two factor code
-                        await TwoFactorLogin(instaApi, account, twoFactorCode);
-                    }
-                    // Every other error during logging in
                     else
                     {
-                        Console.WriteLine($"Unable to login: {logInResult.Info.Message}");
-                        await SetAuthenticationStepAndSaveAccount(AuthenticationStep.NotAuthenticated, account);
+                        if (!challenge.Value.StepData.Email.Empty())
+                        {
+                            await RequestFromEmail(instaApi, account, replayChallenge);
+                        }
+                        else if (!challenge.Value.StepData.PhoneNumber.Empty())
+                        {
+                            await RequestFromSMS(instaApi, account, replayChallenge);
+                        }
+                        else
+                        {
+                            await SetAuthenticationStepAndSaveAccount(AuthenticationStep.ChallengeRequired, account);
+                            return;
+                        }
+                    }
+                }
+                // If we have verification code
+                else if (!verificationCode.Empty())
+                {
+                    // Verify if the code is correct
+                    var verifyCodeLogin = await instaApi.VerifyCodeForChallengeRequireAsync(verificationCode);
+
+                    // If the login succeeded...
+                    if (verifyCodeLogin.Succeeded)
+                    {
+                        instaApi.SaveSession();
+                        await SetAuthenticationStepAndSaveAccount(AuthenticationStep.Authenticated, account);
+                        await SendMockupRequests(instaApi);
                         return;
                     }
+                    else if (verifyCodeLogin.Value == InstaLoginResult.TwoFactorRequired)
+                    {
+                        await SetAuthenticationStepAndSaveAccount(AuthenticationStep.TwoFactorRequired, account);
+                        return;
+                    }
+                    else if (verifyCodeLogin.Value == InstaLoginResult.ChallengeRequired)
+                    {
+                        var infoResponse = await instaApi.GetLoggedInChallengeDataInfoAsync();
+                        var acceptRepsonse = await instaApi.AcceptChallengeAsync();
+                        if (acceptRepsonse.Succeeded)
+                            await LoginAsync(username, password, phoneNumber, twoFactorCode,
+                            verificationCode, preferSMSVerification, replayChallenge);
+                    }
+                }
+                else
+                {
+                    await SetAuthenticationStepAndSaveAccount(AuthenticationStep.ChallengeRequired, account);
                     return;
                 }
             }
-            account.SetAuthenticationStep(AuthenticationStep.Authenticated);
-            await _instagramAccountRepository.UpdateAsync(account);
+
             return;
+        }
+
+        private async Task SendMockupRequests(IInstaApi instaApi)
+        {
+            var test = await instaApi.FeedProcessor.GetUserTimelineFeedAsync(PaginationParameters.MaxPagesToLoad(1));
+            await instaApi.FeedProcessor.GetExploreFeedAsync(PaginationParameters.MaxPagesToLoad(1));
+            await instaApi.UserProcessor.GetCurrentUserAsync();
+            await instaApi.FeedProcessor.GetRecentActivityFeedAsync(PaginationParameters.MaxPagesToLoad(1));
+            await instaApi.MessagingProcessor.GetDirectInboxAsync(PaginationParameters.MaxPagesToLoad(1));
+            await instaApi.StoryProcessor.GetStoryFeedAsync();
         }
 
         public async Task LoginToEmbeddedBrowserAsync(string username, string password, string twoFactorCode, string verificationCode)
@@ -602,7 +611,7 @@ namespace FollowUP.Infrastructure.Services
                 instaApi.SaveSession();
 
                 await SetAuthenticationStepAndSaveAccount(AuthenticationStep.Authenticated, account);
-                _cache.Remove(account.Id);
+                await SendMockupRequests(instaApi);
                 return;
             }
             else
