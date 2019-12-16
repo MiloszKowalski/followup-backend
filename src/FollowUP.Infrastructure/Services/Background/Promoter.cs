@@ -125,13 +125,23 @@ namespace FollowUP.Infrastructure.Services.Background
                             return;
 
                         // Random chance to unfollow; if successful, then don't go further
-                        if (rand.Next(0, 100) > 65)
+                        if (rand.Next(0, 100) > 75)
                         {
                             if(accountStatistics.UnfollowsCount < accountSettings.UnfollowsPerDay)
                             {
                                 var succesfullyUnfollowed = await _promotionService.UnfollowProfile(instaApi, account, promotionRepository, statisticsService, accountRepository, unFollowsDone);
                                 if (succesfullyUnfollowed)
+                                {
+                                    // Random chance to look up explore feed for organicity
+                                    if (rand.Next(0, 100) > 75)
+                                        await _promotionService.LookupExploreFeed(instaApi, account);
+
+                                    // Random chance to look up activity feed for organicity
+                                    if (rand.Next(0, 100) > 75)
+                                        await _promotionService.LookupActivityFeed(instaApi, account);
+
                                     return;
+                                }
                             }
                             else
                                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily unfollows limit! Yay!");
