@@ -566,7 +566,7 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
             }
         };
 
-        static Random rnd = new Random();
+        static readonly Random rnd = new Random();
         private static AndroidDevice LastDevice;
         public static AndroidDevice GetRandomAndroidDevice()
         {
@@ -586,6 +586,13 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
         public static AndroidDevice GetByName(string name)
         {
             return AndroidAndroidDeviceSets[name];
+        }
+
+        public static string GetRandomName()
+        {
+            var randomDeviceIndex = rnd.Next(0, DevicesNames.Count);
+            var deviceName = AndroidAndroidDeviceSets.ElementAt(randomDeviceIndex).Key;
+            return deviceName;
         }
 
         //public static AndroidDevice GetById(string deviceId)

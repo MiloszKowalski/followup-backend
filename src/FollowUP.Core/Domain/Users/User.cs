@@ -1,5 +1,4 @@
-﻿using FollowUP.Domain;
-using System;
+﻿using System;
 using System.Text.RegularExpressions;
 
 namespace FollowUP.Core.Domain
@@ -38,16 +37,10 @@ namespace FollowUP.Core.Domain
         public void SetUsername(string username)
         {
             if (!UsernameRegex.IsMatch(username))
-            {
-                throw new DomainException(ErrorCodes.InvalidUsername,
-                    "Username is invalid.");
-            }
+                throw new DomainException(ErrorCodes.InvalidUsername, "Username is invalid.");
 
-            if (String.IsNullOrEmpty(username))
-            {
-                throw new DomainException(ErrorCodes.InvalidUsername,
-                    "Username is invalid.");
-            }
+            if (string.IsNullOrEmpty(username))
+                throw new DomainException(ErrorCodes.InvalidUsername, "Username is invalid.");
 
             Username = username.ToLowerInvariant();
             UpdatedAt = DateTime.UtcNow;
@@ -56,16 +49,10 @@ namespace FollowUP.Core.Domain
         public void SetFullName(string fullName)
         {
             if (!FullNameRegex.IsMatch(fullName))
-            {
-                throw new DomainException(ErrorCodes.InvalidFullName,
-                    "Full name is invalid.");
-            }
+                throw new DomainException(ErrorCodes.InvalidFullName, "Full name is invalid.");
 
-            if (String.IsNullOrEmpty(fullName))
-            {
-                throw new DomainException(ErrorCodes.InvalidFullName,
-                    "Full name is null or empty.");
-            }
+            if (string.IsNullOrEmpty(fullName))
+                throw new DomainException(ErrorCodes.InvalidFullName, "Full name is null or empty.");
 
             FullName = fullName;
             UpdatedAt = DateTime.UtcNow;
@@ -74,14 +61,10 @@ namespace FollowUP.Core.Domain
         public void SetEmail(string email)
         {
             if (string.IsNullOrWhiteSpace(email))
-            {
-                throw new DomainException(ErrorCodes.InvalidEmail,
-                    "Email can not be empty.");
-            }
+                throw new DomainException(ErrorCodes.InvalidEmail, "Email can not be empty.");
+
             if (Email == email)
-            {
                 return;
-            }
 
             Email = email.ToLowerInvariant();
             UpdatedAt = DateTime.UtcNow;
@@ -90,14 +73,11 @@ namespace FollowUP.Core.Domain
         public void SetRole(string role)
         {
             if (string.IsNullOrWhiteSpace(role))
-            {
-                throw new DomainException(ErrorCodes.InvalidRole,
-                    "Role can not be empty.");
-            }
+                throw new DomainException(ErrorCodes.InvalidRole, "Role can not be empty.");
+
             if (Role == role)
-            {
                 return;
-            }
+
             Role = role;
             UpdatedAt = DateTime.UtcNow;
         }
@@ -105,29 +85,20 @@ namespace FollowUP.Core.Domain
         public void SetPassword(string password, string salt)
         {
             if (string.IsNullOrWhiteSpace(password))
-            {
-                throw new DomainException(ErrorCodes.InvalidPassword,
-                    "Password can not be empty.");
-            }
+                throw new DomainException(ErrorCodes.InvalidPassword, "Password can not be empty.");
+
             if (string.IsNullOrWhiteSpace(salt))
-            {
-                throw new DomainException(ErrorCodes.InvalidPassword,
-                    "Salt can not be empty.");
-            }
+                throw new DomainException(ErrorCodes.InvalidPassword, "Salt can not be empty.");
+
             if (password.Length < 4)
-            {
-                throw new DomainException(ErrorCodes.InvalidPassword,
-                    "Password must contain at least 4 characters.");
-            }
+                throw new DomainException(ErrorCodes.InvalidPassword, "Password must contain at least 4 characters.");
+
             if (password.Length > 100)
-            {
-                throw new DomainException(ErrorCodes.InvalidPassword,
-                    "Password can not contain more than 100 characters.");
-            }
+                throw new DomainException(ErrorCodes.InvalidPassword, "Password can not contain more than 100 characters.");
+
             if (Password == password)
-            {
                 return;
-            }
+
             Password = password;
             Salt = salt;
             UpdatedAt = DateTime.UtcNow;

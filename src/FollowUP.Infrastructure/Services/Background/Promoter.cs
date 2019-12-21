@@ -76,7 +76,7 @@ namespace FollowUP.Infrastructure.Services.Background
                         if(account.BannedUntil != null)
                             if (account.BannedUntil > DateTime.UtcNow)
                             {
-                                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account banned until {account.BannedUntil}, skipping...");
+                                //Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account banned until {account.BannedUntil}, skipping...");
                                 await Task.Delay(TimeSpan.FromSeconds(5));
                                 return;
                             }
@@ -197,7 +197,7 @@ namespace FollowUP.Infrastructure.Services.Background
                             // Follow media's author profile if it hasn't hit the limits
                             if(followsDone < accountSettings.FollowsPerDay)
                             {
-                                if(rand.Next(0, 100) > 50)
+                                if(rand.Next(0, 100) > 20)
                                     await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, statisticsService, accountRepository, media, followsDone);
                             }
                             else
@@ -247,7 +247,7 @@ namespace FollowUP.Infrastructure.Services.Background
                             // Follow media's author profile if it hasn't hit the limits
                             if (followsDone < accountSettings.FollowsPerDay)
                             {
-                                if(rand.Next(0, 100) > 50)
+                                if(rand.Next(0, 100) > 40)
                                     await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, statisticsService, accountRepository, userMedia.Value[0], followsDone);
                             }
                             else

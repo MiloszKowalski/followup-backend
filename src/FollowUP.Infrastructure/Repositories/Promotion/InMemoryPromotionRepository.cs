@@ -13,7 +13,6 @@ namespace FollowUP.Infrastructure.Repositories
         private readonly PromotionSettings _settings;
         private static readonly List<Promotion> _promotions = new List<Promotion>();
         private static readonly List<PromotionComment> _promotionComments = new List<PromotionComment>();
-        private static readonly List<CompletedMedia> _media = new List<CompletedMedia>();
         private static readonly List<FollowedProfile> _followedProfiles = new List<FollowedProfile>();
 
         public InMemoryPromotionRepository(PromotionSettings settings)
@@ -27,9 +26,6 @@ namespace FollowUP.Infrastructure.Repositories
         public async Task<Promotion> GetAsync(Guid id)
             => await Task.FromResult(_promotions.SingleOrDefault(x => x.Id == id));
 
-        public async Task<CompletedMedia> GetMediaAsync(string code, Guid accountId)
-            => await Task.FromResult(_media.SingleOrDefault(x => x.Code == code && x.AccountId == accountId));
-
         public async Task<IEnumerable<Promotion>> GetAccountPromotionsAsync(Guid accountId)
             => await Task.FromResult(_promotions.Where(x => x.AccountId == accountId));
 
@@ -39,12 +35,6 @@ namespace FollowUP.Infrastructure.Repositories
         public async Task AddAsync(Promotion promotion)
         {
             _promotions.Add(promotion);
-            await Task.CompletedTask;
-        }
-
-        public async Task AddToBlacklistAsync(CompletedMedia media)
-        {
-            _media.Add(media);
             await Task.CompletedTask;
         }
 
