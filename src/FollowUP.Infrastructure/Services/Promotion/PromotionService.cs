@@ -143,8 +143,8 @@ namespace FollowUP.Infrastructure.Services
             filePath = filePath.Replace('/', Path.DirectorySeparatorChar);
 
             // Delete directory if it exists
-            if (File.Exists(filePath))
-                File.Delete(filePath);
+            //if (File.Exists(filePath))
+            //    File.Delete(filePath);
 
             InstagramProxy availableProxy = null;
 
@@ -156,10 +156,10 @@ namespace FollowUP.Infrastructure.Services
                     continue;
 
                 availableProxy = proxy;
-                proxy.IsTaken = true;
+                proxy.SetIsTaken(true);
                 var previousAccountProxy = await _proxyRepository.GetAccountsProxyAsync(account.Id);
                 var previousProxy = await _proxyRepository.GetAsync(previousAccountProxy.ProxyId);
-                previousProxy.IsTaken = false;
+                previousProxy.SetIsTaken(false);
                 await _proxyRepository.UpdateAsync(previousProxy);
                 await _proxyRepository.UpdateAsync(proxy);
                 break;
@@ -177,7 +177,7 @@ namespace FollowUP.Infrastructure.Services
             accountProxy.ProxyId = availableProxy.Id;
             await _proxyRepository.UpdateAccountsProxyAsync(accountProxy);
 
-            await _accountService.LoginAsync(account.Username, account.Password, account.PhoneNumber, "", "", true, false);
+            //await _accountService.LoginAsync(account.Username, account.Password, account.PhoneNumber, "", "", true, false);
 
             var accountAfterLogin = await _accountRepository.GetAsync(account.Username);
 
@@ -201,8 +201,8 @@ namespace FollowUP.Infrastructure.Services
             {
                 try
                 {
-                    account.BannedUntil = DateTime.UtcNow.AddDays(_settings.BanDurationInDays);
-                    account.PromotionsModuleExpiry = account.PromotionsModuleExpiry.AddDays(_settings.BanDurationInDays);
+                    account.SetBannedUntil(DateTime.UtcNow.AddDays(_settings.BanDurationInDays));
+                    account.SetPromotionsModuleExpiry(account.PromotionsModuleExpiry.AddDays(_settings.BanDurationInDays));
                     await _accountRepository.UpdateAsync(account);
                     saveSuccessful = true;
                     return;
@@ -462,7 +462,7 @@ namespace FollowUP.Infrastructure.Services
 
             // TODO: Device service
             instaApi.SetApiVersion(InstaApiVersionType.Version117);
-            instaApi.SetDevice(AndroidDeviceGenerator.GetByName(AndroidDevices.XIAOMI_REDMI_NOTE_4X));
+            instaApi.SetDevice(AndroidDeviceGenerator.GetByName(account.AndroidDevice));
 
             // Try logging in from session
             try

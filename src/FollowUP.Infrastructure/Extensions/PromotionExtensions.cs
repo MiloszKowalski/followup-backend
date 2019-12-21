@@ -1,5 +1,4 @@
 ﻿using FollowUP.Core.Domain;
-using FollowUP.Core.Repositories;
 using InstagramApiSharp;
 using InstagramApiSharp.API;
 using InstagramApiSharp.Classes.Models;

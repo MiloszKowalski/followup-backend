@@ -84,7 +84,7 @@ namespace FollowUP.Infrastructure.Services
                     continue;
 
                 instaProxy = proxy;
-                proxy.IsTaken = true;
+                proxy.SetIsTaken(true);
                 await _proxyRepository.UpdateAsync(proxy);
                 break;
             }
@@ -92,8 +92,10 @@ namespace FollowUP.Infrastructure.Services
             if (instaProxy == null)
                 throw new ServiceException(ErrorCodes.NoProxyAvailable, "There is no proxy available for account creation.");
 
+            var androidDevice = AndroidDeviceGenerator.GetRandomName();
+
             // If the given account doesn't exist, create one and save it to the database
-            var instagramAccount = new InstagramAccount(Id, user, username, password);
+            var instagramAccount = new InstagramAccount(Id, user, username, password, androidDevice);
             await _instagramAccountRepository.AddAsync(instagramAccount);
 
             // Create account's settings and store it in the database
@@ -198,7 +200,7 @@ namespace FollowUP.Infrastructure.Services
             }
 
             instaApi.SetApiVersion(InstaApiVersionType.Version117);
-            instaApi.SetDevice(AndroidDeviceGenerator.GetByName(AndroidDevices.XIAOMI_REDMI_NOTE_4X));
+            instaApi.SetDevice(AndroidDeviceGenerator.GetByName(account.AndroidDevice));
 
             // Get appropriate directories of the folder and file
             var fullPath = instaPath.Split(Path.DirectorySeparatorChar);
@@ -349,7 +351,7 @@ namespace FollowUP.Infrastructure.Services
                     }
                     else if (verifyCodeLogin.Value == InstaLoginResult.ChallengeRequired)
                     {
-                        var infoResponse = await instaApi.GetLoggedInChallengeDataInfoAsync();
+                        await instaApi.GetLoggedInChallengeDataInfoAsync();
                         var acceptRepsonse = await instaApi.AcceptChallengeAsync();
                         if (acceptRepsonse.Succeeded)
                             await LoginAsync(username, password, phoneNumber, twoFactorCode,
@@ -368,12 +370,13 @@ namespace FollowUP.Infrastructure.Services
 
         private async Task SendMockupRequests(IInstaApi instaApi)
         {
-            var test = await instaApi.FeedProcessor.GetUserTimelineFeedAsync(PaginationParameters.MaxPagesToLoad(1));
-            await instaApi.FeedProcessor.GetExploreFeedAsync(PaginationParameters.MaxPagesToLoad(1));
-            await instaApi.UserProcessor.GetCurrentUserAsync();
-            await instaApi.FeedProcessor.GetRecentActivityFeedAsync(PaginationParameters.MaxPagesToLoad(1));
-            await instaApi.MessagingProcessor.GetDirectInboxAsync(PaginationParameters.MaxPagesToLoad(1));
-            await instaApi.StoryProcessor.GetStoryFeedAsync();
+            //var test = await instaApi.FeedProcessor.GetUserTimelineFeedAsync(PaginationParameters.MaxPagesToLoad(1));
+            //await instaApi.FeedProcessor.GetExploreFeedAsync(PaginationParameters.MaxPagesToLoad(1));
+            //await instaApi.UserProcessor.GetCurrentUserAsync();
+            //await instaApi.FeedProcessor.GetRecentActivityFeedAsync(PaginationParameters.MaxPagesToLoad(1));
+            //await instaApi.MessagingProcessor.GetDirectInboxAsync(PaginationParameters.MaxPagesToLoad(1));
+            //await instaApi.StoryProcessor.GetStoryFeedAsync();
+            await Task.Delay(1);
         }
 
         public async Task LoginToEmbeddedBrowserAsync(string username, string password, string twoFactorCode, string verificationCode)

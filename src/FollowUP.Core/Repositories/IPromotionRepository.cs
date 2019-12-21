@@ -9,7 +9,6 @@ namespace FollowUP.Core.Repositories
     {
         Task<IEnumerable<Promotion>> GetAllAsync();
         Task<Promotion> GetAsync(Guid Id);
-        Task<CompletedMedia> GetMediaAsync(string code, Guid accountId);
         Task<IEnumerable<Promotion>> GetAccountPromotionsAsync(Guid accountId);
         Task<IEnumerable<PromotionComment>> GetAccountsPromotionCommentsAsync(Guid accountId);
         Task<FollowedProfile> GetFollowedProfileAsync(Guid accountId, string profileId);
@@ -17,7 +16,6 @@ namespace FollowUP.Core.Repositories
         Task<IEnumerable<FollowedProfile>> GetFollowedProfilesAsync(Guid accountId);
         Task AddAsync(Promotion promotion);
         Task AddFollowedProfileAsync(FollowedProfile profile);
-        Task AddToBlacklistAsync(CompletedMedia media);
         Task AddPromotionCommentAsync(PromotionComment comment);
         Task UpdateAsync(Promotion promotion);
         Task RemoveAsync(Guid id);

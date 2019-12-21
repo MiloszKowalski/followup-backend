@@ -16,6 +16,6 @@ namespace FollowUP.Infrastructure.DTO
         public List<ChildComment> ChildComments { get; set; }
         public string ParentImageUri { get; set; }
         public string ParentMediaId { get; set; }
-        public DateTimeOffset CreatedAt { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }

@@ -60,15 +60,6 @@ namespace FollowUP.Infrastructure.Repositories
             await _context.SaveChangesAsync();
         }
 
-        public async Task<CompletedMedia> GetMediaAsync(string code, Guid accountId)
-            => await _context.MediaBlacklist.SingleOrDefaultAsync(x => x.Code == code && x.AccountId == accountId);
-
-        public async Task AddToBlacklistAsync(CompletedMedia media)
-        {
-            await _context.MediaBlacklist.AddAsync(media);
-            await _context.SaveChangesAsync();
-        }
-
         public async Task<IEnumerable<Promotion>> GetAccountPromotionsAsync(Guid accountId)
             => await _context.Promotions.Where(x => x.AccountId == accountId).ToListAsync();
 

@@ -1,5 +1,4 @@
-﻿using FollowUP.Domain;
-using System;
+﻿using System;
 
 namespace FollowUP.Core.Domain
 {
@@ -21,10 +20,10 @@ namespace FollowUP.Core.Domain
         {
             Id = id;
             AccountId = accountId;
-            ActionsPerDay = actionsPerDay;
-            FollowsPerDay = followsPerDay;
-            UnfollowsPerDay = unfollowsPerDay;
-            LikesPerDay = likesPerDay;
+            SetActionsPerDay(actionsPerDay);
+            SetFollowsPerDay(followsPerDay);
+            SetUnfollowsPerDay(unfollowsPerDay);
+            SetLikesPerDay(likesPerDay);
         }
 
         public void SetActionsPerDay(int actionsPerDay)
