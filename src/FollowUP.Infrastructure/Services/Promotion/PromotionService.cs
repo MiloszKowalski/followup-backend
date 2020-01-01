@@ -303,7 +303,7 @@ namespace FollowUP.Infrastructure.Services
                 return false;
             }
         }
-        public async Task LikeMedia(IInstaApi instaApi, InstagramAccount account, Promotion promotion,
+        public async Task<bool> LikeMedia(IInstaApi instaApi, InstagramAccount account, Promotion promotion,
             PromotionRepository promotionRepository, StatisticsService statisticsService, InstaMedia media, int likesDone)
         {
             var likeResponse = await instaApi.MediaProcessor.LikeMediaAsync(media.InstaIdentifier);
@@ -312,6 +312,7 @@ namespace FollowUP.Infrastructure.Services
                 likesDone++;
                 await statisticsService.AddLike(account.Id);
                 Console.WriteLine($"[{DateTime.Now}][{account.Username}](#{promotion.Label}) Like media {media.Code} by user: {media.User.UserName} - Success! - number of likes: {likesDone}");
+                return true;
             }
             else
             {
@@ -319,10 +320,23 @@ namespace FollowUP.Infrastructure.Services
                 if (likeResponse.Info.ResponseType != ResponseType.UnExpectedResponse)
                 {
                     await ProceedBan(account);
+                    return false;
                 }
+                else
+                {
+                    var searchKey = $"{account.Id}-{promotion.Label}-hashtag{_settings.SearchKey}";
+                    List<InstaMedia> medias = (List<InstaMedia>)_cache.Get(searchKey);
+
+                    // Remove media from cache
+                    medias.Remove(media);
+
+                    // Update remaining media list in cache
+                    _cache.Set(searchKey, medias);
+                }
+                return false;
             }
         }
-        public async Task FollowProfile(IInstaApi instaApi, InstagramAccount account, Promotion promotion,
+        public async Task<bool> FollowProfile(IInstaApi instaApi, InstagramAccount account, Promotion promotion,
             PromotionRepository promotionRepository, StatisticsService statisticsService, InstagramAccountRepository accountRepository, InstaMedia media, int followsDone)
         {
             var followResponse = await instaApi.UserProcessor.FollowUserAsync(media.User.Pk);
@@ -341,6 +355,7 @@ namespace FollowUP.Infrastructure.Services
 
                 Console.WriteLine($"[{DateTime.Now}][{account.Username}](#{promotion.Label}) Follow user: {media.User.UserName} - Success! - number of follows: {followsDone}");
                 await SetPromotionCooldown(account, accountRepository);
+                return true;
             }
             else
             {
@@ -348,7 +363,9 @@ namespace FollowUP.Infrastructure.Services
                 if (followResponse.Info.ResponseType != ResponseType.UnExpectedResponse)
                 {
                     await ProceedBan(account);
+                    return false;
                 }
+                return false;
             }
         }
         public async Task<bool> UnfollowProfile(IInstaApi instaApi, InstagramAccount account,
@@ -391,6 +408,13 @@ namespace FollowUP.Infrastructure.Services
                 await promotionRepository.RemoveFollowedProfileAsync(account.Id, profileToUnfollow.ProfileId);
                 await SetPromotionCooldown(account, accountRepository);
                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] Unfollow user: {profileName} - Success! - number of unfollows: {unFollowsDone}");
+                return true;
+            }
+            else if (unFollowResponse.Info.ResponseType == ResponseType.UnExpectedResponse)
+            {
+                await promotionRepository.RemoveFollowedProfileAsync(account.Id, profileToUnfollow.ProfileId);
+                await SetPromotionCooldown(account, accountRepository);
+                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Unfollow user: {profileName} - Failed - wrong user - Deleting profile from database.");
                 return true;
             }
             else

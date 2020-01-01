@@ -371,11 +371,11 @@ namespace FollowUP.Infrastructure.Services
         private async Task SendMockupRequests(IInstaApi instaApi)
         {
             //var test = await instaApi.FeedProcessor.GetUserTimelineFeedAsync(PaginationParameters.MaxPagesToLoad(1));
-            //await instaApi.FeedProcessor.GetExploreFeedAsync(PaginationParameters.MaxPagesToLoad(1));
-            //await instaApi.UserProcessor.GetCurrentUserAsync();
-            //await instaApi.FeedProcessor.GetRecentActivityFeedAsync(PaginationParameters.MaxPagesToLoad(1));
-            //await instaApi.MessagingProcessor.GetDirectInboxAsync(PaginationParameters.MaxPagesToLoad(1));
-            //await instaApi.StoryProcessor.GetStoryFeedAsync();
+            await instaApi.FeedProcessor.GetExploreFeedAsync(PaginationParameters.MaxPagesToLoad(1));
+            await instaApi.UserProcessor.GetCurrentUserAsync();
+            await instaApi.FeedProcessor.GetRecentActivityFeedAsync(PaginationParameters.MaxPagesToLoad(1));
+            await instaApi.MessagingProcessor.GetDirectInboxAsync(PaginationParameters.MaxPagesToLoad(1));
+            await instaApi.StoryProcessor.GetStoryFeedAsync();
             await Task.Delay(1);
         }
 

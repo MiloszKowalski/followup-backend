@@ -20,9 +20,9 @@ namespace FollowUP.Infrastructure.Services
         Task ProceedBan(InstagramAccount account);
         Task<bool> LookupActivityFeed(IInstaApi instaApi, InstagramAccount account, Promotion promotion = null);
         Task<bool> LookupExploreFeed(IInstaApi instaApi, InstagramAccount account, Promotion promotion = null);
-        Task LikeMedia(IInstaApi instaApi, InstagramAccount account, Promotion promotion,
+        Task<bool> LikeMedia(IInstaApi instaApi, InstagramAccount account, Promotion promotion,
             PromotionRepository promotionRepository, StatisticsService statisticsService, InstaMedia media, int likesDone);
-        Task FollowProfile(IInstaApi instaApi, InstagramAccount account, Promotion promotion, PromotionRepository promotionRepository,
+        Task<bool> FollowProfile(IInstaApi instaApi, InstagramAccount account, Promotion promotion, PromotionRepository promotionRepository,
             StatisticsService statisticsService, InstagramAccountRepository accountRepository, InstaMedia media, int unFollowsDone);
         Task<bool> UnfollowProfile(IInstaApi instaApi, InstagramAccount account, PromotionRepository promotionRepository,
             StatisticsService statisticsService, InstagramAccountRepository accountRepository, int unFollowsDone);

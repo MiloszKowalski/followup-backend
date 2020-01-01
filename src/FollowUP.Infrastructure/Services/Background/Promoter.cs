@@ -81,13 +81,13 @@ namespace FollowUP.Infrastructure.Services.Background
                                 return;
                             }
 
-                        // Get the account's settings to obey the limits
-                        var accountSettings = await _accountRepository.GetAccountSettingsAsync(account.Id);
-
                         // Instantiate new repository for each account to fix async save problem
                         var promotionRepository = new PromotionRepository(new FollowUPContext(options, _sqlSettings), _settings);
                         var accountRepository = new InstagramAccountRepository(new FollowUPContext(options, _sqlSettings));
                         var statisticsRepository = new StatisticsRepository(new FollowUPContext(options, _sqlSettings));
+
+                        // Get the account's settings to obey the limits
+                        var accountSettings = await accountRepository.GetAccountSettingsAsync(account.Id);
                         var statisticsService = new StatisticsService(statisticsRepository);
                         var accountStatistics = await statisticsService.GetTodayAccountStatistics(account.Id);
 
@@ -125,7 +125,11 @@ namespace FollowUP.Infrastructure.Services.Background
                             return;
 
                         // Random chance to unfollow; if successful, then don't go further
-                        if (rand.Next(0, 100) > 75)
+                        // Also, if both likes and follow limits are fulfilled, don't
+                        // do unfollow to avoid recurrence
+                        if (rand.Next(0, 100) > 75
+                        && (followsDone < accountSettings.FollowsPerDay
+                        || likesDone < accountSettings.LikesPerDay))
                         {
                             if(accountStatistics.UnfollowsCount < accountSettings.UnfollowsPerDay)
                             {
@@ -186,10 +190,18 @@ namespace FollowUP.Infrastructure.Services.Background
                             }
 
                             // Like the media if it hasn't hit the limits
-                            if(likesDone < accountSettings.LikesPerDay)
-                                await _promotionService.LikeMedia(instaApi, account, promotion, promotionRepository, statisticsService, media, likesDone);
+                            if (likesDone < accountSettings.LikesPerDay)
+                            {
+                                var succesfullyLiked = await _promotionService.LikeMedia(instaApi, account, promotion, promotionRepository, statisticsService, media, likesDone);
+                                if (!succesfullyLiked)
+                                    return;
+                            }
                             else
+                            {
                                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily likes limit! Yay!");
+                                if (followsDone >= accountSettings.FollowsPerDay)
+                                    return;
+                            }
 
                             // Three seconds interval between actions to be more organic
                             await Task.Delay(rand.Next(1000, 4000));
@@ -198,10 +210,17 @@ namespace FollowUP.Infrastructure.Services.Background
                             if(followsDone < accountSettings.FollowsPerDay)
                             {
                                 if(rand.Next(0, 100) > 20)
-                                    await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, statisticsService, accountRepository, media, followsDone);
+                                {
+                                    var succesfullyFollowed = await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, statisticsService, accountRepository, media, followsDone);
+                                    if (!succesfullyFollowed)
+                                        return;
+                                }
                             }
                             else
+                            {
                                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily follows limit! Yay!");
+                                return;
+                            }
 
                             // Remove media from cache
                             medias.Remove(media);
@@ -240,7 +259,10 @@ namespace FollowUP.Infrastructure.Services.Background
                             if (likesDone < accountSettings.LikesPerDay)
                                 await _promotionService.LikeMedia(instaApi, account, promotion, promotionRepository, statisticsService, userMedia.Value[0], likesDone);
                             else
+                            {
                                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily likes limit! Yay!");
+                                return;
+                            }
                                     
                             await Task.Delay(rand.Next(1000, 4000));
                                     
@@ -251,7 +273,10 @@ namespace FollowUP.Infrastructure.Services.Background
                                     await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, statisticsService, accountRepository, userMedia.Value[0], followsDone);
                             }
                             else
+                            {
                                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily follows limit! Yay!");
+                                return;
+                            }
 
                             // Remove follower status from cache
                             followersRelationships.Remove(followerStatus);
@@ -274,8 +299,6 @@ namespace FollowUP.Infrastructure.Services.Background
                     // Wait for each of the tasks to complete
                     task.Wait();
                 });
-                await Task.Delay(TimeSpan.FromSeconds(10));
-                Console.WriteLine("-------------------------------------------------------------------");
             }
         }
     }
