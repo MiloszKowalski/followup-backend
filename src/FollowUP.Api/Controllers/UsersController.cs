@@ -11,11 +11,13 @@ namespace FollowUP.Api.Controllers
     public class UsersController : ApiControllerBase
     {
         private readonly IUserService _userService;
+        private readonly ITokenManager _tokenManager;
 
-        public UsersController(IUserService userService,
+        public UsersController(IUserService userService, ITokenManager tokenManager,
             ICommandDispatcher commandDispatcher) : base(commandDispatcher)
         {
             _userService = userService;
+            _tokenManager = tokenManager;
         }
 
         public async Task<IActionResult> Get()
@@ -47,6 +49,14 @@ namespace FollowUP.Api.Controllers
         public async Task<IActionResult> RevokeRefreshToken(string token)
         {
             await _userService.RevokeRefreshToken(token);
+
+            return NoContent();
+        }
+
+        [HttpPost("tokens/cancel")]
+        public async Task<IActionResult> CancelAccessToken()
+        {
+            await _tokenManager.DeactivateCurrentAsync();
 
             return NoContent();
         }

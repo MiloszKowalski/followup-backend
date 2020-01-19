@@ -4,7 +4,6 @@ using FollowUP.Api.Framework;
 using FollowUP.Infrastructure.EF;
 using FollowUP.Infrastructure.IoC;
 using FollowUP.Infrastructure.Services;
-using FollowUP.Infrastructure.Services.Background;
 using FollowUP.Infrastructure.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
@@ -41,8 +40,11 @@ namespace FollowUP
         // This method gets called by the runtime. Use this method to add services to the container.
         public IServiceProvider ConfigureServices(IServiceCollection services)
         {
+            services.AddTransient<TokenManagerMiddleware>();
+            services.AddTransient<ExceptionHandlerMiddleware>();
             services.AddAuthorization(x => x.AddPolicy("admin", p => p.RequireRole("admin")));
             services.AddMemoryCache();
+            services.AddDistributedRedisCache(r => { r.Configuration = Configuration["redis:connectionString"]; });
 
             services.AddCors(o => o.AddPolicy("FollowUPCorsPolicy", corsBuilder =>
             {
@@ -120,6 +122,7 @@ namespace FollowUP
 
             app.UseCors("FollowUPCorsPolicy");
             app.UseCustomExceptionHandler();
+            app.UseCustomTokenManager();
             app.UseMvc();
         }
     }

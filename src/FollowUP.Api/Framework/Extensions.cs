@@ -6,5 +6,7 @@ namespace FollowUP.Api.Framework
     {
         public static IApplicationBuilder UseCustomExceptionHandler(this IApplicationBuilder builder)
             => builder.UseMiddleware(typeof(ExceptionHandlerMiddleware));
+        public static IApplicationBuilder UseCustomTokenManager(this IApplicationBuilder builder)
+            => builder.UseMiddleware(typeof(TokenManagerMiddleware));
     }
 }
