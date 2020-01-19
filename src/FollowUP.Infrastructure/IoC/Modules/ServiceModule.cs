@@ -1,6 +1,7 @@
 ﻿using Autofac;
 using FollowUP.Core.Domain;
 using FollowUP.Infrastructure.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using System.Reflection;
 
@@ -29,6 +30,10 @@ namespace FollowUP.Infrastructure.IoC.Modules
 
             builder.RegisterType<PasswordHasher<User>>()
                    .As<IPasswordHasher<User>>()
+                   .SingleInstance();
+
+            builder.RegisterType<HttpContextAccessor>()
+                   .As<IHttpContextAccessor>()
                    .SingleInstance();
         }
     }
