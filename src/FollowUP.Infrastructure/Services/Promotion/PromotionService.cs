@@ -121,17 +121,29 @@ namespace FollowUP.Infrastructure.Services
 
             await _promotionRepository.AddPromotionCommentAsync(comment);
         }
-        public async Task SetPromotionCooldown(InstagramAccount account, InstagramAccountRepository accountRepository)
-        {
+        public async Task SetPromotionCooldown(InstagramAccount account, InstagramAccountRepository accountRepository,
+            int minActionInterval = 0, int maxActionInterval = 0)
+        { 
             var rand = new Random();
-            var milliseconds = rand.Next(_settings.MinActionInterval, _settings.MaxActionInterval);
-            var previousMilliseconds = account.PreviousCooldownMilliseconds;
+            int milliseconds = 0;
+            int previousMilliseconds = 0;
 
-            // If the difference between this interval and the previous
-            // one is less than given number of milliseconds, randomize interval again
-            while (Math.Abs(previousMilliseconds - milliseconds) < _settings.MinIntervalDifference)
+            if(minActionInterval <= 0 || maxActionInterval <= 0 || minActionInterval > maxActionInterval)
+            {
                 milliseconds = rand.Next(_settings.MinActionInterval, _settings.MaxActionInterval);
-            account.SetActionCooldown(milliseconds);
+                previousMilliseconds = account.PreviousCooldownMilliseconds;
+
+                // If the difference between this interval and the previous
+                // one is less than given number of milliseconds, randomize interval again
+                while (Math.Abs(previousMilliseconds - milliseconds) < _settings.MinIntervalDifference)
+                    milliseconds = rand.Next(_settings.MinActionInterval, _settings.MaxActionInterval);
+                account.SetActionCooldown(milliseconds);
+            }
+            else
+            {
+                milliseconds = rand.Next(minActionInterval, maxActionInterval);
+                account.SetActionCooldown(milliseconds);
+            }
 
             await accountRepository.UpdateAsync(account);
             Console.WriteLine($"[{DateTime.Now}][{account.Username}] Waiting {milliseconds} milliseconds");
@@ -319,6 +331,12 @@ namespace FollowUP.Infrastructure.Services
                 Console.WriteLine($"[{DateTime.Now}][{account.Username}](#{promotion.Label}) Like media {media.Code} by user: {media.User.UserName} - Failed: {likeResponse.Info.Message} - {likeResponse.Info.ResponseType}");
                 if (likeResponse.Info.ResponseType != ResponseType.UnExpectedResponse)
                 {
+                    if(likeResponse.Info.ResponseType == ResponseType.ChallengeRequired)
+                    {
+                        await instaApi.GetLoggedInChallengeDataInfoAsync();
+                        await instaApi.AcceptChallengeAsync(2, "613280");
+                        return false;
+                    }
                     await ProceedBan(account);
                     return false;
                 }
@@ -362,6 +380,12 @@ namespace FollowUP.Infrastructure.Services
                 Console.WriteLine($"[{DateTime.Now}][{account.Username}](#{promotion.Label}) Follow user: {media.User.UserName} - Failed: {followResponse.Info.Message} - {followResponse.Info.ResponseType}");
                 if (followResponse.Info.ResponseType != ResponseType.UnExpectedResponse)
                 {
+                    if (followResponse.Info.ResponseType == ResponseType.ChallengeRequired)
+                    {
+                        await instaApi.GetLoggedInChallengeDataInfoAsync();
+                        await instaApi.AcceptChallengeAsync();
+                        return false;
+                    }
                     await ProceedBan(account);
                     return false;
                 }
@@ -371,15 +395,16 @@ namespace FollowUP.Infrastructure.Services
         public async Task<bool> UnfollowProfile(IInstaApi instaApi, InstagramAccount account,
             PromotionRepository promotionRepository, StatisticsService statisticsService, InstagramAccountRepository accountRepository, int unFollowsDone)
         {
-            // Dummy request to simulate app following search
-            await instaApi.UserProcessor.GetCurrentUserAsync();
-            await instaApi.UserProcessor.GetUserFollowingAsync(account.Username, PaginationParameters.MaxPagesToLoad(1));
             var profileToUnfollow = await promotionRepository.GetRandomFollowedProfileAsync(account.Id);
             if (profileToUnfollow == null)
             {
                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] Unfollow - Failed: No profiles to unfollow");
                 return false;
             }
+
+            // Dummy request to simulate app following search
+            await instaApi.UserProcessor.GetCurrentUserAsync();
+            await instaApi.UserProcessor.GetUserFollowingAsync(account.Username, PaginationParameters.MaxPagesToLoad(1));
 
             long profileId;
 
@@ -422,6 +447,13 @@ namespace FollowUP.Infrastructure.Services
                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] Unfollow user: {profileName} - Failed: {unFollowResponse.Info.Message} - {unFollowResponse.Info.ResponseType}");
                 if (unFollowResponse.Info.ResponseType != ResponseType.UnExpectedResponse)
                 {
+                    if (unFollowResponse.Info.ResponseType == ResponseType.ChallengeRequired)
+                    {
+                        await instaApi.GetLoggedInChallengeDataInfoAsync();
+                        // TODO: Get proper method and value from account's info
+                        await instaApi.AcceptChallengeAsync(1, "+48500067012");
+                        return false;
+                    }
                     await ProceedBan(account);
                     return false;
                 }

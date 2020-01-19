@@ -1,6 +1,7 @@
 ﻿using FollowUP.Core.Domain;
 using InstagramApiSharp;
 using InstagramApiSharp.API;
+using InstagramApiSharp.Classes;
 using InstagramApiSharp.Classes.Models;
 using System;
 using System.Collections.Generic;
@@ -13,9 +14,10 @@ namespace FollowUP.Infrastructure.Extensions
         public static async Task<List<InstaMedia>> GetMediaByHashtagAsync(this IInstaApi instaApi, InstagramAccount account, Promotion promotion)
         {
             var firstHashtagResponse = await instaApi.FeedProcessor.GetTagFeedAsync(promotion.Label, PaginationParameters.MaxPagesToLoad(1));
-            if (firstHashtagResponse.Info.Message == "challenge_required")
+            if (firstHashtagResponse.Info.ResponseType == ResponseType.ChallengeRequired)
             {
                 await instaApi.GetLoggedInChallengeDataInfoAsync();
+                // TODO: Get proper method and value from account's info
                 await instaApi.AcceptChallengeAsync();
                 firstHashtagResponse = await instaApi.FeedProcessor.GetTagFeedAsync(promotion.Label, PaginationParameters.MaxPagesToLoad(1));
             }

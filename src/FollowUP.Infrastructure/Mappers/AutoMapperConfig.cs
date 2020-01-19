@@ -14,6 +14,7 @@ namespace FollowUP.Infrastructure.Mappers
                 cfg.CreateMap<Comment, CommentDto>();
                 cfg.CreateMap<Promotion, PromotionDto>();
                 cfg.CreateMap<PromotionComment, PromotionCommentDto>();
+                cfg.CreateMap<JsonWebToken, JwtDto>();
             })
             .CreateMapper();
     }

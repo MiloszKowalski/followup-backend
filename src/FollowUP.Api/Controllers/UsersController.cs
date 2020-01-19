@@ -1,5 +1,6 @@
 ﻿using FollowUP.Controllers;
 using FollowUP.Infrastructure.Commands;
+using FollowUP.Infrastructure.DTO;
 using FollowUP.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -35,6 +36,19 @@ namespace FollowUP.Api.Controllers
             }
 
             return Json(user);
+        }
+
+        [HttpPost("tokens/{token}/refresh")]
+        [AllowAnonymous]
+        public async Task<IActionResult> RefreshAccessToken(string token)
+        => Ok(await _userService.RefreshAccessToken(token));
+
+        [HttpPost("tokens/{token}/revoke")]
+        public async Task<IActionResult> RevokeRefreshToken(string token)
+        {
+            await _userService.RevokeRefreshToken(token);
+
+            return NoContent();
         }
     }
 }

@@ -17,6 +17,7 @@ namespace FollowUP.Infrastructure.EF
         public DbSet<AccountSettings> AccountSettings { get; set; }
         public DbSet<FollowedProfile> FollowedProfiles { get; set; }
         public DbSet<AccountStatistics> AccountStatistics { get; set; }
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
 
         public FollowUPContext(DbContextOptions<FollowUPContext> options, SqlSettings settings) : base(options)
         {
@@ -68,6 +69,9 @@ namespace FollowUP.Infrastructure.EF
 
             var accountStatisticsItemBuilder = modelBuilder.Entity<AccountStatistics>();
             accountStatisticsItemBuilder.HasKey(x => x.Id);
+
+            var refreshTokensItemBuilder = modelBuilder.Entity<RefreshToken>();
+            refreshTokensItemBuilder.HasKey(x => x.Id);
         }
     }
 }

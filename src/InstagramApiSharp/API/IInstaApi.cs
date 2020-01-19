@@ -327,7 +327,7 @@ namespace InstagramApiSharp.API
         ///     <para>You must call <see cref="GetLoggedInChallengeDataInfoAsync"/> first,
         ///     if you across to <see cref="ResultInfo.ResponseType"/> equals to <see cref="ResponseType.ChallengeRequired"/> while you logged in!</para>
         /// </summary>
-        Task<IResult<bool>> AcceptChallengeAsync();
+        Task<IResult<bool>> AcceptChallengeAsync(int verificationCase = 0, string verificationData = "");
 
 
         /////////////////////////////////// Challenge for logged in user /////////////////////////////////

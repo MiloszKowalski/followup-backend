@@ -14,5 +14,9 @@ namespace FollowUP.Core.Repositories
         Task AddAsync(User user);
         Task UpdateAsync(User user);
         Task RemoveAsync(Guid id);
+        Task AddRefreshToken(RefreshToken token);
+        Task UpdateRefreshToken(RefreshToken token);
+        Task<RefreshToken> GetRefreshToken(string token);
+        Task<RefreshToken> GetDeviceRefreshToken(Guid userId, string userAgent);
     }
 }

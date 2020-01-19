@@ -4,7 +4,6 @@ using FollowUP.Infrastructure.EF;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace FollowUP.Infrastructure.Repositories
@@ -46,6 +45,24 @@ namespace FollowUP.Infrastructure.Repositories
         public async Task UpdateAsync(User user)
         {
             _context.Users.Update(user);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<RefreshToken> GetRefreshToken(string token)
+            => await _context.RefreshTokens.SingleOrDefaultAsync(x => x.Token == token);
+
+        public async Task<RefreshToken> GetDeviceRefreshToken(Guid userId, string userAgent)
+            => await _context.RefreshTokens.SingleOrDefaultAsync(x => x.UserId == userId && x.UserAgent == userAgent);
+
+        public async Task AddRefreshToken(RefreshToken token)
+        {
+            await _context.RefreshTokens.AddAsync(token);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateRefreshToken(RefreshToken token)
+        {
+            _context.RefreshTokens.Update(token);
             await _context.SaveChangesAsync();
         }
     }

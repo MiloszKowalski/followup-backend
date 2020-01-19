@@ -1,4 +1,6 @@
-﻿using FollowUP.Infrastructure.DTO;
+﻿using AutoMapper;
+using FollowUP.Core.Domain;
+using FollowUP.Infrastructure.DTO;
 using FollowUP.Infrastructure.Extensions;
 using FollowUP.Infrastructure.Settings;
 using Microsoft.IdentityModel.Tokens;
@@ -12,10 +14,12 @@ namespace FollowUP.Infrastructure.Services
     public class JwtHandler : IJwtHandler
     {
         private readonly JwtSettings _settings;
+        private readonly IMapper _mapper;
 
-        public JwtHandler(JwtSettings settings)
+        public JwtHandler(JwtSettings settings, IMapper mapper)
         {
             _settings = settings;
+            _mapper = mapper;
         }
 
         public JwtDto CreateToken(Guid userId, string role)
@@ -43,11 +47,13 @@ namespace FollowUP.Infrastructure.Services
             ) ;
             var token = new JwtSecurityTokenHandler().WriteToken(jwt);
 
-            return new JwtDto
+            var jsonWebToken = new JsonWebToken
             {
-                Token = token,
+                AccessToken = token,
                 Expires = expires.ToTimestamp()
             };
+
+            return _mapper.Map<JwtDto>(jsonWebToken);
         }
     }
 }
