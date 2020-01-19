@@ -15,7 +15,7 @@ namespace FollowUP.Infrastructure.Services
         Task<IEnumerable<PromotionDto>> GetAllPromotionsByAccountId(Guid accountId);
         Task CreatePromotion(Guid accountId, PromotionType promotionType, string Label);
         Task CreatePromotionComment(Guid accountId, string content);
-        Task SetPromotionCooldown(InstagramAccount account, InstagramAccountRepository accountRepository);
+        Task SetPromotionCooldown(InstagramAccount account, InstagramAccountRepository accountRepository, int minActionInterval = 0, int maxActionInterval = 0);
         Task ReLoginUser(InstagramAccount account);
         Task ProceedBan(InstagramAccount account);
         Task<bool> LookupActivityFeed(IInstaApi instaApi, InstagramAccount account, Promotion promotion = null);

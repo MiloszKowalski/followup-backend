@@ -24,9 +24,13 @@ namespace FollowUP.Api.Controllers
         public async Task<IActionResult> Post([FromBody]Login command)
         {
             command.TokenId = Guid.NewGuid();
+            if (Request.Headers.ContainsKey("User-Agent"))
+                command.UserAgent = Request.Headers["User-Agent"].ToString();
+            else
+                return BadRequest("Could not resolve request's User Agent.");
+
             await DispatchAsync(command);
             var jwt = _cache.GetJwt(command.TokenId);
-
             return Json(jwt);
         }
     }

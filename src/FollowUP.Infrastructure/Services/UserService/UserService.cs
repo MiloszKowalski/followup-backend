@@ -12,12 +12,14 @@ namespace FollowUP.Infrastructure.Services
     public class UserService : IUserService
     {
         private readonly IUserRepository _userRepository;
+        private readonly IJwtHandler _jwtHandler;
         private readonly IEncrypter _encrypter;
         private readonly IMapper _mapper;
 
-        public UserService(IUserRepository userRepository, IEncrypter encrypter, IMapper mapper)
+        public UserService(IUserRepository userRepository, IJwtHandler jwtHandler, IEncrypter encrypter, IMapper mapper)
         {
             _userRepository = userRepository;
+            _jwtHandler = jwtHandler;
             _encrypter = encrypter;
             _mapper = mapper;
         }
@@ -47,16 +49,13 @@ namespace FollowUP.Infrastructure.Services
         {
             var user = await _userRepository.GetAsync(email);
             if (user == null)
-            {
                 throw new ServiceException(ErrorCodes.InvalidCredentials,
                     "Invalid credentials");
-            }
 
             var hash = _encrypter.GetHash(password, user.Salt);
             if (user.Password == hash)
-            {
                 return;
-            }
+
             throw new ServiceException(ErrorCodes.InvalidCredentials,
                 "Invalid credentials");
         }
@@ -82,6 +81,39 @@ namespace FollowUP.Infrastructure.Services
             var hash = _encrypter.GetHash(password, salt);
             user = new User(userId, email, username, fullname, role, hash, salt);
             await _userRepository.AddAsync(user);
+        }
+
+        public async Task<JwtDto> RefreshAccessToken(string token)
+        {
+            var refreshToken = await _userRepository.GetRefreshToken(token);
+            if (refreshToken == null)
+                throw new Exception("Refresh token was not found.");
+            
+            if (refreshToken.Revoked)
+                throw new Exception("Refresh token was revoked");
+
+            var user = await _userRepository.GetAsync(refreshToken.UserId);
+            if (user == null)
+                throw new ServiceException(ErrorCodes.UserNotFound, "User with given id doesn't exist.");
+
+            var jwt = _jwtHandler.CreateToken(refreshToken.UserId, user.Role);
+            jwt.RefreshToken = refreshToken.Token;
+
+            return jwt;
+        }
+
+        public async Task RevokeRefreshToken(string token)
+        {
+            var refreshToken = await _userRepository.GetRefreshToken(token);
+            if (refreshToken == null)
+                throw new Exception("Refresh token was not found.");
+
+            if (refreshToken.Revoked)
+                throw new Exception("Refresh token was already revoked.");
+
+            refreshToken.Revoked = true;
+
+            await _userRepository.UpdateRefreshToken(refreshToken);
         }
     }
 }

@@ -1494,7 +1494,7 @@ namespace InstagramApiSharp.API
         ///     <para>You must call <see cref="IInstaApi.GetLoggedInChallengeDataInfoAsync"/> first,
         ///     if you across to <see cref="ResultInfo.ResponseType"/> equals to <see cref="ResponseType.ChallengeRequired"/> while you logged in!</para>
         /// </summary>
-        public async Task<IResult<bool>> AcceptChallengeAsync()
+        public async Task<IResult<bool>> AcceptChallengeAsync(int verificationCase = 0, string verificationData = "")
         {
             UserAuthValidator.Validate(_userAuthValidate);
             try
@@ -1509,8 +1509,16 @@ namespace InstagramApiSharp.API
                     {"guid", _deviceInfo.DeviceGuid.ToString()},
                     {"device_id", _deviceInfo.DeviceId},
                     {"_uuid", _deviceInfo.DeviceGuid.ToString()}
+                    
                 };
 
+                switch (verificationCase)
+                {
+                    case 1: data.Add("phone_number", verificationData); break;
+                    case 2: data.Add("security_code", verificationData); break;
+                    default: break;
+                }
+               
                 var request = _httpHelper.GetSignedRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
                 var response = await _httpRequestProcessor.SendAsync(request);
                 var json = await response.Content.ReadAsStringAsync();

@@ -5,6 +5,7 @@ using FollowUP.Infrastructure.Extensions;
 using FollowUP.Infrastructure.Repositories;
 using FollowUP.Infrastructure.Settings;
 using InstagramApiSharp;
+using InstagramApiSharp.Classes;
 using InstagramApiSharp.Classes.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -60,7 +61,7 @@ namespace FollowUP.Infrastructure.Services.Background
                 }
 
                 // Night break for it to work 24/7
-                if(DateTime.Now < DateTime.Today.AddHours(6) || DateTime.Now > DateTime.Today.AddHours(22) )
+                if(DateTime.Now < DateTime.Today.AddHours(6) || DateTime.Now > DateTime.Today.AddHours(24) )
                 {
                     Console.WriteLine($"[{DateTime.Now}] Night break. - (22:00 - 6:00) - Come back at 6 o' clock!");
                     await Task.Delay(TimeSpan.FromHours(1));
@@ -127,11 +128,12 @@ namespace FollowUP.Infrastructure.Services.Background
                         // Random chance to unfollow; if successful, then don't go further
                         // Also, if both likes and follow limits are fulfilled, don't
                         // do unfollow to avoid recurrence
-                        if (rand.Next(0, 100) > 75
+                        var r = rand.Next(0, 100);
+                        if (r > 85
                         && (followsDone < accountSettings.FollowsPerDay
                         || likesDone < accountSettings.LikesPerDay))
                         {
-                            if(accountStatistics.UnfollowsCount < accountSettings.UnfollowsPerDay)
+                            if (accountStatistics.UnfollowsCount < accountSettings.UnfollowsPerDay)
                             {
                                 var succesfullyUnfollowed = await _promotionService.UnfollowProfile(instaApi, account, promotionRepository, statisticsService, accountRepository, unFollowsDone);
                                 if (succesfullyUnfollowed)
@@ -148,7 +150,7 @@ namespace FollowUP.Infrastructure.Services.Background
                                 }
                             }
                             else
-                                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily unfollows limit! Yay!");
+                                Console.WriteLine($"[{DateTime.Now}][{account.Username}] There was a challenge required or the account has reached the daily unfollows limit! Yay!");
                         }
 
                         // Get the current promotion for the given account
@@ -209,7 +211,7 @@ namespace FollowUP.Infrastructure.Services.Background
                             // Follow media's author profile if it hasn't hit the limits
                             if(followsDone < accountSettings.FollowsPerDay)
                             {
-                                if(rand.Next(0, 100) > 20)
+                                if(rand.Next(0, 100) > 10)
                                 {
                                     var succesfullyFollowed = await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, statisticsService, accountRepository, media, followsDone);
                                     if (!succesfullyFollowed)
@@ -247,10 +249,31 @@ namespace FollowUP.Infrastructure.Services.Background
                             var randomRelationshipIndex = rand.Next(0, lastRelationshipIndex);
                             var followerStatus = followersRelationships[randomRelationshipIndex];
 
+                            if (followerStatus.IsPrivate)
+                            {
+                                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account is private, skipping...");
+                                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Current relationship list count: {followersRelationships.Count()}");
+
+                                // Remove follower status from cache
+                                followersRelationships.Remove(followerStatus);
+
+                                // Update remaining media list in cache
+                                _cache.Set(searchKey, followersRelationships);
+                                return;
+                            }
+
                             var userMedia = await instaApi.UserProcessor.GetUserMediaByIdAsync(followerStatus.Pk, PaginationParameters.MaxPagesToLoad(1));
 
                             if (!userMedia.Succeeded)
+                            {
+                                if(userMedia.Info.ResponseType == ResponseType.UnExpectedResponse && userMedia.Info.Message != "Not authorized to view user")
+                                {
+                                    Console.WriteLine($"[{DateTime.Now}][{account.Username}] Too many actions.");
+                                    await _promotionService.SetPromotionCooldown(account, accountRepository, 300000, 600000);
+                                }
+                                
                                 return;
+                            }
 
                             if (!userMedia.Value.Any())
                                 return;
@@ -269,7 +292,7 @@ namespace FollowUP.Infrastructure.Services.Background
                             // Follow media's author profile if it hasn't hit the limits
                             if (followsDone < accountSettings.FollowsPerDay)
                             {
-                                if(rand.Next(0, 100) > 40)
+                                if(rand.Next(0, 100) > 10)
                                     await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, statisticsService, accountRepository, userMedia.Value[0], followsDone);
                             }
                             else

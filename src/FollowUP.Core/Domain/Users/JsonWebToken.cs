@@ -1,6 +1,8 @@
-﻿namespace FollowUP.Infrastructure.DTO
+﻿using System;
+
+namespace FollowUP.Core.Domain
 {
-    public class JwtDto
+    public class JsonWebToken
     {
         public string AccessToken { get; set; }
         public string RefreshToken { get; set; }

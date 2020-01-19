@@ -52,7 +52,7 @@ namespace FollowUP
             }));
 
             //services.AddHostedService<CommentsUpdater>();
-            services.AddHostedService<Promoter>();
+            //services.AddHostedService<Promoter>();
 
             services.AddMvc()
                     .AddJsonOptions(x => x.SerializerSettings.Formatting = Formatting.Indented)

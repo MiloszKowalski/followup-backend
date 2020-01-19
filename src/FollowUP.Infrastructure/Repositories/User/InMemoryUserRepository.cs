@@ -10,6 +10,7 @@ namespace FollowUP.Infrastructure.Repositories
     public class InMemoryUserRepository : IUserRepository
     {
         private static readonly ISet<User> _users = new HashSet<User>();
+        private static readonly ISet<RefreshToken> _refreshTokens = new HashSet<RefreshToken>();
 
         public async Task<User> GetAsync(Guid id)
             => await Task.FromResult(_users.SingleOrDefault(x => x.Id == id));
@@ -37,6 +38,23 @@ namespace FollowUP.Infrastructure.Repositories
         }
 
         public async Task UpdateAsync(User user)
+        {
+            await Task.CompletedTask;
+        }
+
+        public async Task<RefreshToken> GetRefreshToken(string token)
+        => await Task.FromResult(_refreshTokens.SingleOrDefault(x => x.Token == token));
+
+        public async Task<RefreshToken> GetDeviceRefreshToken(Guid userId, string userAgent)
+        => await Task.FromResult(_refreshTokens.SingleOrDefault(x => x.UserId == userId && x.UserAgent == userAgent));
+
+        public async Task AddRefreshToken(RefreshToken token)
+        {
+            _refreshTokens.Add(token);
+            await Task.CompletedTask;
+        }
+
+        public async Task UpdateRefreshToken(RefreshToken token)
         {
             await Task.CompletedTask;
         }
