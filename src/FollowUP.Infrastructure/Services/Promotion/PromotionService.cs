@@ -372,7 +372,6 @@ namespace FollowUP.Infrastructure.Services
                 }
 
                 Console.WriteLine($"[{DateTime.Now}][{account.Username}](#{promotion.Label}) Follow user: {media.User.UserName} - Success! - number of follows: {followsDone}");
-                await SetPromotionCooldown(account, accountRepository);
                 return true;
             }
             else
@@ -554,15 +553,15 @@ namespace FollowUP.Infrastructure.Services
                 return null;
             }
 
+            var promotionList = promotions.OrderBy(x => x.Label).ToList();
+
             // Queue the promotions to make only one per iteration
-            var currentPromotion = promotions.First();
+            var currentPromotion = promotionList.First();
 
             var previousPromotion = (Promotion)_cache.Get(promotionKey);
 
             if (previousPromotion != null)
             {
-                var promotionList = promotions.ToList();
-
                 int previousPromotionIndex = -1;
                 foreach (var promo in promotionList)
                 {

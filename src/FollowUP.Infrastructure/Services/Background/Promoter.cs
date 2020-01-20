@@ -74,7 +74,7 @@ namespace FollowUP.Infrastructure.Services.Background
                     var task = Task.Run(async () =>
                     {
                         // Skip promotion for the banned account
-                        if(account.BannedUntil != null)
+                        if (account.BannedUntil != null)
                             if (account.BannedUntil > DateTime.UtcNow)
                             {
                                 //Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account banned until {account.BannedUntil}, skipping...");
@@ -164,6 +164,9 @@ namespace FollowUP.Infrastructure.Services.Background
                             return;
                         }
 
+                        bool succesfullyFollowed = false;
+                        bool succesfullyLiked = false;
+
                         if (promotion.PromotionType == PromotionType.Hashtag)
                         {
                             // Try getting media list from cache
@@ -194,7 +197,7 @@ namespace FollowUP.Infrastructure.Services.Background
                             // Like the media if it hasn't hit the limits
                             if (likesDone < accountSettings.LikesPerDay)
                             {
-                                var succesfullyLiked = await _promotionService.LikeMedia(instaApi, account, promotion, promotionRepository, statisticsService, media, likesDone);
+                                succesfullyLiked = await _promotionService.LikeMedia(instaApi, account, promotion, promotionRepository, statisticsService, media, likesDone);
                                 if (!succesfullyLiked)
                                     return;
                             }
@@ -213,9 +216,14 @@ namespace FollowUP.Infrastructure.Services.Background
                             {
                                 if(rand.Next(0, 100) > 10)
                                 {
-                                    var succesfullyFollowed = await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, statisticsService, accountRepository, media, followsDone);
+                                    succesfullyFollowed = await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, statisticsService, accountRepository, media, followsDone);
                                     if (!succesfullyFollowed)
+                                    {
+                                        if (succesfullyLiked)
+                                            await _promotionService.SetPromotionCooldown(account, accountRepository);
                                         return;
+                                    }
+                                    await _promotionService.SetPromotionCooldown(account, accountRepository);
                                 }
                             }
                             else
@@ -251,7 +259,7 @@ namespace FollowUP.Infrastructure.Services.Background
 
                             if (followerStatus.IsPrivate)
                             {
-                                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account is private, skipping...");
+                                Console.WriteLine($"[{DateTime.Now}][{account.Username}](@{promotion.Label}) Account is private, skipping...");
                                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] Current relationship list count: {followersRelationships.Count()}");
 
                                 // Remove follower status from cache
@@ -280,7 +288,11 @@ namespace FollowUP.Infrastructure.Services.Background
 
                             // Like the media if it hasn't hit the limits
                             if (likesDone < accountSettings.LikesPerDay)
-                                await _promotionService.LikeMedia(instaApi, account, promotion, promotionRepository, statisticsService, userMedia.Value[0], likesDone);
+                            {
+                                succesfullyLiked = await _promotionService.LikeMedia(instaApi, account, promotion, promotionRepository, statisticsService, userMedia.Value[0], likesDone);
+                                if (!succesfullyLiked)
+                                    return;
+                            }
                             else
                             {
                                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily likes limit! Yay!");
@@ -293,7 +305,16 @@ namespace FollowUP.Infrastructure.Services.Background
                             if (followsDone < accountSettings.FollowsPerDay)
                             {
                                 if(rand.Next(0, 100) > 10)
-                                    await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, statisticsService, accountRepository, userMedia.Value[0], followsDone);
+                                {
+                                    succesfullyFollowed = await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, statisticsService, accountRepository, userMedia.Value[0], followsDone);
+                                    if(!succesfullyFollowed)
+                                    {
+                                        if(succesfullyLiked)
+                                            await _promotionService.SetPromotionCooldown(account, accountRepository);
+                                        return;
+                                    }
+                                    await _promotionService.SetPromotionCooldown(account, accountRepository);
+                                }
                             }
                             else
                             {
