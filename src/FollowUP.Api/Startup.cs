@@ -4,6 +4,7 @@ using FollowUP.Api.Framework;
 using FollowUP.Infrastructure.EF;
 using FollowUP.Infrastructure.IoC;
 using FollowUP.Infrastructure.Services;
+using FollowUP.Infrastructure.Services.Background;
 using FollowUP.Infrastructure.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
@@ -28,6 +29,7 @@ namespace FollowUP
             var builder = new ConfigurationBuilder()
                 .SetBasePath(env.ContentRootPath)
                 .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                .AddJsonFile("appsettings.secrets.json", optional: true, reloadOnChange: true)
                 .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true)
                 .AddEnvironmentVariables();
             Configuration = builder.Build();
@@ -53,8 +55,10 @@ namespace FollowUP
                            .AllowAnyHeader();
             }));
 
-            //services.AddHostedService<CommentsUpdater>();
-            //services.AddHostedService<Promoter>();
+            if (Configuration["promotion:updateComments"] == "True")
+                services.AddHostedService<CommentsUpdater>();
+            if (Configuration["promotion:enabled"] == "True")
+                services.AddHostedService<Promoter>();
 
             services.AddMvc()
                     .AddJsonOptions(x => x.SerializerSettings.Formatting = Formatting.Indented)
