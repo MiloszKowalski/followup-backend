@@ -1,6 +1,5 @@
 ﻿using FollowUP.Controllers;
 using FollowUP.Infrastructure.Commands;
-using FollowUP.Infrastructure.DTO;
 using FollowUP.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace FollowUP.Api.Controllers
 {
+    [Authorize]
     public class UsersController : ApiControllerBase
     {
         private readonly IUserService _userService;
@@ -19,7 +19,9 @@ namespace FollowUP.Api.Controllers
             _userService = userService;
             _tokenManager = tokenManager;
         }
-
+        
+        [Authorize(Policy = "admin")]
+        [HttpGet]
         public async Task<IActionResult> Get()
         {
             var users = await _userService.BrowseAsync();
@@ -27,7 +29,7 @@ namespace FollowUP.Api.Controllers
             return Json(users);
         }
 
-        [Authorize]
+        [Authorize(Policy = "admin")]
         [HttpGet("{email}")]
         public async Task<IActionResult> Get(string email)
         {
@@ -40,8 +42,8 @@ namespace FollowUP.Api.Controllers
             return Json(user);
         }
 
-        [HttpPost("tokens/{token}/refresh")]
         [AllowAnonymous]
+        [HttpPost("tokens/{token}/refresh")]
         public async Task<IActionResult> RefreshAccessToken(string token)
         => Ok(await _userService.RefreshAccessToken(token));
 

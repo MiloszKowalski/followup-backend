@@ -51,298 +51,307 @@ namespace FollowUP.Infrastructure.Services.Background
 
             while (!stoppingToken.IsCancellationRequested)
             {
-                // Get all the accounts with promotion module activated
-                var accounts = await _accountRepository.GetAllWithPromotionsAsync();
-                if (!accounts.Any())
+                try
                 {
-                    Console.WriteLine("Could not find any accounts with promotions module, waiting 10 seconds");
-                    await Task.Delay(TimeSpan.FromSeconds(10));
-                    continue;
-                }
-
-                // Night break for it to work 24/7
-                if(DateTime.Now < DateTime.Today.AddHours(6) || DateTime.Now > DateTime.Today.AddHours(24) )
-                {
-                    Console.WriteLine($"[{DateTime.Now}] Night break. - (22:00 - 6:00) - Come back at 6 o' clock!");
-                    await Task.Delay(TimeSpan.FromHours(1));
-                    continue;
-                }
-
-                // Parallel task for each account with promotion for true asynchrony
-                Parallel.ForEach(accounts, (account) =>
-                 {
-                    var task = Task.Run(async () =>
+                    // Get all the accounts with promotion module activated
+                    var accounts = await _accountRepository.GetAllWithPromotionsAsync();
+                    if (!accounts.Any())
                     {
-                        // Skip promotion for the banned account
-                        if (account.BannedUntil != null)
-                            if (account.BannedUntil > DateTime.UtcNow)
+                        Console.WriteLine("Could not find any accounts with promotions module, waiting 10 seconds");
+                        await Task.Delay(TimeSpan.FromSeconds(10));
+                        continue;
+                    }
+
+                    // Night break for it to work 24/7
+                    if (DateTime.Now < DateTime.Today.AddHours(6) || DateTime.Now > DateTime.Today.AddHours(24))
+                    {
+                        Console.WriteLine($"[{DateTime.Now}] Night break. - (24:00 - 6:00) - Come back at 6 o' clock!");
+                        await Task.Delay(TimeSpan.FromHours(1));
+                        continue;
+                    }
+
+                    // Parallel task for each account with promotion for true asynchrony
+                    Parallel.ForEach(accounts, (account) =>
+                    {
+                        var task = Task.Run(async () =>
+                        {
+                            // Skip promotion for the banned account
+                            if (account.BannedUntil != null)
+                                if (account.BannedUntil > DateTime.UtcNow)
+                                {
+                                    //Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account banned until {account.BannedUntil}, skipping...");
+                                    await Task.Delay(TimeSpan.FromSeconds(5));
+                                    return;
+                                }
+
+                            // Instantiate new repository for each account to fix async save problem
+                            var promotionRepository = new PromotionRepository(new FollowUPContext(options, _sqlSettings), _settings);
+                            var accountRepository = new InstagramAccountRepository(new FollowUPContext(options, _sqlSettings));
+                            var statisticsRepository = new StatisticsRepository(new FollowUPContext(options, _sqlSettings));
+
+                            // Get the account's settings to obey the limits
+                            var accountSettings = await accountRepository.GetAccountSettingsAsync(account.Id);
+                            var statisticsService = new StatisticsService(statisticsRepository);
+                            var accountStatistics = await statisticsService.GetTodayAccountStatistics(account.Id);
+
+                            // Get account's statistics
+                            if (accountStatistics == null)
                             {
-                                //Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account banned until {account.BannedUntil}, skipping...");
+                                var statistics = new AccountStatistics(Guid.NewGuid(), account.Id);
+                                await statisticsRepository.AddAsync(statistics);
+                                accountStatistics = statistics;
+                            }
+
+                            var actionsDone = accountStatistics.ActionsCount;
+                            var likesDone = accountStatistics.LikesCount;
+                            var followsDone = accountStatistics.FollowsCount;
+                            var unFollowsDone = accountStatistics.UnfollowsCount;
+
+                            // Check if we reached the account's limits
+                            if (actionsDone >= accountSettings.ActionsPerDay)
+                            {
+                                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily action limit! Yay!");
                                 await Task.Delay(TimeSpan.FromSeconds(5));
                                 return;
                             }
 
-                        // Instantiate new repository for each account to fix async save problem
-                        var promotionRepository = new PromotionRepository(new FollowUPContext(options, _sqlSettings), _settings);
-                        var accountRepository = new InstagramAccountRepository(new FollowUPContext(options, _sqlSettings));
-                        var statisticsRepository = new StatisticsRepository(new FollowUPContext(options, _sqlSettings));
-
-                        // Get the account's settings to obey the limits
-                        var accountSettings = await accountRepository.GetAccountSettingsAsync(account.Id);
-                        var statisticsService = new StatisticsService(statisticsRepository);
-                        var accountStatistics = await statisticsService.GetTodayAccountStatistics(account.Id);
-
-                        // Get account's statistics
-                        if (accountStatistics == null)
-                        {
-                            var statistics = new AccountStatistics(Guid.NewGuid(), account.Id);
-                            await statisticsRepository.AddAsync(statistics);
-                            accountStatistics = statistics;
-                        }
-
-                        var actionsDone = accountStatistics.ActionsCount;
-                        var likesDone = accountStatistics.LikesCount;
-                        var followsDone = accountStatistics.FollowsCount;
-                        var unFollowsDone = accountStatistics.UnfollowsCount;
-                        
-                        // Check if we reached the account's limits
-                        if(actionsDone >= accountSettings.ActionsPerDay)
-                        {
-                            Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily action limit! Yay!");
-                            await Task.Delay(TimeSpan.FromSeconds(5));
-                            return;
-                        }
-
-                        if (account.ActionCooldown > DateTime.UtcNow)
-                        {
-                            //Console.WriteLine($"[{DateTime.Now}][{account.Username}] Promotion is on ActionCooldown. Waiting for {(account.ActionCooldown - DateTime.Now).TotalMilliseconds} more milliseconds");
-                            await Task.Delay(TimeSpan.FromSeconds(5));
-                            return;
-                        }
-
-                        // Create IInstaApi instance for the given account
-                        var instaApi = await _promotionService.GetInstaApi(account);
-                        if (instaApi == null)
-                            return;
-
-                        // Random chance to unfollow; if successful, then don't go further
-                        // Also, if both likes and follow limits are fulfilled, don't
-                        // do unfollow to avoid recurrence
-                        var r = rand.Next(0, 100);
-                        if (r > 85
-                        && (followsDone < accountSettings.FollowsPerDay
-                        || likesDone < accountSettings.LikesPerDay))
-                        {
-                            if (accountStatistics.UnfollowsCount < accountSettings.UnfollowsPerDay)
+                            if (account.ActionCooldown > DateTime.UtcNow)
                             {
-                                var succesfullyUnfollowed = await _promotionService.UnfollowProfile(instaApi, account, promotionRepository, statisticsService, accountRepository, unFollowsDone);
-                                if (succesfullyUnfollowed)
-                                {
-                                    // Random chance to look up explore feed for organicity
-                                    if (rand.Next(0, 100) > 75)
-                                        await _promotionService.LookupExploreFeed(instaApi, account);
-
-                                    // Random chance to look up activity feed for organicity
-                                    if (rand.Next(0, 100) > 75)
-                                        await _promotionService.LookupActivityFeed(instaApi, account);
-
-                                    return;
-                                }
-                            }
-                            else
-                                Console.WriteLine($"[{DateTime.Now}][{account.Username}] There was a challenge required or the account has reached the daily unfollows limit! Yay!");
-                        }
-
-                        // Get the current promotion for the given account
-                        var promotion = await _promotionService.GetCurrentPromotion(account);
-                        if (promotion == null)
-                            return;
-
-                        if (account.ActionCooldown != null && account.ActionCooldown > DateTime.UtcNow)
-                        {
-                            Console.WriteLine($"[{DateTime.Now}][{account.Username}] Promotion is on ActionCooldown. Waiting for {(account.ActionCooldown - DateTime.Now).TotalMilliseconds} more milliseconds");
-                            return;
-                        }
-
-                        bool succesfullyFollowed = false;
-                        bool succesfullyLiked = false;
-
-                        if (promotion.PromotionType == PromotionType.Hashtag)
-                        {
-                            // Try getting media list from cache
-                            var searchKey = $"{account.Id}-{promotion.Label}-hashtag{_settings.SearchKey}";
-                            List<InstaMedia> medias = (List<InstaMedia>)_cache.Get(searchKey);
-                            if(medias == null || !medias.Any())
-                            {
-                                // If there aren't any medias in cache, update them
-                                var downloadedMedia = await instaApi.GetMediaByHashtagAsync(account, promotion);
-                                _cache.Set(searchKey, downloadedMedia);
+                                //Console.WriteLine($"[{DateTime.Now}][{account.Username}] Promotion is on ActionCooldown. Waiting for {(account.ActionCooldown - DateTime.Now).TotalMilliseconds} more milliseconds");
+                                await Task.Delay(TimeSpan.FromSeconds(5));
                                 return;
                             }
 
-                            // Get random media
-                            var lastMediaIndex = medias.Count() - 1;
-                            var randomMediaIndex = rand.Next(0, lastMediaIndex);
-                            var media = medias[randomMediaIndex];
+                            // Create IInstaApi instance for the given account
+                            var instaApi = await _promotionService.GetInstaApi(account);
+                            if (instaApi == null)
+                                return;
 
-                            // Set the last media ID for further searching 
-                            var takenAt = media.TakenAt;
-                            if (takenAt < promotion.NextMinIdDate)
+                            // Random chance to unfollow; if successful, then don't go further
+                            // Also, if both likes and follow limits are fulfilled, don't
+                            // do unfollow to avoid recurrence
+                            var r = rand.Next(0, 100);
+                            if (r > 85
+                            && (followsDone < accountSettings.FollowsPerDay
+                            || likesDone < accountSettings.LikesPerDay))
                             {
-                                promotion.SetNextMinIdDate(takenAt);
-                                promotion.SetNextMinId(media.InstaIdentifier);
-                                await promotionRepository.UpdateAsync(promotion);
-                            }
-
-                            // Like the media if it hasn't hit the limits
-                            if (likesDone < accountSettings.LikesPerDay)
-                            {
-                                succesfullyLiked = await _promotionService.LikeMedia(instaApi, account, promotion, promotionRepository, statisticsService, media, likesDone);
-                                if (!succesfullyLiked)
-                                    return;
-                            }
-                            else
-                            {
-                                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily likes limit! Yay!");
-                                if (followsDone >= accountSettings.FollowsPerDay)
-                                    return;
-                            }
-
-                            // Three seconds interval between actions to be more organic
-                            await Task.Delay(rand.Next(1000, 4000));
-
-                            // Follow media's author profile if it hasn't hit the limits
-                            if(followsDone < accountSettings.FollowsPerDay)
-                            {
-                                if(rand.Next(0, 100) > 10)
+                                if (accountStatistics.UnfollowsCount < accountSettings.UnfollowsPerDay)
                                 {
-                                    succesfullyFollowed = await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, statisticsService, accountRepository, media, followsDone);
-                                    if (!succesfullyFollowed)
+                                    var succesfullyUnfollowed = await _promotionService.UnfollowProfile(instaApi, account, promotionRepository, statisticsService, accountRepository, unFollowsDone);
+                                    if (succesfullyUnfollowed)
                                     {
-                                        if (succesfullyLiked)
-                                            await _promotionService.SetPromotionCooldown(account, accountRepository);
+                                        // Random chance to look up explore feed for organicity
+                                        if (rand.Next(0, 100) > 75)
+                                            await _promotionService.LookupExploreFeed(instaApi, account);
+
+                                        // Random chance to look up activity feed for organicity
+                                        if (rand.Next(0, 100) > 75)
+                                            await _promotionService.LookupActivityFeed(instaApi, account);
+
                                         return;
                                     }
-                                    await _promotionService.SetPromotionCooldown(account, accountRepository);
                                 }
+                                else
+                                    Console.WriteLine($"[{DateTime.Now}][{account.Username}] There was a challenge required or the account has reached the daily unfollows limit! Yay!");
                             }
-                            else
+
+                            // Get the current promotion for the given account
+                            var promotion = await _promotionService.GetCurrentPromotion(account);
+                            if (promotion == null)
+                                return;
+
+                            if (account.ActionCooldown != null && account.ActionCooldown > DateTime.UtcNow)
                             {
-                                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily follows limit! Yay!");
+                                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Promotion is on ActionCooldown. Waiting for {(account.ActionCooldown - DateTime.Now).TotalMilliseconds} more milliseconds");
                                 return;
                             }
 
-                            // Remove media from cache
-                            medias.Remove(media);
+                            bool succesfullyFollowed = false;
+                            bool succesfullyLiked = false;
 
-                            // Update remaining media list in cache
-                            _cache.Set(searchKey, medias);
-
-                            Console.WriteLine($"[{DateTime.Now}][{account.Username}] Current media list count: {medias.Count()}");
-                        } 
-                        else if (promotion.PromotionType == PromotionType.InstagramProfile)
-                        {
-                            // Try getting users relationships list from cache
-                            var searchKey = $"{account.Id}-{promotion.Label}-profile{_settings.SearchKey}";
-                            InstaFriendshipShortStatusList followersRelationships = (InstaFriendshipShortStatusList)_cache.Get(searchKey);
-                            if (followersRelationships == null || !followersRelationships.Any())
+                            if (promotion.PromotionType == PromotionType.Hashtag)
                             {
-                                // If there aren't any users relationships in cache, update them
-                                var downloadedRelationships = await instaApi.GetRelationshipsByPromotionAsync(account, promotion);
-                                _cache.Set(searchKey, downloadedRelationships);
-                                return;
+                                // Try getting media list from cache
+                                var searchKey = $"{account.Id}-{promotion.Label}-hashtag{_settings.SearchKey}";
+                                List<InstaMedia> medias = (List<InstaMedia>)_cache.Get(searchKey);
+                                if (medias == null || !medias.Any())
+                                {
+                                    // If there aren't any medias in cache, update them
+                                    var downloadedMedia = await instaApi.GetMediaByHashtagAsync(account, promotion);
+                                    _cache.Set(searchKey, downloadedMedia);
+                                    return;
+                                }
+
+                                // Get random media
+                                var lastMediaIndex = medias.Count() - 1;
+                                var randomMediaIndex = rand.Next(0, lastMediaIndex);
+                                var media = medias[randomMediaIndex];
+
+                                // Set the last media ID for further searching 
+                                var takenAt = media.TakenAt;
+                                if (takenAt < promotion.NextMinIdDate)
+                                {
+                                    promotion.SetNextMinIdDate(takenAt);
+                                    promotion.SetNextMinId(media.InstaIdentifier);
+                                    await promotionRepository.UpdateAsync(promotion);
+                                }
+
+                                // Like the media if it hasn't hit the limits
+                                if (likesDone < accountSettings.LikesPerDay)
+                                {
+                                    succesfullyLiked = await _promotionService.LikeMedia(instaApi, account, promotion, promotionRepository, statisticsService, media, likesDone);
+                                    if (!succesfullyLiked)
+                                        return;
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily likes limit! Yay!");
+                                    if (followsDone >= accountSettings.FollowsPerDay)
+                                        return;
+                                }
+
+                                // Three seconds interval between actions to be more organic
+                                await Task.Delay(rand.Next(1000, 4000));
+
+                                // Follow media's author profile if it hasn't hit the limits
+                                if (followsDone < accountSettings.FollowsPerDay)
+                                {
+                                    if (rand.Next(0, 100) > 10)
+                                    {
+                                        succesfullyFollowed = await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, statisticsService, accountRepository, media, followsDone);
+                                        if (!succesfullyFollowed)
+                                        {
+                                            if (succesfullyLiked)
+                                                await _promotionService.SetPromotionCooldown(account, accountRepository);
+                                            return;
+                                        }
+                                        await _promotionService.SetPromotionCooldown(account, accountRepository);
+                                    }
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily follows limit! Yay!");
+                                    return;
+                                }
+
+                                // Remove media from cache
+                                medias.Remove(media);
+
+                                // Update remaining media list in cache
+                                _cache.Set(searchKey, medias);
+
+                                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Current media list count: {medias.Count()}");
                             }
-
-                            var lastRelationshipIndex = followersRelationships.Count() - 1;
-                            var randomRelationshipIndex = rand.Next(0, lastRelationshipIndex);
-                            var followerStatus = followersRelationships[randomRelationshipIndex];
-
-                            if (followerStatus.IsPrivate)
+                            else if (promotion.PromotionType == PromotionType.InstagramProfile)
                             {
-                                Console.WriteLine($"[{DateTime.Now}][{account.Username}](@{promotion.Label}) Account is private, skipping...");
-                                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Current relationship list count: {followersRelationships.Count()}");
+                                // Try getting users relationships list from cache
+                                var searchKey = $"{account.Id}-{promotion.Label}-profile{_settings.SearchKey}";
+                                InstaFriendshipShortStatusList followersRelationships = (InstaFriendshipShortStatusList)_cache.Get(searchKey);
+                                if (followersRelationships == null || !followersRelationships.Any())
+                                {
+                                    // If there aren't any users relationships in cache, update them
+                                    var downloadedRelationships = await instaApi.GetRelationshipsByPromotionAsync(account, promotion);
+                                    _cache.Set(searchKey, downloadedRelationships);
+                                    return;
+                                }
+
+                                var lastRelationshipIndex = followersRelationships.Count() - 1;
+                                var randomRelationshipIndex = rand.Next(0, lastRelationshipIndex);
+                                var followerStatus = followersRelationships[randomRelationshipIndex];
+
+                                if (followerStatus.IsPrivate)
+                                {
+                                    Console.WriteLine($"[{DateTime.Now}][{account.Username}](@{promotion.Label}) Account is private, skipping...");
+                                    Console.WriteLine($"[{DateTime.Now}][{account.Username}] Current relationship list count: {followersRelationships.Count()}");
+
+                                    // Remove follower status from cache
+                                    followersRelationships.Remove(followerStatus);
+
+                                    // Update remaining media list in cache
+                                    _cache.Set(searchKey, followersRelationships);
+                                    return;
+                                }
+
+                                var userMedia = await instaApi.UserProcessor.GetUserMediaByIdAsync(followerStatus.Pk, PaginationParameters.MaxPagesToLoad(1));
+
+                                if (!userMedia.Succeeded)
+                                {
+                                    if (userMedia.Info.ResponseType == ResponseType.UnExpectedResponse && userMedia.Info.Message != "Not authorized to view user")
+                                    {
+                                        Console.WriteLine($"[{DateTime.Now}][{account.Username}] Too many actions.");
+                                        await _promotionService.SetPromotionCooldown(account, accountRepository, 300000, 600000);
+                                    }
+
+                                    return;
+                                }
+
+                                if (!userMedia.Value.Any())
+                                    return;
+
+                                // Like the media if it hasn't hit the limits
+                                if (likesDone < accountSettings.LikesPerDay)
+                                {
+                                    succesfullyLiked = await _promotionService.LikeMedia(instaApi, account, promotion, promotionRepository, statisticsService, userMedia.Value[0], likesDone);
+                                    if (!succesfullyLiked)
+                                        return;
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily likes limit! Yay!");
+                                    return;
+                                }
+
+                                await Task.Delay(rand.Next(1000, 4000));
+
+                                // Follow media's author profile if it hasn't hit the limits
+                                if (followsDone < accountSettings.FollowsPerDay)
+                                {
+                                    if (rand.Next(0, 100) > 10)
+                                    {
+                                        succesfullyFollowed = await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, statisticsService, accountRepository, userMedia.Value[0], followsDone);
+                                        if (!succesfullyFollowed)
+                                        {
+                                            if (succesfullyLiked)
+                                                await _promotionService.SetPromotionCooldown(account, accountRepository);
+                                            return;
+                                        }
+                                        await _promotionService.SetPromotionCooldown(account, accountRepository);
+                                    }
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily follows limit! Yay!");
+                                    return;
+                                }
 
                                 // Remove follower status from cache
                                 followersRelationships.Remove(followerStatus);
 
                                 // Update remaining media list in cache
                                 _cache.Set(searchKey, followersRelationships);
-                                return;
+
+                                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Current relationship list count: {followersRelationships.Count()}");
                             }
 
-                            var userMedia = await instaApi.UserProcessor.GetUserMediaByIdAsync(followerStatus.Pk, PaginationParameters.MaxPagesToLoad(1));
+                            // Random chance to look up explore feed for organicity
+                            if (rand.Next(0, 100) > 75)
+                                await _promotionService.LookupExploreFeed(instaApi, account, promotion);
 
-                            if (!userMedia.Succeeded)
-                            {
-                                if(userMedia.Info.ResponseType == ResponseType.UnExpectedResponse && userMedia.Info.Message != "Not authorized to view user")
-                                {
-                                    Console.WriteLine($"[{DateTime.Now}][{account.Username}] Too many actions.");
-                                    await _promotionService.SetPromotionCooldown(account, accountRepository, 300000, 600000);
-                                }
-                                
-                                return;
-                            }
+                            // Random chance to look up activity feed for organicity
+                            if (rand.Next(0, 100) > 75)
+                                await _promotionService.LookupActivityFeed(instaApi, account, promotion);
+                        });
 
-                            if (!userMedia.Value.Any())
-                                return;
-
-                            // Like the media if it hasn't hit the limits
-                            if (likesDone < accountSettings.LikesPerDay)
-                            {
-                                succesfullyLiked = await _promotionService.LikeMedia(instaApi, account, promotion, promotionRepository, statisticsService, userMedia.Value[0], likesDone);
-                                if (!succesfullyLiked)
-                                    return;
-                            }
-                            else
-                            {
-                                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily likes limit! Yay!");
-                                return;
-                            }
-                                    
-                            await Task.Delay(rand.Next(1000, 4000));
-                                    
-                            // Follow media's author profile if it hasn't hit the limits
-                            if (followsDone < accountSettings.FollowsPerDay)
-                            {
-                                if(rand.Next(0, 100) > 10)
-                                {
-                                    succesfullyFollowed = await _promotionService.FollowProfile(instaApi, account, promotion, promotionRepository, statisticsService, accountRepository, userMedia.Value[0], followsDone);
-                                    if(!succesfullyFollowed)
-                                    {
-                                        if(succesfullyLiked)
-                                            await _promotionService.SetPromotionCooldown(account, accountRepository);
-                                        return;
-                                    }
-                                    await _promotionService.SetPromotionCooldown(account, accountRepository);
-                                }
-                            }
-                            else
-                            {
-                                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Account has reached the daily follows limit! Yay!");
-                                return;
-                            }
-
-                            // Remove follower status from cache
-                            followersRelationships.Remove(followerStatus);
-
-                            // Update remaining media list in cache
-                            _cache.Set(searchKey, followersRelationships);
-
-                            Console.WriteLine($"[{DateTime.Now}][{account.Username}] Current relationship list count: {followersRelationships.Count()}");
-                        }
-
-                        // Random chance to look up explore feed for organicity
-                        if (rand.Next(0, 100) > 75)
-                            await _promotionService.LookupExploreFeed(instaApi, account, promotion);
-
-                        // Random chance to look up activity feed for organicity
-                        if (rand.Next(0, 100) > 75)
-                            await _promotionService.LookupActivityFeed(instaApi, account, promotion);
+                        // Wait for each of the tasks to complete
+                        task.Wait();
                     });
-
-                    // Wait for each of the tasks to complete
-                    task.Wait();
-                });
+                }
+                catch(Exception ex)
+                {
+                    Console.WriteLine("Something went wrong with promotion module (connection error?).");
+                    Console.WriteLine(ex.Message);
+                    await Task.Delay(5000);
+                }
             }
         }
     }

@@ -12,6 +12,8 @@ namespace FollowUP.Infrastructure.Services
                         string verificationCode, bool preferSMSVerification, bool replayChallenge);
         Task LoginToEmbeddedBrowserAsync(string username, string password, string twoFactorCode, string verificationCode);
         Task<IEnumerable<AccountDto>> GetAllByUserId(Guid userId);
+        Task<IEnumerable<AccountDto>> GetAsync(int page, int pageSize);
+        Task<int> GetCount();
         Task BuyComments(Guid accountId, double daysToAdd);
         Task BuyPromotions(Guid accountId, double daysToAdd);
     }

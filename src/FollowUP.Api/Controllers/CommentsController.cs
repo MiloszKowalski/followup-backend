@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace FollowUP.Api.Controllers
 {
+    [Authorize]
     public class CommentsController : ApiControllerBase
     {
         private readonly ICommentService _commentsService;
@@ -18,7 +19,6 @@ namespace FollowUP.Api.Controllers
             _commentsService = commentsService;
         }
 
-        [Authorize]
         [HttpGet("{accountId}")]
         public async Task<IActionResult> Get(Guid accountId)
         {
@@ -27,7 +27,6 @@ namespace FollowUP.Api.Controllers
             return Json(comments);
         }
 
-        [Authorize]
         [HttpGet("{accountId}/{page}/{pageSize}")]
         public async Task<IActionResult> GetPaginated(Guid accountId, int page, int pageSize)
         {
@@ -36,7 +35,6 @@ namespace FollowUP.Api.Controllers
             return Json(comments);
         }
 
-        [Authorize]
         [HttpGet("{accountId}/count")]
         public async Task<IActionResult> GetCommentsCount(Guid accountId)
         {
@@ -45,7 +43,6 @@ namespace FollowUP.Api.Controllers
             return Json(count);
         }
 
-        [Authorize]
         [HttpPost("{accountId}")]
         public async Task<IActionResult> Post(Guid accountId)
         {

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace FollowUP.Api.Controllers
 {
+    [Authorize]
     public class PromotionsController : ApiControllerBase
     {
         private readonly IPromotionService _promotionService;
@@ -18,7 +19,6 @@ namespace FollowUP.Api.Controllers
             _promotionService = promotionService;
         }
 
-        [Authorize]
         [HttpGet("{accountId}")]
         public async Task<IActionResult> Get(Guid accountId)
         {
@@ -27,7 +27,6 @@ namespace FollowUP.Api.Controllers
             return Json(promotionComments);
         }
 
-        [Authorize]
         [HttpGet("comments/{accountId}")]
         public async Task<IActionResult> GetAccountsPromotionComments(Guid accountId)
         {
@@ -36,7 +35,6 @@ namespace FollowUP.Api.Controllers
             return Json(comments);
         }
 
-        [Authorize]
         [HttpPost]
         public async Task<IActionResult> CreatePromotion([FromBody]CreatePromotion command)
         {
@@ -46,7 +44,6 @@ namespace FollowUP.Api.Controllers
             return Created($"{command.AccountId}", promotions); ;
         }
 
-        [Authorize]
         [HttpPost("comments")]
         public async Task<IActionResult> CreatePromotionComment([FromBody]CreatePromotionComment command)
         {
