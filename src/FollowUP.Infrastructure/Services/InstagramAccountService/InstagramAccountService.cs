@@ -108,6 +108,29 @@ namespace FollowUP.Infrastructure.Services
         }
 
         /// <summary>
+        /// Gets the instagram accounts (for admin purposes)
+        /// </summary>
+        /// <returns>List of the users paginated</returns>
+        public async Task<IEnumerable<AccountDto>> GetAsync(int page, int pageSize)
+        {
+            // Get the accounts from repository
+            var accounts = await _instagramAccountRepository.GetAsync(page, pageSize);
+            // Map the accounts and return them as a list of AccountDTO
+            return _mapper.Map<IEnumerable<InstagramAccount>, IEnumerable<AccountDto>>(accounts);
+        }
+
+        /// <summary>
+        /// Gets the instagram accounts (for admin purposes)
+        /// </summary>
+        /// <returns>List of the users paginated</returns>
+        public async Task<int> GetCount()
+        {
+            // Get the accounts count
+            var count = await _instagramAccountRepository.GetCountAsync();
+            return count;
+        }
+
+        /// <summary>
         /// Gets all the accounts for given user ID
         /// </summary>
         /// <param name="userId">ID of the user that owns the accounts</param>

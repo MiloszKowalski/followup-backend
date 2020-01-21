@@ -8,6 +8,8 @@ namespace FollowUP.Core.Repositories
     public interface IInstagramAccountRepository : IRepository
     {
         Task<IEnumerable<InstagramAccount>> GetAllAsync();
+        Task<IEnumerable<InstagramAccount>> GetAsync(int page, int pageSize);
+        Task<int> GetCountAsync();
         Task<InstagramAccount> GetAsync(Guid Id);
         Task<InstagramAccount> GetAsync(string username);
         Task<IEnumerable<InstagramAccount>> GetUsersAccountsAsync(Guid userId);

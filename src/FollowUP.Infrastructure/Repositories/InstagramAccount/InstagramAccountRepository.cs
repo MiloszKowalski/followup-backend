@@ -1,6 +1,7 @@
 ﻿using FollowUP.Core.Domain;
 using FollowUP.Core.Repositories;
 using FollowUP.Infrastructure.EF;
+using FollowUP.Infrastructure.Extensions;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -35,6 +36,12 @@ namespace FollowUP.Infrastructure.Repositories
 
         public async Task<IEnumerable<InstagramAccount>> GetAllAsync()
             => await _context.InstagramAccounts.ToListAsync();
+
+        public async Task<IEnumerable<InstagramAccount>> GetAsync(int page, int pageSize)
+            => await _context.InstagramAccounts.Page(page, pageSize).ToListAsync();
+
+        public async Task<int> GetCountAsync()
+            => await _context.InstagramAccounts.CountAsync();
 
         public async Task<AccountSettings> GetAccountSettingsAsync(Guid accountId)
             => await _context.AccountSettings.SingleOrDefaultAsync(x => x.AccountId == accountId);

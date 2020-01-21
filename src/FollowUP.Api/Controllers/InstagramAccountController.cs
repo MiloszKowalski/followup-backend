@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 
 namespace FollowUP.Api.Controllers
 {
+    [Authorize]
     public class InstagramAccountController : ApiControllerBase
     {
         private readonly IInstagramAccountService _instagramAccountService;
@@ -19,7 +20,23 @@ namespace FollowUP.Api.Controllers
             _instagramAccountService = instagramAccountService;
         }
 
-        [Authorize]
+        [Authorize(Policy = "admin")]
+        [HttpGet("{page}/{pageSize}")]
+        public async Task<IActionResult> GetAll(int page, int pageSize)
+        {
+            var accounts = await _instagramAccountService.GetAsync(page, pageSize);
+
+            return Json(accounts);
+        }
+
+        [HttpGet("count")]
+        public async Task<IActionResult> GetCount()
+        {
+            var count = await _instagramAccountService.GetCount();
+
+            return Json(count);
+        }
+
         [HttpPost("login")]
         public async Task<IActionResult> LoginToInstagram([FromBody]LoginToInstagram command)
         {
@@ -35,7 +52,6 @@ namespace FollowUP.Api.Controllers
             return Json(account);
         }
 
-        [Authorize]
         [HttpPost("eblogin")]
         public async Task<IActionResult> LoginToEBInstagram([FromBody]LoginToEBInstagram command)
         {
@@ -51,7 +67,6 @@ namespace FollowUP.Api.Controllers
             return Json(account);
         }
 
-        [Authorize]
         [HttpPost("delete")]
         public async Task<IActionResult> DeleteInstagramAccount([FromBody]DeleteInstagramAccount command)
         {
@@ -61,7 +76,6 @@ namespace FollowUP.Api.Controllers
             return Json(accounts);
         }
 
-        [Authorize]
         [HttpGet("{userId}")]
         public async Task<IActionResult> Get(Guid userId)
         {
@@ -70,7 +84,6 @@ namespace FollowUP.Api.Controllers
             return Json(accounts);
         }
 
-        [Authorize]
         [HttpPost("comments")]
         public async Task<IActionResult> BuyCommentModule([FromBody]BuyComments command)
         {
@@ -79,7 +92,6 @@ namespace FollowUP.Api.Controllers
             return Ok();
         }
 
-        [Authorize]
         [HttpPost("promotions")]
         public async Task<IActionResult> BuyPromotionsModule([FromBody]BuyPromotions command)
         {
