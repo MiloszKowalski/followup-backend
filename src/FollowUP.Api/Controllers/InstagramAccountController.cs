@@ -4,7 +4,10 @@ using FollowUP.Infrastructure.DTO;
 using FollowUP.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using System;
+using System.Globalization;
 using System.Threading.Tasks;
 
 namespace FollowUP.Api.Controllers
@@ -22,11 +25,18 @@ namespace FollowUP.Api.Controllers
 
         [Authorize(Policy = "admin")]
         [HttpGet("{page}/{pageSize}")]
-        public async Task<IActionResult> GetAll(int page, int pageSize)
+        public async Task<object> GetAll(int page, int pageSize)
         {
             var accounts = await _instagramAccountService.GetAsync(page, pageSize);
+            var jsonSettings = new JsonSerializerSettings
+            {
+                DateFormatString = "yyyy-MM-dd HH:mm:ss",
+                Culture = new CultureInfo("pl-PL"),
+                Formatting = Formatting.Indented,
+                ContractResolver = new CamelCasePropertyNamesContractResolver()
+            };
 
-            return Json(accounts);
+            return Json(accounts, jsonSettings);
         }
 
         [HttpGet("count")]
@@ -74,6 +84,22 @@ namespace FollowUP.Api.Controllers
             var accounts = await _instagramAccountService.GetAllByUserId(command.UserId);
 
             return Json(accounts);
+        }
+
+        [HttpGet("current")]
+        public async Task<IActionResult> GetCurrentUsersAccounts()
+        {
+            var accounts = await _instagramAccountService.GetAllByUserIdExtended(Guid.Parse(User.Identity.Name));
+
+            var jsonSettings = new JsonSerializerSettings
+            {
+                DateFormatString = "yyyy-MM-dd HH:mm:ss",
+                Culture = new CultureInfo("pl-PL"),
+                Formatting = Formatting.Indented,
+                ContractResolver = new CamelCasePropertyNamesContractResolver()
+            };
+
+            return Json(accounts, jsonSettings);
         }
 
         [HttpGet("{userId}")]

@@ -47,6 +47,7 @@ namespace FollowUP.Api.Controllers
         public async Task<IActionResult> RefreshAccessToken(string token)
         => Ok(await _userService.RefreshAccessToken(token));
 
+        [AllowAnonymous]
         [HttpPost("tokens/{token}/revoke")]
         public async Task<IActionResult> RevokeRefreshToken(string token)
         {
@@ -55,6 +56,7 @@ namespace FollowUP.Api.Controllers
             return NoContent();
         }
 
+        [AllowAnonymous]
         [HttpPost("tokens/cancel")]
         public async Task<IActionResult> CancelAccessToken()
         {

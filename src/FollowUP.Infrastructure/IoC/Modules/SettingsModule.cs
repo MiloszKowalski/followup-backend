@@ -25,6 +25,10 @@ namespace FollowUP.Infrastructure.IoC.Modules
                    .SingleInstance();
             builder.RegisterInstance(_configuration.GetSettings<PromotionSettings>())
                    .SingleInstance();
+            builder.RegisterInstance(_configuration.GetSettings<ApiSettings>())
+                   .SingleInstance();
+            builder.RegisterInstance(_configuration.GetSettings<EmailSettings>())
+                   .SingleInstance();
         }
     }
 }

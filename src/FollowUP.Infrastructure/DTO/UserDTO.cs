@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace FollowUP.Infrastructure.DTO
 {
@@ -11,5 +9,6 @@ namespace FollowUP.Infrastructure.DTO
         public string Role { get; set; }
         public string Username { get; set; }
         public string FullName { get; set; }
+        public bool Verified { get; set; }
     }
 }
