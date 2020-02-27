@@ -42,6 +42,12 @@ namespace FollowUP
         // This method gets called by the runtime. Use this method to add services to the container.
         public IServiceProvider ConfigureServices(IServiceCollection services)
         {
+            // Add SendGrid email sender
+            services.AddSendGridEmailSender();
+
+            // Add general email template sender
+            services.AddEmailTemplateSender();
+
             services.AddTransient<TokenManagerMiddleware>();
             services.AddTransient<ExceptionHandlerMiddleware>();
             services.AddAuthorization(x => x.AddPolicy("admin", p => p.RequireRole("admin")));

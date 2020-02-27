@@ -15,6 +15,7 @@ namespace FollowUP.Core.Domain
         public string Username { get; protected set; }
         public string FullName { get; protected set; }
         public string Role { get; protected set; }
+        public bool Verified { get; protected set; }
         public DateTime CreatedAt { get; protected set; }
         public DateTime UpdatedAt { get; protected set; }
 
@@ -30,6 +31,7 @@ namespace FollowUP.Core.Domain
             SetUsername(username);
             SetFullName(fullName);
             SetRole(role);
+            SetVerified(false);
             SetPassword(password, salt);
             CreatedAt = DateTime.UtcNow;
         }
@@ -80,6 +82,14 @@ namespace FollowUP.Core.Domain
 
             Role = role;
             UpdatedAt = DateTime.UtcNow;
+        }
+
+        public void SetVerified(bool isVerified)
+        {
+            if (Verified == isVerified)
+                return;
+
+            Verified = isVerified;
         }
 
         public void SetPassword(string password, string salt)

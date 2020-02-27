@@ -21,6 +21,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -36,10 +37,11 @@ namespace FollowUP.Infrastructure.Services
         private readonly IMapper _mapper;
         private readonly IMemoryCache _cache;
         private readonly PromotionSettings _settings;
+        private readonly IInstagramApiService _instagramApiService;
 
         public InstagramAccountService(IUserRepository userRepository,
                 IInstagramAccountRepository instagramAccountRepository, IProxyRepository proxyRepository,
-                IMapper mapper, IMemoryCache cache, PromotionSettings settings)
+                IMapper mapper, IMemoryCache cache, PromotionSettings settings, IInstagramApiService instagramApiService)
         {
             _userRepository = userRepository;
             _instagramAccountRepository = instagramAccountRepository;
@@ -47,6 +49,7 @@ namespace FollowUP.Infrastructure.Services
             _mapper = mapper;
             _cache = cache;
             _settings = settings;
+            _instagramApiService = instagramApiService;
         }
 
         /// <summary>
@@ -115,14 +118,43 @@ namespace FollowUP.Infrastructure.Services
         {
             // Get the accounts from repository
             var accounts = await _instagramAccountRepository.GetAsync(page, pageSize);
+
             // Map the accounts and return them as a list of AccountDTO
-            return _mapper.Map<IEnumerable<InstagramAccount>, IEnumerable<AccountDto>>(accounts);
+            var accountsInfo = _mapper.Map<IEnumerable<InstagramAccount>, IEnumerable<AdminExtendedAccountDto>>(accounts);
+
+            // Bind additional information for account
+            foreach(var account in accountsInfo)
+            {
+                // Add limits info
+                var accountSettings = await _instagramAccountRepository.GetAccountSettingsAsync(account.Id);
+                account.ActionsPerDay = accountSettings.ActionsPerDay;
+                account.LikesPerDay = accountSettings.LikesPerDay;
+                account.FollowsPerDay = accountSettings.FollowsPerDay;
+                account.UnfollowsPerDay = accountSettings.UnfollowsPerDay;
+                
+                // Add owner info
+                var user = await _userRepository.GetAsync(account.UserId);
+                account.OwnerName = user.Username;
+                account.OwnerEmail = user.Email;
+
+                // Add proxy info
+                var accountProxy = await _proxyRepository.GetAccountsProxyAsync(account.Id);
+                if (accountProxy != null)
+                {
+                    account.ProxyId = accountProxy.ProxyId;
+                    var proxyInfo = await _proxyRepository.GetAsync(accountProxy.ProxyId);
+                    account.ProxyIp = $"{proxyInfo.Ip}:{proxyInfo.Port}";
+                    account.ProxyExpiryDate = proxyInfo.ExpiryDate;
+                }
+            }
+
+            return accountsInfo;
         }
 
         /// <summary>
-        /// Gets the instagram accounts (for admin purposes)
+        /// Gets the instagram accounts count (for admin purposes)
         /// </summary>
-        /// <returns>List of the users paginated</returns>
+        /// <returns>Count of the accounts</returns>
         public async Task<int> GetCount()
         {
             // Get the accounts count
@@ -141,6 +173,53 @@ namespace FollowUP.Infrastructure.Services
             var accounts = await _instagramAccountRepository.GetUsersAccountsAsync(userId);
             // Map the accounts and return them as a list of AccountDTO
             return _mapper.Map<IEnumerable<InstagramAccount>, IEnumerable<AccountDto>>(accounts);
+        }
+
+        /// <summary>
+        /// Gets all the accounts with extended information for given user ID
+        /// </summary>
+        /// <param name="userId">ID of the user that owns the accounts</param>
+        /// <returns>List of Accounts that the user owns</returns>
+        public async Task<IEnumerable<AccountDto>> GetAllByUserIdExtended(Guid userId)
+        {
+            var accounts = await _instagramAccountRepository.GetUsersAccountsAsync(userId);
+
+            var extendedAccounts = new List<ExtendedAccountDto>();
+
+            var slaveAccount = await _instagramApiService.GetRandomSlaveAccount();
+
+            var instaApi = await _instagramApiService.GetInstaApi(slaveAccount);
+            if (instaApi == null)
+                return null;
+
+            if (!instaApi.IsUserAuthenticated)
+                return null;
+
+            foreach (var account in accounts)
+            { 
+                var accountInfo = await instaApi.UserProcessor.GetUserInfoByUsernameAsync(account.Username);
+
+                var extendedAccount = _mapper.Map<InstagramAccount, ExtendedAccountDto>(account);
+
+                if(accountInfo.Succeeded)
+                {
+                    extendedAccount.FollowersCount = accountInfo.Value.FollowerCount;
+                    extendedAccount.FollowingCount = accountInfo.Value.FollowingCount;
+                    extendedAccount.ProfilePictureUrl = accountInfo.Value.ProfilePicUrl;
+                    extendedAccount.ProfileName = accountInfo.Value.FullName;
+                }
+
+                // Add limits info
+                var accountSettings = await _instagramAccountRepository.GetAccountSettingsAsync(account.Id);
+                extendedAccount.ActionsPerDay = accountSettings.ActionsPerDay;
+                extendedAccount.LikesPerDay = accountSettings.LikesPerDay;
+                extendedAccount.FollowsPerDay = accountSettings.FollowsPerDay;
+                extendedAccount.UnfollowsPerDay = accountSettings.UnfollowsPerDay;
+
+                extendedAccounts.Add(extendedAccount);
+            }
+            
+            return extendedAccounts;
         }
 
         /// <summary>

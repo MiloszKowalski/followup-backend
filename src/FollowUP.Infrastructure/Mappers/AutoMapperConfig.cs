@@ -11,6 +11,7 @@ namespace FollowUP.Infrastructure.Mappers
             {
                 cfg.CreateMap<User, UserDto>();
                 cfg.CreateMap<InstagramAccount, AccountDto>();
+                cfg.CreateMap<InstagramAccount, ExtendedAccountDto>();
                 cfg.CreateMap<Comment, CommentDto>();
                 cfg.CreateMap<Promotion, PromotionDto>();
                 cfg.CreateMap<PromotionComment, PromotionCommentDto>();

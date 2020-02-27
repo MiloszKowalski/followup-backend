@@ -14,6 +14,7 @@
         public static string InvalidCredentials => "invalid_credentials";
         public static string InvalidEmail => "invalid_email";
         public static string InvalidPromotionType => "invalid_promotion_type";
+        public static string InvalidToken => "invalid_token";
         public static string LabelIsEmpty => "label_is_empty";
         public static string LabelTooLong => "label_too_long";
         public static string NoComments => "no_comments";

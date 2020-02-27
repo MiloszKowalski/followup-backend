@@ -26,7 +26,6 @@ namespace FollowUP.Infrastructure.Services
             StatisticsService statisticsService, InstagramAccountRepository accountRepository, InstaMedia media, int unFollowsDone);
         Task<bool> UnfollowProfile(IInstaApi instaApi, InstagramAccount account, PromotionRepository promotionRepository,
             StatisticsService statisticsService, InstagramAccountRepository accountRepository, int unFollowsDone);
-        Task<IInstaApi> GetInstaApi(InstagramAccount account);
         Task<Promotion> GetCurrentPromotion(InstagramAccount account);
     }
 }

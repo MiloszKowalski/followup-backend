@@ -60,7 +60,7 @@ namespace InstagramApiSharp.API
         public const string P_SUFFIX = "p/";
         public const string SUPPORTED_CAPABALITIES_HEADER = "supported_capabilities_new";
 
-        public static string TIMEZONE = "Asia/Tehran";
+        public static string TIMEZONE = "Europe/Warsaw";
 
         public static int TIMEZONE_OFFSET = 16200;
 
