@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using InstagramApiSharp.Classes;
 using InstagramApiSharp.Classes.Models;
 using InstagramApiSharp.Classes.Models.Business;
-using InstagramApiSharp.Classes.Models.Hashtags;
 using InstagramApiSharp.Classes.ResponseWrappers;
 using InstagramApiSharp.Classes.ResponseWrappers.Business;
 using InstagramApiSharp.Classes.ResponseWrappers.Web;
@@ -13,7 +12,7 @@ using InstagramApiSharp.Converters.Users;
 
 namespace InstagramApiSharp.Converters
 {
-    internal class ConvertersFabric
+    public class ConvertersFabric
     {
         private static readonly Lazy<ConvertersFabric> LazyInstance =
             new Lazy<ConvertersFabric>(() => new ConvertersFabric());
@@ -979,6 +978,108 @@ namespace InstagramApiSharp.Converters
             InstaTopicalExploreFeedResponse response)
         {
             return new InstaTopicalExploreFeedConverter { SourceObject = response };
+        }
+
+        public IObjectConverter<InstaVideoCallEvent, InstaVideoCallEventResponse> GetVideoCallEventConverter(
+            InstaVideoCallEventResponse response)
+        {
+            return new InstaVideoCallEventConverter { SourceObject = response };
+        }
+
+        public IObjectConverter<InstaHashtagShort, InstaHashtagShortResponse> GetHashtagShortConverter(
+            InstaHashtagShortResponse response)
+        {
+            return new InstaHashtagShortConverter { SourceObject = response };
+        }
+
+        public IObjectConverter<InstaDiscoverRecentSearchesItem, InstaDiscoverRecentSearchesItemResponse> GetDiscoverRecentSearchesItemConverter(
+            InstaDiscoverRecentSearchesItemResponse response)
+        {
+            return new InstaDiscoverRecentSearchesItemConverter { SourceObject = response };
+        }
+
+        public IObjectConverter<InstaDynamicSearchSection, InstaDynamicSearchSectionResponse> GetDynamicSearchSectionConverter(
+            InstaDynamicSearchSectionResponse response)
+        {
+            return new InstaDynamicSearchSectionConverter { SourceObject = response };
+        }
+
+        public IObjectConverter<InstaDynamicSearch, InstaDynamicSearchResponse> GetDynamicSearchConverter(
+            InstaDynamicSearchResponse response)
+        {
+            return new InstaDynamicSearchConverter { SourceObject = response };
+        }
+
+        public IObjectConverter<InstaStoryQuizItem, InstaStoryQuizItemResponse> GetStoryQuizItemConverter(
+            InstaStoryQuizItemResponse response)
+        {
+            return new InstaStoryQuizItemConverter { SourceObject = response };
+        }
+
+        public IObjectConverter<InstaStoryQuizStickerItem, InstaStoryQuizStickerItemResponse> GetStoryQuizStickerItemConverter(
+            InstaStoryQuizStickerItemResponse response)
+        {
+            return new InstaStoryQuizStickerItemConverter { SourceObject = response };
+        }
+
+        public IObjectConverter<InstaStoryQuizParticipant, InstaStoryQuizParticipantResponse> GetStoryQuizParticipantConverter(
+            InstaStoryQuizParticipantResponse response)
+        {
+            return new InstaStoryQuizParticipantConverter { SourceObject = response };
+        }
+
+        public IObjectConverter<InstaStoryQuizAnswer, InstaStoryQuizAnswerResponse> GetStoryQuizAnswerConverter(
+            InstaStoryQuizAnswerResponse response)
+        {
+            return new InstaStoryQuizAnswerConverter { SourceObject = response };
+        }
+
+        public IObjectConverter<InstaDirectRespond, InstaDirectRespondResponse> GetDirectRespondConverter(
+            InstaDirectRespondResponse response)
+        {
+            return new InstaDirectRespondConverter { SourceObject = response };
+        }
+
+        public IObjectConverter<InstaStoryChatStickerItem, InstaStoryChatStickerItemResponse> GetStoryChatStickerItemConverter(
+            InstaStoryChatStickerItemResponse response)
+        {
+            return new InstaStoryChatStickerItemConverter { SourceObject = response };
+        }
+
+        public IObjectConverter<InstaStoryChatItem, InstaStoryChatItemResponse> GetStoryChatItemConverter(
+            InstaStoryChatItemResponse response)
+        {
+            return new InstaStoryChatItemConverter { SourceObject = response };
+        }
+
+        public IObjectConverter<InstaStoryChatRequestInfoItem, InstaStoryChatRequestInfoItemResponse> GetStoryChatRequestInfoItemConverter(
+            InstaStoryChatRequestInfoItemResponse response)
+        {
+            return new InstaStoryChatRequestInfoItemConverter { SourceObject = response };
+        }
+
+        public IObjectConverter<InstaPendingRequest, InstaPendingRequestResponse> GetPendingRequestConverter(
+            InstaPendingRequestResponse response)
+        {
+            return new InstaPendingRequestConverter { SourceObject = response };
+        }
+
+        public IObjectConverter<InstaTrustedDevice, InstaTrustedDeviceResponse> GetTrustedDeviceConverter(
+            InstaTrustedDeviceResponse response)
+        {
+            return new InstaTrustedDeviceConverter { SourceObject = response };
+        }
+
+        public IObjectConverter<InstaAccountSecuritySettings, InstaAccountSecuritySettingsResponse> GetSecuritySettingsConverter(
+            InstaAccountSecuritySettingsResponse response)
+        {
+            return new InstaAccountSecuritySettingsConverter { SourceObject = response };
+        }
+
+        public IObjectConverter<InstaTVBrowseFeed, InstaTVBrowseFeedResponse> GetTVBrowseFeedConverter(
+            InstaTVBrowseFeedResponse response)
+        {
+            return new InstaTVBrowseFeedConverter { SourceObject = response };
         }
     }
 }

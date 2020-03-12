@@ -11,13 +11,13 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace InstagramApiSharp.Classes.Models.Hashtags
+namespace InstagramApiSharp.Classes.Models
 {
     public class InstaHashtagStory
     {
         public string Id { get; set; }
 
-        public int LatestReelMedia { get; set; }
+        public long LatestReelMedia { get; set; }
 
         public DateTime ExpiringAt { get; set; }
         
@@ -47,6 +47,7 @@ namespace InstagramApiSharp.Classes.Models.Hashtags
         public string Name { get; set; }
 
         public string ProfilePicUrl { get; set; }
+        public string ProfilePicture => ProfilePicUrl;
 
         public string ProfilePicUsername { get; set; }
     }

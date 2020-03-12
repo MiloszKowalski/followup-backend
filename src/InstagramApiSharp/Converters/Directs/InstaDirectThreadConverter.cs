@@ -3,6 +3,7 @@ using InstagramApiSharp.Classes.Models;
 using InstagramApiSharp.Classes.ResponseWrappers;
 using InstagramApiSharp.Helpers;
 using Newtonsoft.Json;
+using System.Linq;
 
 namespace InstagramApiSharp.Converters
 {
@@ -14,31 +15,37 @@ namespace InstagramApiSharp.Converters
         {
             var thread = new InstaDirectInboxThread
             {
-                Canonical = SourceObject.Canonical,
-                HasNewer = SourceObject.HasNewer,
-                HasOlder = SourceObject.HasOlder,
-                IsSpam = SourceObject.IsSpam,
-                Muted = SourceObject.Muted,
-                Named = SourceObject.Named,
-                Pending = SourceObject.Pending,
+                Canonical = SourceObject.Canonical ?? false,
+                HasNewer = SourceObject.HasNewer ?? false,
+                HasOlder = SourceObject.HasOlder ?? false,
+                IsSpam = SourceObject.IsSpam ?? false,
+                Muted = SourceObject.Muted ?? false,
+                Named = SourceObject.Named ?? false,
+                Pending = SourceObject.Pending ?? false,
                 VieweId = SourceObject.VieweId,
                 LastActivity = DateTimeHelper.UnixTimestampMilisecondsToDateTime(SourceObject.LastActivity),
                 ThreadId = SourceObject.ThreadId,
                 OldestCursor = SourceObject.OldestCursor,
-                IsGroup = SourceObject.IsGroup,
-                IsPin = SourceObject.IsPin,
-                ValuedRequest = SourceObject.ValuedRequest,
+                IsGroup = SourceObject.IsGroup ?? false,
+                IsPin = SourceObject.IsPin ?? false,
+                ValuedRequest = SourceObject.ValuedRequest ?? false,
                 PendingScore = SourceObject.PendingScore ?? 0,
-                VCMuted = SourceObject.VCMuted,
-                ReshareReceiveCount = SourceObject.ReshareReceiveCount,
-                ReshareSendCount = SourceObject.ReshareSendCount,
-                ExpiringMediaReceiveCount = SourceObject.ExpiringMediaReceiveCount,
-                ExpiringMediaSendCount = SourceObject.ExpiringMediaSendCount,
+                VCMuted = SourceObject.VCMuted ?? false,
+                ReshareReceiveCount = SourceObject.ReshareReceiveCount ?? 0,
+                ReshareSendCount = SourceObject.ReshareSendCount ?? 0,
+                ExpiringMediaReceiveCount = SourceObject.ExpiringMediaReceiveCount ?? 0,
+                ExpiringMediaSendCount = SourceObject.ExpiringMediaSendCount ?? 0,
                 NewestCursor = SourceObject.NewestCursor,
                 ThreadType = SourceObject.ThreadType,
                 Title = SourceObject.Title,
             
-                MentionsMuted = SourceObject.MentionsMuted ?? false
+                MentionsMuted = SourceObject.MentionsMuted ?? false,
+                Archived = SourceObject.Archived ?? false,
+                ApprovalRequiredForNewMembers = SourceObject.ApprovalRequiredForNewMembers ?? false,
+                Folder = SourceObject.Folder ?? 0,
+                InputMode = SourceObject.InputMode ?? 0,
+                BusinessThreadFolder = SourceObject.BusinessThreadFolder ?? 0,
+                ReadState = SourceObject.ReadState ?? 0
             };
 
             if (SourceObject.Inviter != null)
@@ -47,7 +54,7 @@ namespace InstagramApiSharp.Converters
                 thread.Inviter = userConverter.Convert();
             }
 
-            if (SourceObject.Items != null && SourceObject.Items.Count > 0)
+            if (SourceObject.Items?.Count > 0)
             {
                 thread.Items = new List<InstaDirectInboxItem>();
                 foreach (var item in SourceObject.Items)
@@ -62,7 +69,7 @@ namespace InstagramApiSharp.Converters
                 var converter = ConvertersFabric.Instance.GetDirectThreadItemConverter(SourceObject.LastPermanentItem);
                 thread.LastPermanentItem = converter.Convert();
             }
-            if (SourceObject.Users != null && SourceObject.Users.Count > 0)
+            if (SourceObject.Users?.Count > 0)
             {
                 foreach (var user in SourceObject.Users)
                 {
@@ -71,7 +78,7 @@ namespace InstagramApiSharp.Converters
                 }
             }
 
-            if (SourceObject.LeftUsers != null && SourceObject.LeftUsers.Count > 0)
+            if (SourceObject.LeftUsers?.Count > 0)
             {
                 foreach (var user in SourceObject.LeftUsers)
                 {
@@ -80,7 +87,7 @@ namespace InstagramApiSharp.Converters
                 }
             }
 
-            if (SourceObject.LastSeenAt != null && SourceObject.LastSeenAt != null)
+            if (SourceObject.LastSeenAt != null)
             {
                 try
                 {
@@ -104,14 +111,30 @@ namespace InstagramApiSharp.Converters
             }
             try
             {
-                if (thread.LastActivity > thread.LastSeenAt[0].SeenTime)
+                if (thread.LastActivity != thread.LastSeenAt.LastOrDefault().SeenTime)
                     thread.HasUnreadMessage = true;
             }
             catch 
             {
                 thread.HasUnreadMessage = false;
             }
-            
+
+            if (SourceObject.DirectStory?.Items?.Count > 0)
+            {
+                try
+                {
+                    foreach (var item in SourceObject.DirectStory.Items)
+                        thread.DirectStories.Add(ConvertersFabric.Instance.GetDirectThreadItemConverter(item).Convert());
+                }
+                catch { }
+            }
+            if (SourceObject.AdminUserIds?.Count > 0)
+                try
+                {
+                    foreach (var item in SourceObject.AdminUserIds)
+                        thread.AdminUserIds.Add(item);
+                }
+                catch { }
 
             return thread;
         }

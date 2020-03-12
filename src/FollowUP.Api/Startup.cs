@@ -6,6 +6,7 @@ using FollowUP.Infrastructure.IoC;
 using FollowUP.Infrastructure.Services;
 using FollowUP.Infrastructure.Services.Background;
 using FollowUP.Infrastructure.Settings;
+using InstagramApiSharp.Helpers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -16,6 +17,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using System;
 using System.Text;
 
@@ -103,7 +105,7 @@ namespace FollowUP
             builder.Populate(services);
             builder.RegisterModule(new ContainerModule(Configuration));
             ApplicationContainer = builder.Build();
-
+            
             return new AutofacServiceProvider(ApplicationContainer);
         }
 

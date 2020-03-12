@@ -11,6 +11,7 @@ using InstagramApiSharp.API;
 using InstagramApiSharp.Classes;
 using InstagramApiSharp.Classes.Android.DeviceInfo;
 using InstagramApiSharp.Classes.Models;
+using InstagramApiSharp.Enums;
 using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Generic;
@@ -261,7 +262,7 @@ namespace FollowUP.Infrastructure.Services
 
             foreach (var link in firstActivity.Links)
             {
-                if (link.Type != "user")
+                if (link.Type != InstaLinkType.User)
                     continue;
 
                 long.TryParse(link.Id, out long userId);
@@ -328,7 +329,7 @@ namespace FollowUP.Infrastructure.Services
                     if(likeResponse.Info.ResponseType == ResponseType.ChallengeRequired)
                     {
                         await instaApi.GetLoggedInChallengeDataInfoAsync();
-                        await instaApi.AcceptChallengeAsync(2, "613280");
+                        await instaApi.AcceptChallengeAsync();
                         return false;
                     }
                     await ProceedBan(account);
@@ -417,7 +418,7 @@ namespace FollowUP.Infrastructure.Services
             string profileName = "";
 
             if (user.Succeeded)
-                profileName = user.Value.Username;
+                profileName = user.Value.UserName;
 
             var unFollowResponse = await instaApi.UserProcessor.UnFollowUserAsync(profileId);
             if (unFollowResponse.Succeeded)
@@ -446,7 +447,7 @@ namespace FollowUP.Infrastructure.Services
                     {
                         await instaApi.GetLoggedInChallengeDataInfoAsync();
                         // TODO: Get proper method and value from account's info
-                        await instaApi.AcceptChallengeAsync(1, "+48500067012");
+                        await instaApi.AcceptChallengeAsync();
                         return false;
                     }
                     await ProceedBan(account);

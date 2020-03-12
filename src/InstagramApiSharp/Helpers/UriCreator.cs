@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
 using System.Globalization;
+using Newtonsoft.Json.Linq;
 
 namespace InstagramApiSharp.Helpers
 {
@@ -275,13 +276,23 @@ namespace InstagramApiSharp.Helpers
         public static Uri GetChallengeRequireFirstUri(string apiPath, string guid, string deviceId)
         {
             if (!apiPath.EndsWith("/"))
-                apiPath = apiPath + "/";
+                apiPath += "/";
             if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.API_SUFFIX + apiPath +
                 $"?guid={guid}&device_id={deviceId}", out var instaUri))
                 throw new Exception("Cant create URI for challenge require url");
             return instaUri;
         }
-
+        public static Uri GetChallengeRequireFirstUri(string apiPath, Classes.Android.DeviceInfo. AndroidDevice device)
+        {
+            if (!apiPath.EndsWith("/"))
+                apiPath += "/";
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.API_SUFFIX + apiPath +
+                $"?guid={device.PhoneGuid.ToString()}&device_id={device.DeviceGuid.ToString()}" +
+                $"&android_device_id={device.DeviceId.ToString()}&phone_id={device.PhoneGuid.ToString()}" +
+                $"&_uuid={device.DeviceGuid.ToString()}", out var instaUri))
+                throw new Exception("Cant create URI for challenge require url");
+            return instaUri;
+        }
         public static Uri GetChallengeUri()
         {
             if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.CHALLENGE,
@@ -448,8 +459,18 @@ namespace InstagramApiSharp.Helpers
 
         public static Uri GetDeleteMediaUri(string mediaId, InstaMediaType mediaType)
         {
+            var type = "photo";
+            switch (mediaType)
+            {
+                case InstaMediaType.Video:
+                    type = "video";
+                    break;
+                case InstaMediaType.Carousel:
+                    type = InstaMediaType.Carousel.ToString();
+                    break;
+            }
             if (!Uri.TryCreate(BaseInstagramUri,
-                string.Format(InstaApiConstants.DELETE_MEDIA, mediaId, mediaType.ToString().ToUpper()), out var instaUri))
+                string.Format(InstaApiConstants.DELETE_MEDIA, mediaId, type.ToUpper()), out var instaUri))
                 throw new Exception("Can't create URI for deleting media");
             return instaUri;
         }
@@ -478,10 +499,17 @@ namespace InstagramApiSharp.Helpers
             return instaUri;
         }
 
-        public static Uri GetDirectConfigVideoUri()
+        public static Uri GetDirectConfigureVideoUri()
         {
             if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.DIRECT_BROADCAST_CONFIGURE_VIDEO, out var instaUri))
                 throw new Exception("Cant create URI for direct config video");
+            return instaUri;
+        }
+
+        public static Uri GetDirectConfigurePhotoUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.DIRECT_BROADCAST_CONFIGURE_PHOTO, out var instaUri))
+                throw new Exception("Cant create URI for direct config photo");
             return instaUri;
         }
 
@@ -495,13 +523,19 @@ namespace InstagramApiSharp.Helpers
                 : new UriBuilder(instaUri) { Query = $"use_unified_inbox=true" }.Uri;
         }
 
-        public static Uri GetDirectInboxUri(string NextId = "")
+        public static Uri GetDirectInboxUri(string nextId = "", int seqId = 0, int mockupStep = 0)
         {
             if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.GET_DIRECT_INBOX, out var instaUri))
                 throw new Exception("Cant create URI for get inbox");
-            return !string.IsNullOrEmpty(NextId)
-                ? new UriBuilder(instaUri) { Query = $"persistentBadging=true&use_unified_inbox=true&cursor={NextId}&direction=older" }.Uri
-                 : new UriBuilder(instaUri) { Query = "persistentBadging=true&use_unified_inbox=true" }.Uri;
+
+            if (mockupStep == 1) return new UriBuilder(instaUri) { Query = "visual_message_return_type=unseen&persistentBadging=true&limit=0" }.Uri;
+            else if (mockupStep == 2) return new UriBuilder(instaUri) { Query = "visual_message_return_type=unseen&thread_message_limit=10&persistentBadging=true&limit=20" }.Uri;
+            else
+            return !string.IsNullOrEmpty(nextId) ? 
+                      new UriBuilder(instaUri) { Query = $"visual_message_return_type=unseen&thread_message_limit=10&limit=20&" +
+                                                         $"persistentBadging=true&use_unified_inbox=true&cursor={nextId}&direction=older&seq_id={seqId}"}.Uri
+                    : new UriBuilder(instaUri) { Query = "visual_message_return_type=unseen&persistentBadging=true&limit=0" }.Uri;
+            //?visual_message_return_type=unseen&thread_message_limit=10&persistentBadging=true&limit=20
             //: instaUri;
             //        return instaUri
             ////GET /api/v1/direct_v2/inbox/?visual_message_return_type=unseen&persistentBadging=true&use_unified_inbox=true
@@ -702,9 +736,9 @@ namespace InstagramApiSharp.Helpers
             return instaUri;
         }
 
-        public static Uri GetFriendshipPendingRequestsUri(string rankToken)
+        public static Uri GetFriendshipPendingRequestsUri(/*string rankToken*/)
         {
-            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.FRIENDSHIPS_PENDING_REQUESTS, rankToken), out var instaUri))
+            if (!Uri.TryCreate(BaseInstagramUri, /*string.Format(*/InstaApiConstants.FRIENDSHIPS_PENDING_REQUESTS/*, rankToken)*/, out var instaUri))
                 throw new Exception("Cant create URI for friendship pending requests");
             return instaUri;
         }
@@ -820,11 +854,16 @@ namespace InstagramApiSharp.Helpers
             return instaUri;
         }
 
-        public static Uri GetHighlightFeedsUri(long userId)
+        public static Uri GetHighlightFeedsUri(long userId, string phoneId)
         {
             if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.HIGHLIGHT_TRAY, userId), out var instaUri))
                 throw new Exception("Cant create URI for highlight feeds");
-            return instaUri;
+            return instaUri
+                .AddQueryParameter(InstaApiConstants.SUPPORTED_CAPABALITIES_HEADER, InstaApiConstants.SupportedCapabalities.ToString(Formatting.None))
+               .AddQueryParameter("phone_id", phoneId)
+               .AddQueryParameter("battery_level", "100")
+               .AddQueryParameter("is_charging", "1")
+               .AddQueryParameter("will_sound_on", "0");
         }
 
         public static Uri GetHighlightsArchiveUri()
@@ -921,7 +960,7 @@ namespace InstagramApiSharp.Helpers
         public static Uri GetPushRegisterUri()
         {
             if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.PUSH_REGISTER), out var instaUri))
-                throw new Exception("Cant create URI for live heartbeat and get viewer count");
+                throw new Exception("Cant create URI for registering push notification");
             return instaUri;
         }
 
@@ -1005,10 +1044,10 @@ namespace InstagramApiSharp.Helpers
             return instaUri;
         }
 
-        public static Uri GetMediaUploadFinishUri()
+        public static Uri GetMediaUploadFinishVideoUri()
         {
-            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.MEDIA_UPLOAD_FINISH, out var instaUri))
-                throw new Exception("Cant create URI for media upload finish");
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.MEDIA_UPLOAD_FINISH_VIDEO, out var instaUri))
+                throw new Exception("Cant create URI for media upload finish video");
             return instaUri;
         }
 
@@ -1060,8 +1099,15 @@ namespace InstagramApiSharp.Helpers
 
         public static Uri GetMediaShareUri(InstaMediaType mediaType)
         {
+            var type = "photo";
+            switch(mediaType)
+            {
+                case InstaMediaType.Video:
+                    type = "video";
+                    break;
+            }
             if (
-                !Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.DIRECT_BROADCAST_MEDIA_SHARE, mediaType.ToString().ToLower()),
+                !Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.DIRECT_BROADCAST_MEDIA_SHARE, type),
                     out var instaUri))
                 throw new Exception("Cant create URI for media share");
             return instaUri;
@@ -1085,9 +1131,9 @@ namespace InstagramApiSharp.Helpers
                 : null;
         }
 
-        public static Uri GetMuteDirectThreadUri(string threadId)
+        public static Uri GetMuteDirectThreadMessagesUri(string threadId)
         {
-            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.DIRECT_THREAD_MUTE, threadId), out var instaUri))
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.DIRECT_THREAD_MESSAGES_MUTE, threadId), out var instaUri))
                 throw new Exception("Cant create URI for mute direct thread");
             return instaUri;
         }
@@ -1151,10 +1197,31 @@ namespace InstagramApiSharp.Helpers
             return instaUri;
         }
 
-        public static Uri GetRankRecipientsByUserUri(string username)
+        public static Uri GetRankRecipientsByUserUri(string username, string mode = "raven")
         {
-            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.GET_RANK_RECIPIENTS_BY_USERNAME, username), out var instaUri))
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.GET_RANK_RECIPIENTS_BY_USERNAME, username, mode), out var instaUri))
                 throw new Exception("Cant create URI for get rank recipients by username");
+            return instaUri;
+        }
+
+        public static Uri GetBusinessEligibilityUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.BUSINESS_ELIGIBILITY, out var instaUri))
+                throw new Exception("Cant create URI for business eligibility");
+            return instaUri;
+        }
+
+        public static Uri GetBusinessBrandedContentUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.BUSINESS_BRANDED_CONTENT, out var instaUri))
+                throw new Exception("Cant create URI for get branded content");
+            return instaUri;
+        }
+
+        public static Uri GetViewableStatusesUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.GET_VIEWABLE_STATUSES, out var instaUri))
+                throw new Exception("Cant create URI for get viewable statuses");
             return instaUri;
         }
 
@@ -1162,9 +1229,9 @@ namespace InstagramApiSharp.Helpers
         {
             if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.GET_RECENT_ACTIVITY, out var instaUri))
                 throw new Exception("Cant create URI (get recent activity)");
-            var query = $"activity_module=all";
-            var uriBuilder = new UriBuilder(instaUri) { Query = query };
-            return uriBuilder.Uri;
+            //var query = $"activity_module=all";
+            //var uriBuilder = new UriBuilder(instaUri) { Query = query };
+            return instaUri;
         }
 
         public static Uri GetRecentRecipientsUri()
@@ -1256,22 +1323,42 @@ namespace InstagramApiSharp.Helpers
         public static Uri GetSearchTagUri(string tag, int count, IEnumerable<long> excludeList, string rankToken)
         {
             excludeList = excludeList ?? new List<long>();
-            var excludeListStr = $"[{string.Join(",", excludeList)}]";
+            var excludeListStr = string.Empty;
+
+            if(excludeList?.Count() > 0)
+                excludeListStr = $"[{string.Join(",", excludeList)}]";
+
             if (!Uri.TryCreate(BaseInstagramUri,
                 string.Format(InstaApiConstants.SEARCH_TAGS, tag, count),
                 out var instaUri))
                 throw new Exception("Cant create search tag URI");
             return instaUri
                 .AddQueryParameter("exclude_list", excludeListStr)
-                .AddQueryParameter("rank_token", rankToken);
+                .AddQueryParameter("rank_token", rankToken)
+                .AddQueryParameter(InstaApiConstants.HEADER_TIMEZONE, InstaApiConstants.TIMEZONE_OFFSET.ToString());
         }
 
-        public static Uri GetSearchUserUri(string text, int count = 30)
+        public static Uri GetSearchUserUri(string text, int count, IEnumerable<long> excludeList, string rankToken)
         {
+            excludeList = excludeList ?? new List<long>();
+            var excludeListStr = string.Empty;
+
+            if (excludeList?.Count() > 0)
+            {
+                //excludeListStr = $"[{string.Join(",", excludeList)}]";
+                var jARR = new JObject
+                {
+                    {"users", new JArray(excludeList)}
+                };
+                excludeListStr = jARR.ToString(Formatting.None);
+            }
+            //TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow).TotalSeconds
             if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.USERS_SEARCH,
-                TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow).TotalSeconds, text, count), out var instaUri))
+                InstaApiConstants.TIMEZONE_OFFSET, text, count), out var instaUri))
                 throw new Exception("Cant create URI for search user");
-            return instaUri;
+            return instaUri
+                .AddQueryParameter("exclude_list", excludeListStr)
+                .AddQueryParameter("rank_token", rankToken);
         }
 
         public static Uri GetSeenMediaStoryUri()
@@ -1537,9 +1624,9 @@ namespace InstagramApiSharp.Helpers
             return instaUri;
         }
 
-        public static Uri GetUnMuteDirectThreadUri(string threadId)
+        public static Uri GetUnMuteDirectThreadMessagesUri(string threadId)
         {
-            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.DIRECT_THREAD_UNMUTE, threadId), out var instaUri))
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.DIRECT_THREAD_MESSAGES_UNMUTE, threadId), out var instaUri))
                 throw new Exception("Cant create URI for unmute direct thread");
             return instaUri;
         }
@@ -1592,43 +1679,60 @@ namespace InstagramApiSharp.Helpers
             return instaUri;
         }
 
-        public static Uri GetUserFeedUri(string maxId = "")
+        public static Uri GetUserFeedUri()
         {
             if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.TIMELINEFEED, out var instaUri))
                 throw new Exception("Cant create timeline feed URI");
-            return !string.IsNullOrEmpty(maxId)
-                ? new UriBuilder(instaUri) { Query = $"max_id={maxId}" }.Uri
-                : instaUri;
+            return instaUri;
         }
 
-        public static Uri GetUserFollowersUri(long userPk, string rankToken, string searchQuery, bool mutualsfirst = false, string maxId = "")
+        public static Uri GetUserFollowersUri(long userPk, string rankToken, string searchQuery = "", bool mutualsfirst = false, string maxId = "")
         {
-            Uri instaUri = null;
+            Uri instaUri;
             if (!mutualsfirst)
             {
-                if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.FRIENDSHIPS_USER_FOLLOWERS, userPk, rankToken),
+                if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.FRIENDSHIPS_USER_FOLLOWERS, userPk),
                     out instaUri))
                     throw new Exception("Cant create URI for user followers");
             }
             else
             {
-                if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.FRIENDSHIPS_USER_FOLLOWERS_MUTUALFIRST, userPk, rankToken, "1"),
+                if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.FRIENDSHIPS_USER_FOLLOWERS_MUTUALFIRST, userPk, "1"),
                   out instaUri))
                     throw new Exception("Cant create URI for user followers");
             }
             return instaUri
+                .AddQueryParameter("search_surface", "follow_list_page")
                 .AddQueryParameterIfNotEmpty("max_id", maxId)
-                .AddQueryParameterIfNotEmpty("query", searchQuery);
+                .AddQueryParameter("order", "default")
+                .AddQueryParameter("query", searchQuery)
+                .AddQueryParameter("enable_groups", "true")
+                .AddQueryParameter("rank_token", rankToken.ToString());
         }
 
-        public static Uri GetUserFollowingUri(long userPk, string rankToken, string searchQuery, string maxId = "")
+        public static Uri GetUserFollowingUri(long userPk, string rankToken, string searchQuery = "", string maxId = "", InstaFollowingOrderType orderBy = InstaFollowingOrderType.Default)
         {
-            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.FRIENDSHIPS_USER_FOLLOWING, userPk, rankToken),
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.FRIENDSHIPS_USER_FOLLOWING, userPk),
                 out var instaUri))
                 throw new Exception("Cant create URI for user following");
+            var order = "";
+            switch(orderBy)
+            {
+                case InstaFollowingOrderType.DateFollowedEarliest:
+                    order = "date_followed_earliest";
+                    break;
+                case InstaFollowingOrderType.DateFollowedLatest:
+                    order = "date_followed_late";
+                    break;
+            }
             return instaUri
+                .AddQueryParameter("includes_hashtags", "true")
+                .AddQueryParameter("search_surface", "follow_list_page")
                 .AddQueryParameterIfNotEmpty("max_id", maxId)
-                .AddQueryParameterIfNotEmpty("query", searchQuery);
+                .AddQueryParameter("query", searchQuery)
+                .AddQueryParameter("enable_groups", "true")
+                .AddQueryParameter("rank_token", rankToken.ToString())
+                .AddQueryParameterIfNotEmpty("order", order);
         }
 
         public static Uri GetUserFriendshipUri(long userId)
@@ -1639,10 +1743,11 @@ namespace InstagramApiSharp.Helpers
             return instaUri;
         }
 
-        public static Uri GetUserInfoByIdUri(long pk)
+        public static Uri GetUserInfoByIdUri(long pk, bool selfProfile)
         {
             if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.GET_USER_INFO_BY_ID, pk), out var instaUri))
                 throw new Exception("Cant create user info by identifier URI");
+            if(selfProfile) instaUri.AddQueryParameter("from_module", "self_profile");
             return instaUri;
         }
 
@@ -1651,6 +1756,12 @@ namespace InstagramApiSharp.Helpers
             if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.GET_USER_INFO_BY_USERNAME, username), out var instaUri))
                 throw new Exception("Cant create user info by username URI");
             return instaUri;
+        }
+        public static Uri GetUserFeedCapabilitiesUri(long userPk)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.USER_FEED_CAPABILITIES, userPk.ToString()), out var instaUri))
+                throw new Exception("Cant create user info by username URI");
+            return instaUri.AddQueryParameter("supported_capabilities_new", InstaApiConstants.SupportedCapabalities.ToString());
         }
 
         public static Uri GetUserLikeFeedUri(string maxId = null)
@@ -1663,13 +1774,19 @@ namespace InstagramApiSharp.Helpers
             return uriBuilder.Uri;
         }
 
-        public static Uri GetUserMediaListUri(long userPk, string nextId = "")
+        public static Uri GetUserMediaListUri(long userPk, string nextId = "", bool excludeComment = false)
         {
-            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.USEREFEED + userPk, out var instaUri))
+            if (!Uri.TryCreate(BaseInstagramUri, $"{InstaApiConstants.USEREFEED}{userPk}/", out var instaUri))
                 throw new Exception("Cant create URI for user media retrieval");
-            return !string.IsNullOrEmpty(nextId)
-                ? new UriBuilder(instaUri) { Query = $"max_id={nextId}" }.Uri
-                : instaUri;
+
+            instaUri
+                .AddQueryParameter("exclude_comment", excludeComment.ToString())
+                .AddQueryParameter("only_fetch_first_carousel_media", "false");
+
+            if (nextId != "")
+                instaUri.AddQueryParameter("max_id", nextId);
+
+            return instaUri;
         }
 
         public static Uri GetArchivedMediaFeedsListUri(string nextId = "")
@@ -1823,12 +1940,15 @@ namespace InstagramApiSharp.Helpers
             return instaUri;
         }
 
-        public static Uri GetSearchPlacesUri(int timezoneOffset, double lat, double lng, string query, string rankToken, List<long> excludeList)
+        public static Uri GetSearchPlacesUri(string query, string rankToken, List<long> excludeList, double? lat = null, double? lng = null)
         {
             if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.FBSEARCH_PLACES, out var instaUri))
                 throw new Exception("Cant create URI for search places");
 
-            var parameters = $"timezone_offset={timezoneOffset}&lat={lat.ToString(CultureInfo.InvariantCulture)}&lng={lng.ToString(CultureInfo.InvariantCulture)}";
+            var parameters = $"timezone_offset={InstaApiConstants.TIMEZONE_OFFSET}&";
+
+            if(lat!= null && lng != null)
+                parameters += $"lat={lat.Value.ToString(CultureInfo.InvariantCulture)}&lng={lng.Value.ToString(CultureInfo.InvariantCulture)}";
 
             if (!string.IsNullOrEmpty(query))
                 parameters += $"&query={query}";
@@ -1842,9 +1962,10 @@ namespace InstagramApiSharp.Helpers
             return new UriBuilder(instaUri) { Query = parameters }.Uri;
         }
 
-        public static Uri GetBroadcastReelShareUri()
+        public static Uri GetBroadcastReelShareUri(InstaSharingType sharingType)
         {
-            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.DIRECT_BROADCAST_REEL_SHARE, out var instaUri))
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.DIRECT_BROADCAST_REEL_SHARE,
+                sharingType.ToString().ToLower()), out var instaUri))
                 throw new Exception("Cant create URI for direct broadcast reel share");
             return instaUri;
         }
@@ -1901,14 +2022,14 @@ namespace InstagramApiSharp.Helpers
             return instaUri;
         }
 
-        public static Uri GetMuteUserMediaStoryUri(long userId)
+        public static Uri GetMuteUserMediaStoryUri()
         {
             if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.FRIENDSHIPS_MUTE_POST_STORY, out var instaUri))
                 throw new Exception("Cant create URI for mute user media or story");
             return instaUri;
         }
 
-        public static Uri GetUnMuteUserMediaStoryUri(long userId)
+        public static Uri GetUnMuteUserMediaStoryUri()
         {
             if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.FRIENDSHIPS_UNMUTE_POST_STORY, out var instaUri))
                 throw new Exception("Cant create URI for unmute user media or story");
@@ -1976,7 +2097,7 @@ namespace InstagramApiSharp.Helpers
         }
         public static Uri GetDeleteDirectMessageUri(string threadId, string itemId)
         {
-            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.DIRECT_THREAD_HIDE, threadId, itemId),
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.DIRECT_THREAD_DELETE_MESSAGE, threadId, itemId),
                 out var instaUri))
                 throw new Exception("Cant create URI for delete direct message");
             return instaUri;
@@ -2230,6 +2351,20 @@ namespace InstagramApiSharp.Helpers
             return instaUri;
         }
 
+        public static Uri GetMediaUploadFinishUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.MEDIA_UPLOAD_FINISH, out var instaUri))
+                throw new Exception("Cant create URI for media upload finish");
+            return instaUri;
+        }
+
+        public static Uri GetBroadcastVoiceUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.DIRECT_BROADCAST_SHARE_VOICE, out var instaUri))
+                throw new Exception("Cant create URI for broadcast share voice");
+            return instaUri;
+        }
+
         public static Uri GetHashtagSectionUri(string hashtag)
         {
             if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.TAG_SECTION, hashtag), out var instaUri))
@@ -2237,32 +2372,408 @@ namespace InstagramApiSharp.Helpers
             return instaUri;
         }
 
-        public static Uri GetTopicalExploreUri(string sessionId, string maxId = null, string clusterId = null)
+        public static Uri GetTopicalExploreUri(string sessionId, bool isPrefetch = false, string maxId = null, string clusterId = "", bool explorePopular = false)
         {
             if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.DISCOVER_TOPICAL_EXPLORE, out var instaUri))
                 throw new Exception("Cant create URI for topical explore");
 
             instaUri = instaUri
-                .AddQueryParameter("is_prefetch", "false")
-                .AddQueryParameter("module", "explore_popular")
+                .AddQueryParameter("is_prefetch", isPrefetch.ToString())
+                .AddQueryParameter("omit_cover_media", "true");
+            if (!string.IsNullOrEmpty(maxId))
+                instaUri = instaUri.AddQueryParameter("max_id", maxId);
+            if (explorePopular)
+                instaUri = instaUri.AddQueryParameter("module", "explore_popular");
+            instaUri = instaUri
                 .AddQueryParameter("use_sectional_payload", "true")
                 .AddQueryParameter("timezone_offset", InstaApiConstants.TIMEZONE_OFFSET.ToString())
                 .AddQueryParameter("session_id", sessionId)
-                .AddQueryParameter("include_fixed_destinations", "false");
-
+                .AddQueryParameter("include_fixed_destinations", "true");
             if (clusterId.ToLower() == "explore_all:0" || clusterId.ToLower() == "explore_all%3A0")
             {
                 if (!string.IsNullOrEmpty(maxId))
                 {
-                    instaUri = instaUri.AddQueryParameter("max_id", maxId);
                     instaUri = instaUri.AddQueryParameter("cluster_id", "explore_all%3A0");
                 }
             }
-            else
+            else if (clusterId != string.Empty)
             {
-                instaUri = instaUri.AddQueryParameter("cluster_id", clusterId);
-                instaUri = instaUri.AddQueryParameter("max_id", maxId);
+                instaUri = instaUri.AddQueryParameter("cluster_id", Uri.EscapeDataString(clusterId));
             }
+            return instaUri;
+        }
+
+        public static Uri GetBroadcastAnimatedMediaUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.DIRECT_BROADCAST_ANIMATED_MEDIA, out var instaUri))
+                throw new Exception("Cant create URI for broadcast animated media");
+            return instaUri;
+        }
+
+        public static Uri GetBroadcastFelixShareUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.DIRECT_BROADCAST_FELIX_SHARE, out var instaUri))
+                throw new Exception("Cant create URI for broadcast felix share");
+            return instaUri;
+        }
+
+        public static Uri GetVideoCallNtpClockUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, $"/video_call/ntp_clock/", out var instaUri))
+                throw new Exception("Cant create URI for GetVideoCallNtpClockUri");
+
+            return instaUri
+                .AddQueryParameter("client_time", DateTime.UtcNow.ToUnixTimeMilliseconds().ToString());
+        }
+
+        public static Uri GetVideoCallJoinUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, $"/video_call/join/", out var instaUri))
+                throw new Exception("Cant create URI for GetVideoCallJoinUri");
+
+            return instaUri;
+        }
+
+        public static Uri GetVideoCallConfirmUri(long videoCallId)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, $"/video_call/{videoCallId}/confirm/", out var instaUri))
+                throw new Exception("Cant create URI for GetVideoCallConfirmUri");
+
+            return instaUri;
+        }
+
+        public static Uri GetVideoCallInfoUri(long videoCallId)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, $"/video_call/{videoCallId}/info/", out var instaUri))
+                throw new Exception("Cant create URI for GetVideoCallInfoUri");
+
+            return instaUri;
+        }
+
+        public static Uri GetAddVideoCallToDirectUri(string threadId)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, $"/direct_v2/threads/{threadId}/add_video_call/", out var instaUri))
+                throw new Exception("Cant create URI for GetAddVideoCallToDirectUri");
+
+            return instaUri;
+        }
+        public static Uri GetVideoCallLeaveUri(long videoCallId)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, $"/video_call/{videoCallId}/leave/", out var instaUri))
+                throw new Exception("Cant create URI for GetVideoCallLeaveUri");
+
+            return instaUri;
+        }
+
+        public static Uri GetLauncherSyncUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.LAUNCHER_SYNC, out var instaUri))
+                throw new Exception("Cant create URI for launcher sync");
+            return instaUri;
+        }
+        public static Uri GetDiscoverDismissSuggestionUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.DISCOVER_DISMISS_SUGGESTION, out var instaUri))
+                throw new Exception("Cant create URI for discover dismiss suggestion");
+            return instaUri;
+        }
+        public static Uri GetHashtagMediaReportUri() 
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.TAG_MEDIA_REPORT, out var instaUri))
+                throw new Exception("Cant create URI for hashtag media report");
+            return instaUri;
+        }
+        public static Uri GetExploreReportUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.DISCOVER_EXPLORE_REPORT, out var instaUri))
+                throw new Exception("Cant create URI for discover explore report");
+            return instaUri;
+        }
+
+        public static Uri GetMediaTagsUri(string mediaId)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.MEDIA_TAG, mediaId), out var instaUri))
+                throw new Exception("Cant create URI for media hashtags");
+            return instaUri;
+        }
+        public static Uri GetDiscoverSurfaceWithSuUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.DISCOVER_SURFACE_WITH_SU, out var instaUri))
+                throw new Exception("Cant create URI for discover surface with su");
+            return instaUri;
+        }
+        public static Uri GetBanyanUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.BANYAN, out var instaUri))
+                throw new Exception("Cant create URI for banyan");
+            return instaUri;
+        }
+        public static Uri GetHideSearchEntitiesUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.FBSEARCH_HIDE_SEARCH_ENTITIES, out var instaUri))
+                throw new Exception("Cant create URI for hide search entities");
+            return instaUri;
+        }
+        public static Uri GetDynamicSearchUri(InstaDiscoverSearchType searchType)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.FBSEARCH_DYNAMIC_SEARCH, searchType.ToString().ToLower()), out var instaUri))
+                throw new Exception("Cant create URI for fbsearch dynamic search");
+            return instaUri;
+        }
+        public static Uri GetAnswerToStoryQuizUri(long storyItemPk, long quizId)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.STORY_QUIZ_ANSWER, storyItemPk, quizId), out var instaUri))
+                throw new Exception("Cant create URI for answer to quiz");
+            return instaUri;
+        }
+        public static Uri GetNotificationBadgeUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.NOTIFICATION_BADGE, out var instaUri))
+                throw new Exception("Cant create URI for notification badge");
+            return instaUri;
+        }
+        public static Uri GetQpBatchFetchUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.QP_BATCH_FETCH, out var instaUri))
+                throw new Exception("Cant create URI for qp batch fetch");
+            return instaUri;
+        }
+        public static Uri GetContactPointPrefillUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.ACCOUNTS_CONTACT_POINT_PREFILL, out var instaUri))
+                throw new Exception("Cant create URI for contact point prefill");
+            return instaUri;
+        }
+        public static Uri GetReadMsisdnHeaderUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.ACCOUNTS_READ_MSISDN_HEADER, out var instaUri))
+                throw new Exception("Cant create URI for read msisdn header");
+            return instaUri;
+        }
+        public static Uri GetPrefillCandidatesUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.ACCOUNTS_GET_PREFILL_CANDIDATES, out var instaUri))
+                throw new Exception("Cant create URI for get prefill candidates");
+            return instaUri;
+        }
+        public static Uri GetCommerceBagCountUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.COMMERCE_BAG_COUNT, out var instaUri))
+                throw new Exception("Cant create URI for get commerce bag count");
+            return instaUri;
+        }
+        public static Uri GetProfileSuBadgeUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.PROFILE_SU_BADGE, out var instaUri))
+                throw new Exception("Cant create URI for get profile su badge");
+            return instaUri;
+        }
+        public static Uri GetProfileArchiveBadgeUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.PROFILE_ARCHIVE_BADGE, out var instaUri))
+                throw new Exception("Cant create URI for get profile archive badge");
+            return instaUri;
+        }
+        public static Uri GetAccountFamilyUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.MULTIPLE_ACCOUNTS_GET_ACCOUNT_FAMILY, out var instaUri))
+                throw new Exception("Cant create URI for get account family accounts");
+            return instaUri;
+        }
+        public static Uri GetQpCooldownsUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.QP_GET_COOLDOWNS, out var instaUri))
+                throw new Exception("Cant create URI for get qp cooldowns");
+            return instaUri;
+        }
+        public static Uri GetUserScoresUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.USER_SCORES, out var instaUri))
+                throw new Exception("Cant create URI for get user scores");
+            return instaUri;
+        }
+        public static Uri GetLinkageStatusUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.GET_LINKAGE_STATUS, out var instaUri))
+                throw new Exception("Cant create URI for get linkage status");
+            return instaUri;
+        }
+        public static Uri GetLoomConfigUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.LOOM_FETCH_CONFIG, out var instaUri))
+                throw new Exception("Cant create URI for get loom config");
+            return instaUri;
+        }
+        public static Uri GetQeSyncUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.QE_SYNC, out var instaUri))
+                throw new Exception("Cant create URI for qe sync");
+            return instaUri;
+        }
+        public static Uri GetConsentExistingUserFlowUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.CONSENT_EXISTING_USER_FLOW, out var instaUri))
+                throw new Exception("Cant create URI for consent existing user flow");
+            return instaUri;
+        }
+
+        public static Uri GetMuteDirectThreadVideoCallsUri(string threadId)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.DIRECT_THREAD_VIDEOCALLS_MUTE, threadId), out var instaUri))
+                throw new Exception("Cant create URI for mute direct thread video calls");
+            return instaUri;
+        }
+
+        public static Uri GetUnMuteDirectThreadVideoCallsUri(string threadId)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.DIRECT_THREAD_VIDEOCALLS_UNMUTE, threadId), out var instaUri))
+                throw new Exception("Cant create URI for unmute direct thread video calls");
+            return instaUri;
+        }
+
+        public static Uri GetHashtagChannelVideosUri(string threadId)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.TAG_CHANNEL_VIEWER, threadId), out var instaUri))
+                throw new Exception("Cant create URI for hashtag channel videos");
+            return instaUri;
+        }
+
+        public static Uri GetExploreChannelVideosUri(string threadId)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.EXPLORE_CHANNEL_VIEWER, threadId), out var instaUri))
+                throw new Exception("Cant create URI for explore channel videos");
+            return instaUri;
+        }
+
+        public static Uri GetRUploadVideoStartUri(string guid)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.RUPLOAD_IGVIDEO_START, guid), out var instaUri))
+                throw new Exception("Cant create URI for rupload segmented video start");
+            return instaUri;
+        }
+        public static Uri GetRUploadVideoTransferUri(string md5, int start, int fileSize)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.RUPLOAD_IGVIDEO_TRANSFER, md5, start, fileSize), out var instaUri))
+                throw new Exception("Cant create URI for rupload segmented video transfer");
+            return instaUri;
+        }
+
+        public static Uri GetRUploadVideoEndUri(string guid)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.RUPLOAD_IGVIDEO_END, guid), out var instaUri))
+                throw new Exception("Cant create URI for rupload segmented video end");
+            return instaUri;
+        }
+
+        public static Uri GetBroadcastReelReactUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.DIRECT_BROADCAST_REEL_REACT, out var instaUri))
+                throw new Exception("Cant create URI for direct broadcast reel react");
+            return instaUri;
+        }
+
+        public static Uri GetStoryChatRequestUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.MEDIA_STORY_CHAT_REQUEST, out var instaUri))
+                throw new Exception("Cant create URI for story chat request");
+            return instaUri;
+        }
+
+        public static Uri GetStoryChatCancelRequestUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.MEDIA_STORY_CHAT_CANCEL_REQUEST, out var instaUri))
+                throw new Exception("Cant create URI for story chat cancel request");
+            return instaUri;
+        }
+
+        public static Uri GetRemoveTrustedDeviceUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.ACCOUNTS_REMOVE_TRUSTED_DEVICE, out var instaUri))
+                throw new Exception("Cant create URI for remove trusted device");
+            return instaUri;
+        }
+
+        public static Uri GetTVBrowseFeedUri(string maxId = null)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.IGTV_BROWSE_FEED, out var instaUri))
+                throw new Exception("Cant create URI for browse igtv");
+            if (string.IsNullOrEmpty(maxId))
+                instaUri = instaUri.AddQueryParameter("prefetch", "1");
+
+            return instaUri
+                .AddQueryParameter("max_id", maxId);
+        }
+
+        public static Uri GetSeenTVUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.IGTV_WRITE_SEEN, out var instaUri))
+                throw new Exception("Cant create URI for tv write seen");
+            return instaUri;
+        }
+
+        public static Uri GetRecentFollowersUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.FRIENDSHIPS_RECENT_FOLLOWERS, out var instaUri))
+                throw new Exception("Cant create URI for recent followers");
+            return instaUri;
+        }
+        public static Uri GetDismissDiscoverUserSuggestionUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.DISCOVER_DISMISS_USER_SUGGESTION, out var instaUri))
+                throw new Exception("Cant create URI for discover dismiss user suggestion");
+            return instaUri;
+        }
+
+        public static Uri GetDirectEndChatUri(string threadId)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.DIRECT_THREAD_REMOVE_ALL_USERS, threadId), out var instaUri))
+                throw new Exception("Cant create URI for direct thread end chat");
+            return instaUri;
+        }
+
+        public static Uri GetDirectThreadApprovalRequiredUri(string threadId)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.DIRECT_THREAD_APPROVAL_REQUIRED_FOR_NEW_MEMBERS, threadId), out var instaUri))
+                throw new Exception("Cant create URI for direct thread approval required for new members");
+            return instaUri;
+        }
+
+        public static Uri GetDirectThreadApprovalNotRequiredUri(string threadId)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.DIRECT_THREAD_APPROVAL_NOT_REQUIRED_FOR_NEW_MEMBERS, threadId), out var instaUri))
+                throw new Exception("Cant create URI for direct thread approval NOT required for new members");
+            return instaUri;
+        }
+
+        public static Uri GetDirectThreadAddAdminUri(string threadId)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.DIRECT_THREAD_ADD_ADMINS, threadId), out var instaUri))
+                throw new Exception("Cant create URI for direct thread add admins");
+            return instaUri;
+        }
+
+        public static Uri GetDirectThreadRemoveAdminUri(string threadId)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.DIRECT_THREAD_REMOVE_ADMINS, threadId), out var instaUri))
+                throw new Exception("Cant create URI for direct thread remove admins");
+            return instaUri;
+        }
+        public static Uri GetDirectThreadRemoveUserUri(string threadId)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.DIRECT_THREAD_REMOVE_USERS, threadId), out var instaUri))
+                throw new Exception("Cant create URI for direct thread remove user");
+            return instaUri;
+        }
+        public static Uri GetCreateGroupThreadUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.DIRECT_CREATE_GROUP, out var instaUri))
+                throw new Exception("Cant create URI for create group thread");
+            return instaUri;
+        }
+        public static Uri GetDirectThreadByParticipantsUri(string users, int seqId, int limit = 10)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.DIRECT_THREAD_BY_PARTICIPANTS, users, seqId, limit), out var instaUri))
+                throw new Exception("Cant create URI for direct thread by participants users");
             return instaUri;
         }
     }

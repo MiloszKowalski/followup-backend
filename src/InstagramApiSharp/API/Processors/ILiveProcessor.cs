@@ -36,8 +36,7 @@ namespace InstagramApiSharp.API.Processors
         /// </summary>
         /// <param name="previewWidth">Preview width</param>
         /// <param name="previewHeight">Preview height</param>
-        /// <param name="broadcastMessage">Broadcast start message</param>
-        Task<IResult<InstaBroadcastCreate>> CreateAsync(int previewWidth = 720, int previewHeight = 1184, string broadcastMessage = "");
+        Task<IResult<InstaBroadcastCreate>> CreateAsync(int previewWidth = 1080, int previewHeight = 1794);
 
         /// <summary>
         ///     Delete an broadcast from post live.
@@ -148,8 +147,9 @@ namespace InstagramApiSharp.API.Processors
         ///     Start live broadcast. NOTE: YOU MUST CREATE AN BROADCAST FIRST(CreateAsync) AND THEN CALL THIS METHOD. 
         /// </summary>
         /// <param name="broadcastId">Broadcast id</param>
-        /// <param name="sendNotifications">Send notifications</param>
-        Task<IResult<InstaBroadcastStart>> StartAsync(string broadcastId, bool sendNotifications);
+        /// <param name="latitude">longitude of your place</param>
+        /// <param name="longitude">longitude of your place</param>
+        Task<IResult<InstaBroadcastStart>> StartAsync(string broadcastId, double? latitude = null, double? longitude = null);
 
         /// <summary>
         ///     Share an live broadcast to direct thread

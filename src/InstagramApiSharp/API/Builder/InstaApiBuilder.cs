@@ -5,15 +5,21 @@ using InstagramApiSharp.Classes.Android.DeviceInfo;
 using InstagramApiSharp.Logger;
 using InstagramApiSharp.Enums;
 using InstagramApiSharp.Classes.SessionHandlers;
+using System.Net;
 
 namespace InstagramApiSharp.API.Builder
 {
     public class InstaApiBuilder : IInstaApiBuilder
     {
+        private IConfigureMediaDelay _configureMediaDelay = ConfigureMediaDelay.PreferredDelay();
         private IRequestDelay _delay = RequestDelay.Empty();
         private AndroidDevice _device;
         private HttpClient _httpClient;
-        private HttpClientHandler _httpHandler = new HttpClientHandler();
+        private HttpClientHandler _httpHandler = new HttpClientHandler()
+        {
+            UseProxy = false,
+            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
+        };
         private IHttpRequestProcessor _httpRequestProcessor;
         private IInstaLogger _logger;
         private ApiRequestMessage _requestMessage;
@@ -37,7 +43,11 @@ namespace InstagramApiSharp.API.Builder
             if (_user == null)
                 _user = UserSessionData.Empty;
 
-            if (_httpHandler == null) _httpHandler = new HttpClientHandler();
+            if (_httpHandler == null) _httpHandler = new HttpClientHandler
+            {
+                UseProxy = false,
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
+            };
 
             if (_httpClient == null)
                 _httpClient = new HttpClient(_httpHandler) { BaseAddress = new Uri(InstaApiConstants.INSTAGRAM_URL) };
@@ -71,9 +81,9 @@ namespace InstagramApiSharp.API.Builder
                     new HttpRequestProcessor(_delay, _httpClient, _httpHandler, _requestMessage, _logger);
 
             if (_apiVersionType == null)
-                _apiVersionType = InstaApiVersionType.Version86;
+                _apiVersionType = InstaApiVersionType.Version130;
 
-            var instaApi = new InstaApi(_user, _logger, _device, _httpRequestProcessor, _apiVersionType.Value);
+            var instaApi = new InstaApi(_user, _logger, _device, _httpRequestProcessor, _apiVersionType.Value, _configureMediaDelay);
             if (_sessionHandler != null)
             {
                 _sessionHandler.InstaApi = instaApi;
@@ -104,6 +114,9 @@ namespace InstagramApiSharp.API.Builder
         /// </returns>
         public IInstaApiBuilder UseHttpClient(HttpClient httpClient)
         {
+            if (httpClient != null)
+                httpClient.BaseAddress = new Uri(InstaApiConstants.INSTAGRAM_URL);
+                
             _httpClient = httpClient;
             return this;
         }
@@ -117,6 +130,7 @@ namespace InstagramApiSharp.API.Builder
         /// </returns>
         public IInstaApiBuilder UseHttpClientHandler(HttpClientHandler handler)
         {
+            handler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
             _httpHandler = handler;
             return this;
         }
@@ -164,7 +178,18 @@ namespace InstagramApiSharp.API.Builder
             _delay = delay;
             return this;
         }
-
+        /// <summary>
+        ///     Set delay before configuring medias [only for uploading parts]
+        /// </summary>
+        /// <param name="configureMediaDelay">Timespan delay for configuring Media</param>
+        /// <returns>API Builder</returns>
+        public IInstaApiBuilder SetConfigureMediaDelay(IConfigureMediaDelay configureMediaDelay)
+        {
+            if (configureMediaDelay == null)
+                configureMediaDelay = ConfigureMediaDelay.PreferredDelay();
+            _configureMediaDelay = configureMediaDelay;
+            return this;
+        }
         /// <summary>
         ///     Set custom android device.
         ///     <para>Note: this is optional, if you didn't set this, InstagramApiSharp will choose random device.</para>
@@ -213,6 +238,11 @@ namespace InstagramApiSharp.API.Builder
         /// </returns>
         public IInstaApiBuilder SetHttpRequestProcessor(IHttpRequestProcessor httpRequestProcessor)
         {
+            if (httpRequestProcessor.Client != null)
+                httpRequestProcessor.Client.BaseAddress = new Uri(InstaApiConstants.INSTAGRAM_URL);
+            if (httpRequestProcessor.HttpHandler != null)
+                httpRequestProcessor.HttpHandler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+
             _httpRequestProcessor = httpRequestProcessor;
             return this;
         }

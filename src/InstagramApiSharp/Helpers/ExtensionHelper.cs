@@ -32,7 +32,7 @@ namespace InstagramApiSharp
             return string.Format(InstaApiConstants.USER_AGENT, deviceInfo.Dpi, deviceInfo.Resolution, deviceInfo.HardwareManufacturer,
                 deviceInfo.DeviceModelIdentifier, deviceInfo.FirmwareBrand, deviceInfo.HardwareModel,
                 apiVersion.AppVersion, deviceInfo.AndroidVer.APILevel,
-                deviceInfo.AndroidVer.VersionNumber, apiVersion.AppApiVersionCode);
+                deviceInfo.AndroidVer.VersionNumber, apiVersion.AppApiVersionCode, deviceInfo.AndroidBoardName);
         }
         public static string GenerateFacebookUserAgent()
         {
@@ -102,6 +102,20 @@ namespace InstagramApiSharp
         {
             return System.Net.WebUtility.UrlEncode(data);
         }
+
+        public static string GetThreadToken()
+        {
+            var str = "";
+            // 6600286272511816379
+            str += Rnd.Next(0, 9);
+            str += Rnd.Next(0, 9);
+            str += Rnd.Next(1000, 9999);
+            str += Rnd.Next(11111, 99999);
+
+            str += Rnd.Next(2222, 6789);
+
+            return $"6600{str}";
+        }
         public static string GetJson(this InstaLocationShort location)
         {
             if (location == null)
@@ -155,7 +169,20 @@ namespace InstagramApiSharp
 
             }
         }
-        static readonly Random Rnd = new Random();
+        public static string GetChannelDeviceType(this InstaPushChannelType type)
+        {
+            switch(type)
+            {
+                default:
+                case InstaPushChannelType.Mqtt:
+                    return "android_mqtt";
+                case InstaPushChannelType.Gcm:
+                    return "android_gcm";
+                case InstaPushChannelType.Fcm:
+                    return "android_fcm";
+            }
+        }
+        readonly static Random Rnd = new Random();
         public static string GenerateRandomString(this int length)
         {
             const string pool = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -168,6 +195,7 @@ namespace InstagramApiSharp
         {
             System.Diagnostics.Debug.WriteLine(Convert.ToString(obj));
         }
+        public static string EncodeTime(this TimeSpan span) => $"{span.Hours.ToString("00")}:{span.Minutes.ToString("00")}:{span.Seconds.ToString("00")}";
 
         public static InstaImageUpload ConvertToImageUpload(this InstaImage instaImage, InstaUserTagUpload[] userTags = null)
         {
@@ -180,7 +208,20 @@ namespace InstagramApiSharp
                 UserTags = userTags?.ToList()
             };
         }
-
+        public static InstaComment ConvertToComment(this InstaCommentShort commentShort)
+        {
+            return new InstaComment
+            {
+                ContentType = commentShort.ContentType,
+                User=  commentShort.User,
+                Pk = commentShort.Pk,
+                Text = commentShort.Text,
+                Type = commentShort.Type,
+                CreatedAt = commentShort.CreatedAt,
+                CreatedAtUtc = commentShort.CreatedAtUtc,
+                HasLikedComment = commentShort.HasLikedComment
+            };
+        }
         public static JObject ConvertToJson(this InstaStoryPollUpload poll)
         {
             var jArray = new JArray
@@ -335,6 +376,55 @@ namespace InstagramApiSharp
                 {"text_color", countdown.TextColor},
                 {"following_enabled", countdown.FollowingEnabled},
                 {"is_sticker", countdown.IsSticker}
+            };
+        }
+
+        public static JObject ConvertToJson(this InstaStoryQuizUpload quiz)
+        {
+            var answers = new JArray();
+            if (quiz.Options?.Count > 0)
+                foreach (var item in quiz.Options)
+                    answers.Add(new JObject
+                    {
+                        {"text", item.Text},
+                        {"count", item.Count}
+                    });
+
+            return new JObject
+            {
+                {"x", quiz.X},
+                {"y", quiz.Y},
+                {"z", quiz.Z},
+                {"width", quiz.Width},
+                {"height", quiz.Height},
+                {"rotation", quiz.Rotation},
+                {"question", quiz.Question},
+                {"options", answers},
+                {"correct_answer", quiz.CorrectAnswer},
+                {"viewer_can_answer", quiz.ViewerCanAnswer},
+                {"viewer_answer", quiz.ViewerAnswer},
+                {"text_color", quiz.TextColor},
+                {"start_background_color", quiz.StartBackgroundColor},
+                {"end_background_color", quiz.EndBackgroundColor},
+                {"is_sticker", quiz.IsSticker},
+            };
+        }
+
+        public static JObject ConvertToJson(this InstaStoryChatUpload storyChat)
+        {
+            return new JObject
+            {
+                {"x", storyChat.X},
+                {"y", storyChat.Y},
+                {"z", storyChat.Z},
+                {"width", storyChat.Width},
+                {"height", storyChat.Height},
+                {"rotation", storyChat.Rotation},
+                {"text", storyChat.GroupName},
+                {"start_background_color", storyChat.StartBackgroundColor},
+                {"end_background_color", storyChat.EndBackgroundColor},
+                {"has_started_chat", storyChat.HasChatStarted},
+                {"is_sticker", storyChat.IsSticker}
             };
         }
     }

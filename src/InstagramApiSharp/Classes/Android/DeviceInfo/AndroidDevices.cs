@@ -25,6 +25,5 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
         public const string XIAOMI_HM_1SW = "xiaomi-hm-1sw";
         public const string HTC_ONE_PLUS = "htc-one-plus";
         public const string XIAOMI_REDMI_NOTE_4X = "xiaomi-redmi-note-4x";
-        public const string GALAXY_TAB4 = "galaxy-tab4";
     }
 }

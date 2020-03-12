@@ -7,6 +7,7 @@ using InstagramApiSharp.Converters.Json;
 using InstagramApiSharp.Helpers;
 using InstagramApiSharp.Logger;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -41,6 +42,20 @@ namespace InstagramApiSharp.API.Processors
             _httpHelper = httpHelper;
         }
         /// <summary>
+        ///     Get medias for explore channel
+        /// </summary>
+        /// <param name="channelId">Channel id</param>
+        /// <param name="firstMediaId">First media id</param>
+        /// <param name="paginationParameters">Pagination parameters: next id and max amount of pages to load</param>
+        /// <returns>
+        ///     <see cref="InstaMediaList" />
+        /// </returns>
+        public async Task<IResult<InstaMediaList>> GetExploreChannelVideosAsync(string channelId, string firstMediaId,
+            PaginationParameters paginationParameters)
+        {
+            return await _instaApi.HelperProcessor.GetChannelVideosAsync(UriCreator.GetExploreChannelVideosUri(channelId), firstMediaId, paginationParameters);
+        }
+        /// <summary>
         ///     Get user explore feed (Explore tab info) asynchronously
         /// </summary>
         /// <param name="paginationParameters">Pagination parameters: next id and max amount of pages to load</param>
@@ -64,12 +79,13 @@ namespace InstagramApiSharp.API.Processors
                         return Result.Fail(feeds.Info, (InstaExploreFeed)null);
                 }
                 var feedResponse = feeds.Value;
+                exploreFeed = Convert(feedResponse);
                 paginationParameters.NextMaxId = feedResponse.MaxId;
                 paginationParameters.RankToken = feedResponse.RankToken;
 
                 while (feedResponse.MoreAvailable
                        && !string.IsNullOrEmpty(paginationParameters.NextMaxId)
-                       && paginationParameters.PagesLoaded < paginationParameters.MaximumPagesToLoad)
+                       && paginationParameters.PagesLoaded <= paginationParameters.MaximumPagesToLoad)
                 {
                     var nextFeed = await GetExploreFeed(paginationParameters);
                     if (!nextFeed.Succeeded)
@@ -110,7 +126,7 @@ namespace InstagramApiSharp.API.Processors
             catch (HttpRequestException httpException)
             {
                 _logger?.LogException(httpException);
-                return Result.Fail(httpException, default(InstaExploreFeed), ResponseType.NetworkProblem);
+                return Result.Fail(httpException, exploreFeed, ResponseType.NetworkProblem);
             }
             catch (Exception exception)
             {
@@ -167,7 +183,7 @@ namespace InstagramApiSharp.API.Processors
                 paginationParameters.PagesLoaded++;
                 while (mediaResponse.MoreAvailable
                        && !string.IsNullOrEmpty(paginationParameters.NextMaxId)
-                       && paginationParameters.PagesLoaded < paginationParameters.MaximumPagesToLoad)
+                       && paginationParameters.PagesLoaded <= paginationParameters.MaximumPagesToLoad)
                 {
                     var result = await GetAnyFeeds(UriCreator.GetUserLikeFeedUri(paginationParameters.NextMaxId));
                     if (!result.Succeeded)
@@ -246,7 +262,7 @@ namespace InstagramApiSharp.API.Processors
                 paginationParameters.PagesLoaded++;
                 while (mediaResponse.MoreAvailable
                        && !string.IsNullOrEmpty(paginationParameters.NextMaxId)
-                       && paginationParameters.PagesLoaded < paginationParameters.MaximumPagesToLoad)
+                       && paginationParameters.PagesLoaded <= paginationParameters.MaximumPagesToLoad)
                 {
                     var result = await GetAnyFeeds(UriCreator.GetSavedFeedUri(paginationParameters?.NextMaxId));
                     if (!result.Succeeded)
@@ -316,7 +332,7 @@ namespace InstagramApiSharp.API.Processors
 
                 while (feedResponse.MoreAvailable
                        && !string.IsNullOrEmpty(paginationParameters.NextMaxId)
-                       && paginationParameters.PagesLoaded < paginationParameters.MaximumPagesToLoad)
+                       && paginationParameters.PagesLoaded <= paginationParameters.MaximumPagesToLoad)
                 {
                     var nextFeed = await GetTagFeed(tag, paginationParameters);
                     if (!nextFeed.Succeeded)
@@ -334,7 +350,7 @@ namespace InstagramApiSharp.API.Processors
             catch (HttpRequestException httpException)
             {
                 _logger?.LogException(httpException);
-                return Result.Fail(httpException, default(InstaTagFeed), ResponseType.NetworkProblem);
+                return Result.Fail(httpException, tagFeed, ResponseType.NetworkProblem);
             }
             catch (Exception exception)
             {
@@ -364,6 +380,7 @@ namespace InstagramApiSharp.API.Processors
                 {
                     return ConvertersFabric.Instance.GetFeedConverter(instaFeedResponse).Convert();
                 }
+
                 var timelineFeeds = await GetUserTimelineFeed(paginationParameters, seenMediaIds, refreshRequest);
                 if (!timelineFeeds.Succeeded)
                     return Result.Fail(timelineFeeds.Info, feed);
@@ -374,9 +391,9 @@ namespace InstagramApiSharp.API.Processors
                 paginationParameters.NextMaxId = feed.NextMaxId;
                 paginationParameters.PagesLoaded++;
 
-                while (feedResponse.MoreAvailable
+                while (feed.MoreAvailable
                        && !string.IsNullOrEmpty(paginationParameters.NextMaxId)
-                       && paginationParameters.PagesLoaded < paginationParameters.MaximumPagesToLoad)
+                       && paginationParameters.PagesLoaded <= paginationParameters.MaximumPagesToLoad)
                 {
                     var nextFeed = await GetUserTimelineFeed(paginationParameters);
                     if (!nextFeed.Succeeded)
@@ -385,7 +402,7 @@ namespace InstagramApiSharp.API.Processors
                     var convertedFeed = Convert(nextFeed.Value);
                     feed.Medias.AddRange(convertedFeed.Medias);
                     feed.Stories.AddRange(convertedFeed.Stories);
-                    feedResponse.MoreAvailable = nextFeed.Value.MoreAvailable;
+                    feed.MoreAvailable = nextFeed.Value.MoreAvailable;
                     paginationParameters.NextMaxId = nextFeed.Value.NextMaxId;
                     paginationParameters.PagesLoaded++;
                 }
@@ -395,7 +412,7 @@ namespace InstagramApiSharp.API.Processors
             catch (HttpRequestException httpException)
             {
                 _logger?.LogException(httpException);
-                return Result.Fail(httpException, default(InstaFeed), ResponseType.NetworkProblem);
+                return Result.Fail(httpException, feed, ResponseType.NetworkProblem);
             }
             catch (Exception exception)
             {
@@ -433,12 +450,12 @@ namespace InstagramApiSharp.API.Processors
                         return Result.Fail(feeds.Info, (InstaTopicalExploreFeed)null);
                 }
                 var feedResponse = feeds.Value;
+                topicalExploreFeed = Convert(feedResponse);
                 paginationParameters.NextMaxId = feedResponse.MaxId;
                 paginationParameters.RankToken = feedResponse.RankToken;
-
                 while (feedResponse.MoreAvailable
                        && !string.IsNullOrEmpty(paginationParameters.NextMaxId)
-                       && paginationParameters.PagesLoaded < paginationParameters.MaximumPagesToLoad)
+                       && paginationParameters.PagesLoaded <= paginationParameters.MaximumPagesToLoad)
                 {
                     var nextFeed = await GetTopicalExploreFeed(paginationParameters, clusterId);
                     if (!nextFeed.Succeeded)
@@ -466,7 +483,7 @@ namespace InstagramApiSharp.API.Processors
             catch (HttpRequestException httpException)
             {
                 _logger?.LogException(httpException);
-                return Result.Fail(httpException, default(InstaTopicalExploreFeed), ResponseType.NetworkProblem);
+                return Result.Fail(httpException, topicalExploreFeed, ResponseType.NetworkProblem);
             }
             catch (Exception exception)
             {
@@ -474,8 +491,6 @@ namespace InstagramApiSharp.API.Processors
                 return Result.Fail(exception, topicalExploreFeed);
             }
         }
-
-
 
 
 
@@ -512,7 +527,7 @@ namespace InstagramApiSharp.API.Processors
             try
             {
                 var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, uri, _deviceInfo);
-                var response = await _httpRequestProcessor.SendAsync(request, HttpCompletionOption.ResponseContentRead);
+                var response = await _httpRequestProcessor.SendAsync(request, HttpCompletionOption.ResponseContentRead, true);
                 var activityFeed = new InstaActivityFeed();
                 var json = await response.Content.ReadAsStringAsync();
 
@@ -528,7 +543,7 @@ namespace InstagramApiSharp.API.Processors
                 paginationParameters.PagesLoaded++;
                 activityFeed.NextMaxId = paginationParameters.NextMaxId = feedPage.NextMaxId;
                 while (!string.IsNullOrEmpty(nextId)
-                       && paginationParameters.PagesLoaded < paginationParameters.MaximumPagesToLoad)
+                       && paginationParameters.PagesLoaded <= paginationParameters.MaximumPagesToLoad)
                 {
                     var nextFollowingFeed = await GetFollowingActivityWithMaxIdAsync(nextId);
                     if (!nextFollowingFeed.Succeeded)
@@ -586,22 +601,79 @@ namespace InstagramApiSharp.API.Processors
         {
             try
             {
-                var userFeedUri = UriCreator.GetUserFeedUri(paginationParameters?.NextMaxId);
+                var random = new Random();
+                var feedInfoList = new List<FeedViewInfo>();
 
+                if(seenMediaIds != null)
+                    foreach (var seenMediaId in seenMediaIds)
+                        feedInfoList.Add(new FeedViewInfo(seenMediaId, random.NextDouble()));
+
+                var feedViewInfo = JsonConvert.SerializeObject(feedInfoList, new JsonSerializerSettings
+                {
+                    ContractResolver = new CamelCasePropertyNamesContractResolver(),
+                    Formatting = Formatting.None
+                });
+
+                var userFeedUri = UriCreator.GetUserFeedUri();
                 var data = new Dictionary<string, string>
                 {
-                    {"is_prefetch", "0"},
-                    {"_csrftoken", _user.CsrfToken},
-                    {"_uuid", _deviceInfo.DeviceGuid.ToString()},
-                    {"device_id", _deviceInfo.PhoneGuid.ToString()},
-                    {"phone_id", _deviceInfo.RankToken.ToString()},
-                    {"client_session_id", Guid.NewGuid().ToString()},
-                    {"timezone_offset", _instaApi.GetTimezoneOffset().ToString()},
-                    {"rti_delivery_backend", "0"}
-                };
+                    // NOTE: First all seen posts from previous timeline feed response
+                    // The numbers 10, 25, 50, 75 are the image view field precentage
+                    // 
+                    // The bigger the number the longer we were starring at the image
+                    //[
+                    //{
+                    //    "media_id":"2256112796154730700_21441787114",
+                    //    "version":24,
+                    //    "media_pct":1.0,
+                    //    "time_info":
+                    //    {
+                    //        "10":204,
+                    //        "25":103,
+                    //        "50":103,
+                    //        "75":103
+                    //    }
+                    //},
+                    //{
+                    //    "media_id":"2256114767345547986_5083979972",
+                    //    "version":24,"media_pct":0.8340741,
+                    //    "time_info":
+                    //    {
+                    //        "10":774,
+                    //        "25":774,
+                    //        "50":774,
+                    //        "75":702
+                    //    }
+                    //},
+                    //{
+                    //    "media_id":"2256112518762395913_5083979972",
+                    //    "version":24,
+                    //    "media_pct":1.0,
+                    //    "time_info":
+                    //    {
+                    //        "10":17968,
+                    //        "25":17867,
+                    //        "50":17767,
+                    //        "75":17564
+                    //    }
+                    //}
+                    //]
 
-                if (seenMediaIds != null)
-                    data.Add("seen_posts", seenMediaIds.EncodeList(false));
+                    // TODO: implement saving feed_view_info media ID
+                    {"feed_view_info", feedViewInfo},
+                    {"phone_id", _deviceInfo.PhoneGuid.ToString()},
+                    {"last_unseen_ad_id", _deviceInfo.LastUnseenAdId.ToString()},
+                    {"battery_level", "100"},
+                    {"timezone_offset", _instaApi.GetTimezoneOffset().ToString()},
+                    {"_csrftoken", _user.CsrfToken},
+                    {"device_id", _deviceInfo.DeviceGuid.ToString()},
+                    {"request_id", Guid.NewGuid().ToString() },
+                    {"_uuid", _deviceInfo.DeviceGuid.ToString()},
+                    {"is_charging", "1"},
+                    {"will_sound_on", "0"},
+                    {"session_id", Guid.NewGuid().ToString()},
+                    {"bloks_versioning_id", InstaApiConstants.CURRENT_BLOKS_VERSION_ID.ToString()}
+                };
 
                 if (refreshRequest)
                 {
@@ -609,14 +681,29 @@ namespace InstagramApiSharp.API.Processors
                     data.Add("is_pull_to_refresh", "1");
                 }
                 else
-                    data.Add("reason", "warm_start_fetch");
+                {
+                    if (string.IsNullOrEmpty(paginationParameters.NextMaxId))
+                    {
+                        data.Add("reason", "cold_start_fetch");
+                    }
+                    else
+                    {
+                        data.Add("reason", "pagination");
+                        data.Add("max_id", paginationParameters.NextMaxId);
+                    }
+                    data.Add("is_pull_to_refresh", "0");
+                }
 
-                var request = _httpHelper.GetDefaultRequest(HttpMethod.Post, userFeedUri, _deviceInfo, data);
+                var request = await _httpHelper.GetDefaultGZipRequestAsync(HttpMethod.Post, userFeedUri, _deviceInfo, data);
                 request.Headers.Add("X-Ads-Opt-Out", "0");
                 request.Headers.Add("X-Google-AD-ID", _deviceInfo.GoogleAdId.ToString());
                 request.Headers.Add("X-DEVICE-ID", _deviceInfo.DeviceGuid.ToString());
+                request.Headers.Add("X-Attribution-ID", _deviceInfo.AttributionGuid.ToString());
+                request.Headers.Add("X-FB", "1");
+                request.Headers.Add("X-CM-Bandwidth-KBPS", $"{random.Next(500, 2000)}.{random.Next(100, 999)}");
+                request.Headers.Add("X-CM-Latency", $"{random.Next(300, 1000)}.{random.Next(100, 999)}");
 
-                var response = await _httpRequestProcessor.SendAsync(request);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
                 var json = await response.Content.ReadAsStringAsync();
 
                 if (response.StatusCode != HttpStatusCode.OK)
@@ -646,7 +733,6 @@ namespace InstagramApiSharp.API.Processors
                 var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, userFeedUri, _deviceInfo);
                 var response = await _httpRequestProcessor.SendAsync(request);
                 var json = await response.Content.ReadAsStringAsync();
-
 
                 if (response.StatusCode != HttpStatusCode.OK)
                     return Result.UnExpectedResponse<InstaTagFeedResponse>(response, json);
@@ -693,6 +779,7 @@ namespace InstagramApiSharp.API.Processors
             }
         }
 
+        private string TopicalSessionId = null;
         private async Task<IResult<InstaTopicalExploreFeedResponse>> GetTopicalExploreFeed(PaginationParameters paginationParameters, string clusterId)
         {
             try
@@ -700,9 +787,44 @@ namespace InstagramApiSharp.API.Processors
                 if (string.IsNullOrEmpty(clusterId))
                     clusterId = "explore_all:0";
 
-                var exploreUri = UriCreator.GetTopicalExploreUri(_deviceInfo.GoogleAdId.ToString(), paginationParameters?.NextMaxId, clusterId);
+                if (string.IsNullOrEmpty(TopicalSessionId))
+                    TopicalSessionId = Guid.NewGuid().ToString();
+                var exploreUri = UriCreator.GetTopicalExploreUri(TopicalSessionId, false, paginationParameters?.NextMaxId, clusterId);
                 var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, exploreUri, _deviceInfo);
-                var response = await _httpRequestProcessor.SendAsync(request);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
+                var json = await response.Content.ReadAsStringAsync();
+
+                if (response.StatusCode != HttpStatusCode.OK)
+                    return Result.UnExpectedResponse<InstaTopicalExploreFeedResponse>(response, json);
+
+                var feedResponse = JsonConvert.DeserializeObject<InstaTopicalExploreFeedResponse>(json,
+                    new InstaTopicalExploreFeedDataConverter());
+
+                return Result.Success(feedResponse);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+                return Result.Fail(httpException, default(InstaTopicalExploreFeedResponse), ResponseType.NetworkProblem);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogException(exception);
+                return Result.Fail<InstaTopicalExploreFeedResponse>(exception);
+            }
+        }
+
+        public async Task<IResult<InstaTopicalExploreFeedResponse>> GetTopicalExploreFeedAfterLogin()
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(TopicalSessionId))
+                    TopicalSessionId = Guid.NewGuid().ToString();
+                var exploreUri = UriCreator.GetTopicalExploreUri(TopicalSessionId, true);
+                var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, exploreUri, _deviceInfo);
+                request.Headers.Add("X-IG-Prefetch-Request", "foreground");
+                request.Headers.Add("Host", "i.instagram.com");
+                var response = await _httpRequestProcessor.SendAsync(request, true);
                 var json = await response.Content.ReadAsStringAsync();
 
                 if (response.StatusCode != HttpStatusCode.OK)
