@@ -1,10 +1,9 @@
 ﻿using System;
-using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using InstagramApiSharp.Classes.Android.DeviceInfo;
 using InstagramApiSharp.Logger;
-
+#pragma warning disable IDE0068
 namespace InstagramApiSharp.Classes
 {
     internal class HttpRequestProcessor : IHttpRequestProcessor
@@ -12,12 +11,12 @@ namespace InstagramApiSharp.Classes
         private IRequestDelay _delay;
         private readonly IInstaLogger _logger;
         public IRequestDelay Delay { get { return _delay; } set { _delay = value; } }
+        public IConfigureMediaDelay ConfigureMediaDelay { get; set; } = Classes.ConfigureMediaDelay.PreferredDelay();
         public HttpRequestProcessor(IRequestDelay delay, HttpClient httpClient, HttpClientHandler httpHandler,
             ApiRequestMessage requestMessage, IInstaLogger logger)
         {
             _delay = delay;
             Client = httpClient;
-            httpHandler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
             HttpHandler = httpHandler;
             RequestMessage = requestMessage;
             _logger = logger;
@@ -28,13 +27,23 @@ namespace InstagramApiSharp.Classes
         public HttpClient Client { get; set; }
         public void SetHttpClientHandler(HttpClientHandler handler)
         {
-            handler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
             HttpHandler = handler;
             Client = new HttpClient(handler);
         }
 
-        public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage requestMessage)
+        public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage requestMessage, bool keepAlive = false)
         {
+            if (!keepAlive)
+            {
+                Client.DefaultRequestHeaders.ConnectionClose = true;
+                requestMessage.Headers.Add("Connection", "close");
+            }
+            else
+            {
+                Client.DefaultRequestHeaders.ConnectionClose = false;
+                requestMessage.Headers.Add("Connection", "keep-alive");
+            }
+
             LogHttpRequest(requestMessage);
             if (_delay.Exist)
                 await Task.Delay(_delay.Value);
@@ -43,8 +52,12 @@ namespace InstagramApiSharp.Classes
             return response;
         }
 
-        public async Task<HttpResponseMessage> GetAsync(Uri requestUri)
+        public async Task<HttpResponseMessage> GetAsync(Uri requestUri, bool keepAlive = false)
         {
+            if (!keepAlive)
+                Client.DefaultRequestHeaders.ConnectionClose = true;
+            else
+                Client.DefaultRequestHeaders.ConnectionClose = false;
             _logger?.LogRequest(requestUri);
             if (_delay.Exist)
                 await Task.Delay(_delay.Value);
@@ -54,8 +67,20 @@ namespace InstagramApiSharp.Classes
         }
 
         public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage requestMessage,
-            HttpCompletionOption completionOption)
+            HttpCompletionOption completionOption, bool keepAlive = false)
         {
+            if (!keepAlive)
+            {
+                Client.DefaultRequestHeaders.ConnectionClose = true;
+                requestMessage.Headers.Add("Connection", "close");
+            }
+            else
+            {
+                Client.DefaultRequestHeaders.ConnectionClose = false;
+                requestMessage.Headers.Add("Connection", "keep-alive");
+            }
+
+
             LogHttpRequest(requestMessage);
             if (_delay.Exist)
                 await Task.Delay(_delay.Value);
@@ -65,8 +90,18 @@ namespace InstagramApiSharp.Classes
         }
 
         public async Task<string> SendAndGetJsonAsync(HttpRequestMessage requestMessage,
-            HttpCompletionOption completionOption)
+            HttpCompletionOption completionOption, bool keepAlive = false)
         {
+            if (!keepAlive)
+            {
+                Client.DefaultRequestHeaders.ConnectionClose = true;
+                requestMessage.Headers.Add("Connection", "close");
+            }
+            else
+            {
+                Client.DefaultRequestHeaders.ConnectionClose = false;
+                requestMessage.Headers.Add("Connection", "keep-alive");
+            }
             LogHttpRequest(requestMessage);
             if (_delay.Exist)
                 await Task.Delay(_delay.Value);
@@ -75,8 +110,12 @@ namespace InstagramApiSharp.Classes
             return await response.Content.ReadAsStringAsync();
         }
 
-        public async Task<string> GeJsonAsync(Uri requestUri)
+        public async Task<string> GeJsonAsync(Uri requestUri, bool keepAlive = false)
         {
+            if (!keepAlive)
+                Client.DefaultRequestHeaders.ConnectionClose = true;
+            else
+                Client.DefaultRequestHeaders.ConnectionClose = false;
             _logger?.LogRequest(requestUri);
             if (_delay.Exist)
                 await Task.Delay(_delay.Value);
@@ -94,5 +133,22 @@ namespace InstagramApiSharp.Classes
         {
             _logger?.LogResponse(request);
         }
+        async Task<HttpResponseMessage> CopyResponseAsync(HttpResponseMessage response)
+        {
+            await Task.Delay(350);
+            var http = new HttpResponseMessage
+            {
+                Content = response.Content,
+                ReasonPhrase = response.ReasonPhrase,
+                StatusCode = response.StatusCode,
+                RequestMessage = response.RequestMessage,
+                Version = response.Version,
+
+            };
+            foreach (var item in response.Headers)
+                http.Headers.Add(item.Key, item.Value);
+            return http;
+        }
     }
 }
+#pragma warning restore IDE0068

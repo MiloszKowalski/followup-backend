@@ -1,4 +1,5 @@
-﻿using System;
+﻿using InstagramApiSharp.Helpers;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -6,6 +7,7 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
 {
     public class AndroidDeviceGenerator
     {
+        static readonly Random Rnd = new Random();
         private static readonly List<string> DevicesNames = new List<string>
         {
             AndroidDevices.LG_OPTIMUS_G,
@@ -28,8 +30,7 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
             AndroidDevices.XPERIA_Z5,
             AndroidDevices.HONOR_8LITE,
             AndroidDevices.XIAOMI_MI_4W,
-            AndroidDevices.HTC_ONE_PLUS,
-            AndroidDevices.XIAOMI_REDMI_NOTE_4X
+            AndroidDevices.HTC_ONE_PLUS
         };
 
         public static Dictionary<string, AndroidDevice> AndroidAndroidDeviceSets = new Dictionary<string, AndroidDevice>
@@ -52,6 +53,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "LG-LS970",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1440x2560",
                     Dpi = "640dpi"
                 }
@@ -74,6 +77,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "Nexus 7",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1440x2560",
                     Dpi = "640dpi"
                 }
@@ -96,6 +101,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "Nexus 7",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1440x2560",
                     Dpi = "640dpi"
                 }
@@ -118,6 +125,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "HTC 10",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1440x2560",
                     Dpi = "640dpi"
                 }
@@ -140,6 +149,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "samsungexynos7420",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1440x2560",
                     Dpi = "640dpi"
                 }
@@ -162,6 +173,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "SM-G900F",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1440x2560",
                     Dpi = "640dpi"
                 }
@@ -184,6 +197,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "LG-D500",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1440x2560",
                     Dpi = "640dpi"
                 }
@@ -206,6 +221,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "Nexus 5X",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1440x2560",
                     Dpi = "640dpi"
                 }
@@ -229,6 +246,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "SM-G935T",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1440x2560",
                     Dpi = "640dpi"
                 }
@@ -251,6 +270,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "E6653",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1440x2560",
                     Dpi = "640dpi"
                 }
@@ -273,6 +294,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "SGH-I337M",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1440x2560",
                     Dpi = "640dpi"
                 }
@@ -295,6 +318,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "Nexus 6P",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1440x2560",
                     Dpi = "640dpi"
                 }
@@ -317,6 +342,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "SO-02G",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1440x2560",
                     Dpi = "640dpi"
                 }
@@ -340,6 +367,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "SM-T310",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1440x2560",
                     Dpi = "640dpi"
                 }
@@ -362,6 +391,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "Nexus 5",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1440x2560",
                     Dpi = "640dpi"
                 }
@@ -384,6 +415,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "SM-N915W8",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1440x2560",
                     Dpi = "640dpi"
                 }
@@ -406,6 +439,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "Nexus 4",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1440x2560",
                     Dpi = "640dpi"
                 }
@@ -428,6 +463,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "SM-N900P",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1440x2560",
                     Dpi = "640dpi"
                 }
@@ -450,6 +487,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "SM-T705",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1440x2560",
                     Dpi = "640dpi"
                 }
@@ -467,6 +506,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "hi6250",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1080x1812",
                     Dpi = "480dpi",
                     FirmwareFingerprint = "HUAWEI/HONOR/PRA-LA1:7.0/hi6250/95414346:user/release-keys",
@@ -489,6 +530,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "cancro",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1080x1920",
                     Dpi = "480dpi",
                     FirmwareFingerprint = "Xiaomi/MI/4W:7.1/cancro/95414346:user/release-keys",
@@ -511,6 +554,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "armani",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "720x1280",
                     Dpi = "320dpi",
                     FirmwareFingerprint = "Xiaomi/HM/1SW:6.0/cancro/95414346:user/release-keys",
@@ -533,6 +578,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "A3010",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1080x1920",
                     Dpi = "380dpi",
                     FirmwareFingerprint = "Htc/One/Plus:6.0/cancro/95414346:user/release-keys",
@@ -555,6 +602,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                     HardwareModel = "4X",
                     DeviceGuid = Guid.NewGuid(),
                     PhoneGuid = Guid.NewGuid(),
+                    AndroidId = GenerateRandomAndroidId(),
+                    AttributionGuid = Guid.NewGuid(),
                     Resolution = "1080x1920",
                     Dpi = "480dpi",
                     FirmwareFingerprint = "Xiaomi/Redmi/Note4X:7.0/qcom/95414346:user/release-keys",
@@ -566,16 +615,30 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
             }
         };
 
-        static readonly Random rnd = new Random();
+        private static string GenerateRandomAndroidId()
+        {
+            var random = new Random();
+
+            // Don't even try to understand it, although I guarantee you it's random
+            return $"android-{((long)(Math.Abs(random.NextDouble() - 0.5d) * long.MaxValue)).ToString("X").ToLowerInvariant().Replace("00", random.Next(10, 255).ToString("x"))}";
+        }
+
         private static AndroidDevice LastDevice;
         public static AndroidDevice GetRandomAndroidDevice()
         {
             TryLabel:
-            var randomDeviceIndex = rnd.Next(0, DevicesNames.Count);
+            var randomDeviceIndex = Rnd.Next(0, DevicesNames.Count);
             var device = AndroidAndroidDeviceSets.ElementAt(randomDeviceIndex).Value;
             device.PhoneGuid = Guid.NewGuid();
             device.DeviceGuid = Guid.NewGuid();
+            device.AttributionGuid = Guid.NewGuid();
+            device.AndroidId = GenerateRandomAndroidId();
             device.DeviceId = ApiRequestMessage.GenerateDeviceIdFromGuid(device.DeviceGuid);
+            device.PigeonSessionId = Guid.NewGuid();
+            device.PushDeviceGuid = Guid.NewGuid();
+            device.FamilyDeviceGuid = Guid.NewGuid();
+            device.RandomizeBandwithConnection();
+
             if (LastDevice != null)
                 if (device.DeviceId == LastDevice.DeviceId)
                     goto TryLabel;
@@ -590,9 +653,8 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
 
         public static string GetRandomName()
         {
-            var randomDeviceIndex = rnd.Next(0, DevicesNames.Count);
-            var deviceName = AndroidAndroidDeviceSets.ElementAt(randomDeviceIndex).Key;
-            return deviceName;
+            var random = new Random();
+            return DevicesNames.ElementAt(random.Next(0, DevicesNames.Count()));
         }
 
         //public static AndroidDevice GetById(string deviceId)

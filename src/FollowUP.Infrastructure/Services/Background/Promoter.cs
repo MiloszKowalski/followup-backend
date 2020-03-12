@@ -76,7 +76,7 @@ namespace FollowUP.Infrastructure.Services.Background
                     }
 
                     // Parallel task for each account with promotion for true asynchrony
-                    Parallel.ForEach(accounts, (account) =>
+                    Parallel.ForEach(accounts, async (account) =>
                     {
                         var task = Task.Run(async () =>
                         {
@@ -348,7 +348,7 @@ namespace FollowUP.Infrastructure.Services.Background
                         });
 
                         // Wait for each of the tasks to complete
-                        task.Wait();
+                        await task;
                     });
                 }
                 catch(Exception ex)

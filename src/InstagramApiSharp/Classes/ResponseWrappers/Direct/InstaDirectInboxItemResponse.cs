@@ -4,6 +4,10 @@ using Newtonsoft.Json;
 
 namespace InstagramApiSharp.Classes.ResponseWrappers
 {
+    public class InstaDirectInboxItemContainerResponse
+    {
+        [JsonProperty("items")] public List<InstaDirectInboxItemResponse> Items { get; set; } = new List<InstaDirectInboxItemResponse>();
+    }
     public class InstaDirectInboxItemResponse : BaseStatusResponse
     { 
         [JsonProperty("text")] public string Text { get; set; }
@@ -46,7 +50,7 @@ namespace InstagramApiSharp.Classes.ResponseWrappers
 
         [JsonProperty("profile")] public InstaUserShortResponse ProfileMedia { get; set; }
 
-        [JsonProperty("preview_medias")] public List<InstaMediaItemResponse> ProfileMediasPreview { get; set; }
+        [JsonProperty("preview_medias")] public List<InstaMediaItemResponse> PreviewMedias { get; set; }
 
         [JsonProperty("placeholder")] public InstaPlaceholderResponse Placeholder { get; set; }
 
@@ -63,5 +67,7 @@ namespace InstagramApiSharp.Classes.ResponseWrappers
         [JsonProperty("hashtag")] public InstaDirectHashtagResponse HashtagMedia { get; set; }
 
         [JsonProperty("live_viewer_invite")] public InstaDirectBroadcastResponse LiveViewerInvite { get; set; }
+
+        [JsonProperty("video_call_event")] public InstaVideoCallEventResponse VideoCallEvent { get; set; }
     }
 }

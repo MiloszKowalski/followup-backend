@@ -19,7 +19,11 @@ using InstagramApiSharp.Helpers;
 using InstagramApiSharp.Logger;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System.Text;
+
+#pragma warning disable IDE1006	
+#pragma warning disable IDE0060	
+#pragma warning disable IDE0044	
+#pragma warning disable IDE0051	
 
 namespace InstagramApiSharp.API
 {
@@ -30,6 +34,7 @@ namespace InstagramApiSharp.API
     {
         #region Variables and properties
 
+        private IConfigureMediaDelay _configureMediaDelay = ConfigureMediaDelay.Empty();
         private IRequestDelay _delay = RequestDelay.Empty();
         private readonly IHttpRequestProcessor _httpRequestProcessor;
         private readonly IInstaLogger _logger;
@@ -40,6 +45,7 @@ namespace InstagramApiSharp.API
         private InstaTwoFactorLoginInfo _twoFactorInfo;
         private InstaChallengeLoginInfo _challengeinfo;
         private UserSessionData _userSession;
+        public HttpHelper HttpHelper => _httpHelper;
         private UserSessionData _user
         {
             get { return _userSession; }
@@ -47,9 +53,18 @@ namespace InstagramApiSharp.API
         }
         private UserAuthValidate _userAuthValidate;
         bool IsCustomDeviceSet = false;
-
+        readonly Random Rnd = new Random();
         string _waterfallIdReg = "", _deviceIdReg = "", _phoneIdReg = "", _guidReg = "";
         InstaAccountRegistrationPhoneNumber _signUpPhoneNumberInfo;
+
+        /// <summary>
+        ///     Gets or sets challenge login info
+        /// </summary>
+        public InstaChallengeLoginInfo ChallengeLoginInfo { get { return _challengeinfo; } set { _challengeinfo = value; } }
+        /// <summary>
+        ///     Gets or sets two factor login info
+        /// </summary>
+        public InstaTwoFactorLoginInfo TwoFactorLoginInfo { get { return _twoFactorInfo; } set { _twoFactorInfo = value; } }
 
         private bool _isUserAuthenticated;
         /// <summary>
@@ -61,7 +76,13 @@ namespace InstagramApiSharp.API
             internal set { _isUserAuthenticated = value; _userAuthValidate.IsUserAuthenticated = value; }
         }
         /// <summary>
-        ///     Current HttpClient
+        ///     Load instagram's api version from session file
+        ///     <para>Default is False</para>
+        /// </summary>
+        public bool LoadApiVersionFromSessionFile { get; set; } = false;
+
+        /// <summary>
+        ///     Current <see cref="HttpClient"/>
         /// </summary>
         public HttpClient HttpClient { get => _httpRequestProcessor.Client; }
         /// <summary>
@@ -90,13 +111,14 @@ namespace InstagramApiSharp.API
         private ILiveProcessor _liveProcessor;
         private IDiscoverProcessor _discoverProcessor;
         private IAccountProcessor _accountProcessor;
-
+        private IVideoCallProcessor _videoCallProcessor;
 
         ITVProcessor _tvProcessor;
         HelperProcessor _helperProcessor;
         IBusinessProcessor _businessProcessor;
         IShoppingProcessor _shoppingProcessor;
         IWebProcessor _webProcessor;
+        IPushProcessor _pushProcessor;
 
         /// <summary>
         ///     Live api functions.
@@ -168,13 +190,18 @@ namespace InstagramApiSharp.API
         ///     <para>It's related to https://instagram.com/accounts/ </para>
         /// </summary>
         public IWebProcessor WebProcessor => _webProcessor;
+        public IVideoCallProcessor VideoCallProcessor => _videoCallProcessor;
+        /// <summary>
+        ///     Push notification helper processor
+        /// </summary>
+        public IPushProcessor PushProcessor => _pushProcessor;
 
         #endregion Processors
 
         #region Constructor
 
         public InstaApi(UserSessionData user, IInstaLogger logger, AndroidDevice deviceInfo,
-            IHttpRequestProcessor httpRequestProcessor, InstaApiVersionType apiVersionType)
+            IHttpRequestProcessor httpRequestProcessor, InstaApiVersionType apiVersionType, IConfigureMediaDelay configureMediaDelay)
         {
             _userAuthValidate = new UserAuthValidate();
             _user = user;
@@ -183,7 +210,8 @@ namespace InstagramApiSharp.API
             _httpRequestProcessor = httpRequestProcessor;
             _apiVersionType = apiVersionType;
             _apiVersion = InstaApiVersionList.GetApiVersionList().GetApiVersion(apiVersionType);
-            _httpHelper = new HttpHelper(_apiVersion);
+            _httpHelper = new HttpHelper(_apiVersion, httpRequestProcessor, this);
+            _configureMediaDelay = configureMediaDelay;
         }
 
         #endregion Constructor
@@ -205,7 +233,7 @@ namespace InstagramApiSharp.API
                 if (_waterfallIdReg == null || useNewWaterfall)
                     _waterfallIdReg = Guid.NewGuid().ToString();
 
-                var firstResponse = await _httpRequestProcessor.GetAsync(_httpRequestProcessor.Client.BaseAddress);
+                await GetToken();
                 var cookies =
                     _httpRequestProcessor.HttpHandler.CookieContainer.GetCookies(_httpRequestProcessor.Client
                     .BaseAddress);
@@ -270,7 +298,7 @@ namespace InstagramApiSharp.API
             {
                 _deviceIdReg = ApiRequestMessage.GenerateDeviceId();
 
-                var firstResponse = await _httpRequestProcessor.GetAsync(_httpRequestProcessor.Client.BaseAddress);
+                await GetToken();
                 var cookies =
                     _httpRequestProcessor.HttpHandler.CookieContainer.GetCookies(_httpRequestProcessor.Client
                     .BaseAddress);
@@ -658,14 +686,12 @@ namespace InstagramApiSharp.API
         /// <param name="delay">Delay between requests. null = 2.5 seconds</param>
         private async Task<IResult<InstaAccountCreation>> CreateNewAccountAsync(string username, string password, string email, string firstName = "", TimeSpan? delay = null)
         {
-            var createResponse = new InstaAccountCreation();
             try
             {
                 if (delay == null)
                     delay = TimeSpan.FromSeconds(2.5);
 
-                var firstResponse = await _httpRequestProcessor.GetAsync(_httpRequestProcessor.Client.BaseAddress);
-                await firstResponse.Content.ReadAsStringAsync();
+                await GetToken();
                 var cookies =
                         _httpRequestProcessor.HttpHandler.CookieContainer.GetCookies(_httpRequestProcessor.Client
                         .BaseAddress);
@@ -757,15 +783,13 @@ namespace InstagramApiSharp.API
         /// <returns></returns>
         public async Task<IResult<InstaAccountCreation>> CreateNewAccountAsync(string username, string password, string email, string firstName)
         {
-            InstaAccountCreation createResponse = new InstaAccountCreation();
             try
             {
                 var _deviceIdReg = ApiRequestMessage.GenerateDeviceId();
                 var _phoneIdReg = Guid.NewGuid().ToString();
                 var _waterfallIdReg = Guid.NewGuid().ToString();
                 var _guidReg = Guid.NewGuid().ToString();
-                var firstResponse = await _httpRequestProcessor.GetAsync(_httpRequestProcessor.Client.BaseAddress);
-                await firstResponse.Content.ReadAsStringAsync();
+                await GetToken();
 
                 var cookies =
                     _httpRequestProcessor.HttpHandler.CookieContainer.GetCookies(_httpRequestProcessor.Client
@@ -905,6 +929,49 @@ namespace InstagramApiSharp.API
         #endregion Register new account with Phone number and email
 
         #region Authentication and challenge functions
+        
+        /// <summary>
+        /// Set Challenge Info when server asks for a challenge on calling functions
+        /// </summary>
+        /// <param name="Challenge"></param>
+        public void SetChallengeInfo(InstaChallengeLoginInfo Challenge) => _challengeinfo = Challenge;
+
+        /// <summary>
+        ///     Accept consent required (only for GDPR countries)
+        /// </summary>
+        /// <param name="delay">Delay time between requests (null => 1.5 seconds)</param>
+        public async Task<IResult<bool>> AcceptConsentAsync(TimeSpan? delay = null)
+        {
+            try
+            {
+                if (delay == null)
+                    delay = TimeSpan.FromSeconds(1.5);
+
+                var result = await AcceptFirstStepConsentAsync();
+                await Task.Delay(delay.Value);
+                if (result.Succeeded && result.Value.ScreenKey.ToLower() == "dob")
+                {
+                    await SetBirthdayConsentAsync();
+                }
+                else
+                {
+                    await AcceptSecondStepConsentAsync();
+                    await Task.Delay(delay.Value);
+                    await AcceptThirdStepConsentAsync();
+                }
+                return Result.Success(true);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+                return Result.Fail(httpException, default(bool), ResponseType.NetworkProblem);
+            }
+            catch (Exception exception)
+            {
+                LogException(exception);
+                return Result.Fail(exception, false);
+            }
+        }
 
         /// <summary>
         ///     Login using given credentials asynchronously
@@ -926,37 +993,64 @@ namespace InstagramApiSharp.API
             {
                 bool needsRelogin = false;
                 ReloginLabel:
-                if (isNewLogin)
-                {
-                    var firstResponse = await _httpRequestProcessor.GetAsync(_httpRequestProcessor.Client.BaseAddress);
-                    var html = await firstResponse.Content.ReadAsStringAsync();
-                    _logger?.LogResponse(firstResponse);
-                }
+                //if (isNewLogin)
+                //    await GetToken();
                 var cookies =
                     _httpRequestProcessor.HttpHandler.CookieContainer.GetCookies(_httpRequestProcessor.Client
                         .BaseAddress);
 
                 var csrftoken = cookies[InstaApiConstants.CSRFTOKEN]?.Value ?? string.Empty;
                 _user.CsrfToken = csrftoken;
-                var instaUri = UriCreator.GetLoginUri();
                 var signature = string.Empty;
                 var devid = string.Empty;
                 if (isNewLogin)
                     signature = $"{_httpRequestProcessor.RequestMessage.GenerateSignature(_apiVersion, _apiVersion.SignatureKey, out devid)}.{_httpRequestProcessor.RequestMessage.GetMessageString()}";
                 else
-                    signature = $"{_httpRequestProcessor.RequestMessage.GenerateChallengeSignature(_apiVersion, _apiVersion.SignatureKey, csrftoken, out devid)}.{_httpRequestProcessor.RequestMessage.GetChallengeMessageString(csrftoken)}";
-                _deviceInfo.DeviceId = devid;
-                var fields = new Dictionary<string, string>
                 {
-                    {InstaApiConstants.HEADER_IG_SIGNATURE, signature},
-                    {InstaApiConstants.HEADER_IG_SIGNATURE_KEY_VERSION, InstaApiConstants.IG_SIGNATURE_KEY_VERSION}
+                    if (string.IsNullOrEmpty(csrftoken))
+                    {
+                        await GetToken();
+                        goto ReloginLabel;
+                    }
+                    signature = $"{_httpRequestProcessor.RequestMessage.GenerateChallengeSignature(_apiVersion, _apiVersion.SignatureKey, csrftoken, out devid)}.{_httpRequestProcessor.RequestMessage.GetChallengeMessageString(csrftoken)}";
+                }
+                _deviceInfo.DeviceId = devid;
+
+                var countryCodesArray = new JArray
+                {
+                    new JObject
+                    {
+                        {"country_code", "1"},
+                        {"source", new JArray("default")},
+                    }
                 };
-                var request = _httpHelper.GetDefaultRequest(HttpMethod.Post, instaUri, _deviceInfo, fields);
-                var response = await _httpRequestProcessor.SendAsync(request);
+
+                var countryCodes = countryCodesArray.ToString(Formatting.None).Replace("\"", "\\\"");
+
+                var data = new JObject
+                {
+                    {"jazoest", "22663"},
+                    {"country_codes", countryCodes},
+                    {"phoneId", _deviceInfo.PhoneGuid.ToString()},
+                    {"_csrftoken", csrftoken},
+                    {"username", _user.UserName},
+                    {"adid", _deviceInfo.GoogleAdId},
+                    {"guid", _deviceInfo.DeviceId},
+                    {"device_id", _deviceInfo.AndroidId},
+                    {"google_tokens", "[]"},
+                    {"password", _user.Password},
+                    {"login_attempt_count", _deviceInfo.LoginAttemptCount.ToString()}
+                };
+
+                var instaUri = UriCreator.GetLoginUri();
+                var request = _httpHelper.GetSignedRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
+                request.Headers.Add("Host", "i.instagram.com");
+                var response = await _httpRequestProcessor.SendAsync(request, true);
                 var json = await response.Content.ReadAsStringAsync();
 
                 if (response.StatusCode != HttpStatusCode.OK)
                 {
+                    _deviceInfo.LoginAttemptCount++;
                     var loginFailReason = JsonConvert.DeserializeObject<InstaLoginBaseResponse>(json);
 
                     if (loginFailReason.InvalidCredentials)
@@ -987,6 +1081,10 @@ namespace InstagramApiSharp.API
                     {
                         return Result.Fail($"{loginFailReason.Message}\r\nHelp url: {loginFailReason.HelpUrl}", InstaLoginResult.InactiveUser);
                     }
+                    if (loginFailReason.ErrorType == "unusable_password")
+                    {
+                        return Result.Fail($"{loginFailReason.Message}", InstaLoginResult.UnusablePassword);
+                    }
                     if (loginFailReason.ErrorType == "checkpoint_logged_out")
                     {
                         if (!needsRelogin)
@@ -1013,6 +1111,27 @@ namespace InstagramApiSharp.API
                           .BaseAddress);
                     _user.CsrfToken = cookies[InstaApiConstants.CSRFTOKEN]?.Value ?? string.Empty;
                 }
+                try
+                {
+                    var wwwClaim = response.Headers.GetValues(InstaApiConstants.HEADER_RESPONSE_X_WWW_CLAIM);
+                    if (wwwClaim != null)
+                        _user.WwwClaim = string.Join("", wwwClaim);
+                }
+                catch { }
+                try
+                {
+                    var fbTripId = response.Headers.GetValues(InstaApiConstants.HEADER_X_FB_TRIP_ID);
+                    if (fbTripId != null)
+                        _user.FbTripId = string.Join("", fbTripId);
+                }
+                catch { }
+                try
+                {
+                    var authorization = response.Headers.GetValues(InstaApiConstants.HEADER_RESPONSE_AUTHORIZATION);
+                    if (authorization != null)
+                        _user.Authorization = string.Join(" ", authorization);
+                }
+                catch { }
                 return Result.Success(InstaLoginResult.Success);
             }
             catch (HttpRequestException httpException)
@@ -1085,7 +1204,7 @@ namespace InstagramApiSharp.API
                     IsUserAuthenticated = false;
                     return Result.Fail(us.Info, false);
                 }
-                _user.UserName = _httpRequestProcessor.RequestMessage.Username = _user.LoggedInUser.UserName = us.Value.Username;
+                _user.UserName = _httpRequestProcessor.RequestMessage.Username = _user.LoggedInUser.UserName = us.Value.UserName;
                 _user.LoggedInUser.FullName = us.Value.FullName;
                 _user.LoggedInUser.IsPrivate = us.Value.IsPrivate;
                 _user.LoggedInUser.IsVerified = us.Value.IsVerified;
@@ -1110,23 +1229,35 @@ namespace InstagramApiSharp.API
         ///     Before call this method, please run LoginAsync first.
         /// </summary>
         /// <param name="verificationCode">Verification Code sent to your phone number</param>
+        /// <param name="trustThisDevice">Trust this device or not?!</param>
+        /// <param name="twoFactorVerifyOptions">Two factor verification option</param>
         /// <returns>
         ///     Success --> is succeed
         ///     InvalidCode --> The code is invalid
         ///     CodeExpired --> The code is expired, please request a new one.
         ///     Exception --> Something wrong happened
         /// </returns>
-        public async Task<IResult<InstaLoginTwoFactorResult>> TwoFactorLoginAsync(string verificationCode)
+        public async Task<IResult<InstaLoginTwoFactorResult>> TwoFactorLoginAsync(string verificationCode, bool trustThisDevice = false, InstaTwoFactorVerifyOptions twoFactorVerifyOptions = InstaTwoFactorVerifyOptions.SmsCode)
         {
             if (_twoFactorInfo == null)
-                return Result.Fail<InstaLoginTwoFactorResult>("Run LoginAsync first");
+                return Result.Fail<InstaLoginTwoFactorResult>("Re-login required");
 
             try
             {
+                if (string.IsNullOrEmpty(_user.CsrfToken))
+                {
+                    var cookies = _httpRequestProcessor.HttpHandler.CookieContainer.GetCookies(_httpRequestProcessor.Client
+                        .BaseAddress);
+
+                    var csrftoken = cookies[InstaApiConstants.CSRFTOKEN]?.Value ?? string.Empty;
+                    _user.CsrfToken = csrftoken;
+                }
+
                 var twoFactorRequestMessage = new ApiTwoFactorRequestMessage(verificationCode,
                     _httpRequestProcessor.RequestMessage.Username,
                     _httpRequestProcessor.RequestMessage.DeviceId,
-                    _twoFactorInfo.TwoFactorIdentifier);
+                    _twoFactorInfo.TwoFactorIdentifier,_user.CsrfToken, _deviceInfo.DeviceGuid.ToString(), Convert.ToInt16(trustThisDevice),
+                    (int)twoFactorVerifyOptions, FbAccessToken);
 
                 var instaUri = UriCreator.GetTwoFactorLoginUri();
                 var signature =
@@ -1157,7 +1288,7 @@ namespace InstagramApiSharp.API
                     var converter = ConvertersFabric.Instance.GetUserShortConverter(loginInfo.User);
                     _user.LoggedInUser = converter.Convert();
                     _user.RankToken = $"{_user.LoggedInUser.Pk}_{_httpRequestProcessor.RequestMessage.PhoneId}";
-
+                    InvalidateProcessors();
                     return Result.Success(InstaLoginTwoFactorResult.Success);
                 }
 
@@ -1172,7 +1303,7 @@ namespace InstagramApiSharp.API
                     return Result.Fail("Challenge is required", InstaLoginTwoFactorResult.ChallengeRequired);
 
                 }
-                return Result.Fail("This code is no longer valid, please, call LoginAsync again to request a new one",
+                return Result.Fail("This code is no longer valid, please, request again for new one",
                     InstaLoginTwoFactorResult.CodeExpired);
             }
             catch (HttpRequestException httpException)
@@ -1215,8 +1346,21 @@ namespace InstagramApiSharp.API
             ValidateLoggedIn();
             try
             {
+                //phone_id=3dc84281-dd5a-45a3-a0a8-bc32a2dd9038&
+                //_csrftoken=DddfrffN2m4DfUEmytTgfY&
+                //guid=6324ecb2-e663-4dc8-a3a1-289c699cc876&
+                //device_id=android-21c311d494a974fe&
+                //_uuid=6324ecb2-e663-4dc8-a3a1-289c699cc876
                 var instaUri = UriCreator.GetLogoutUri();
-                var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, instaUri, _deviceInfo);
+                var data = new Dictionary<string, string>
+                {
+                    {"phone_id", _deviceInfo.PhoneGuid.ToString()},
+                    {"_csrftoken", _user.CsrfToken},
+                    {"guid", _deviceInfo.DeviceGuid.ToString()},
+                    {"device_id", _deviceInfo.DeviceId},
+                    {"_uuid", _deviceInfo.DeviceGuid.ToString()}
+                };
+                var request = _httpHelper.GetDefaultRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
                 var response = await _httpRequestProcessor.SendAsync(request);
                 var json = await response.Content.ReadAsStringAsync();
                 if (response.StatusCode != HttpStatusCode.OK) return Result.UnExpectedResponse<bool>(response, json);
@@ -1246,21 +1390,39 @@ namespace InstagramApiSharp.API
             try
             {
                 var csrfToken = "";
-                if (!string.IsNullOrEmpty(_user.CsrfToken))
+                if (!string.IsNullOrEmpty(_user?.CsrfToken))
                     csrfToken = _user.CsrfToken;
                 else
                 {
-                    var firstResponse = await _httpRequestProcessor.GetAsync(_httpRequestProcessor.Client.BaseAddress);
+                    await GetToken();
                     var cookies =
                         _httpRequestProcessor.HttpHandler.CookieContainer.GetCookies(_httpRequestProcessor.Client
                             .BaseAddress);
-                    _logger?.LogResponse(firstResponse);
                     csrfToken = cookies[InstaApiConstants.CSRFTOKEN]?.Value ?? string.Empty;
+                    if (_user != null)
+                        _user.CsrfToken = csrfToken;
                 }
+                //{
+                //  "country_codes": "[{\"country_code\":\"1\",\"source\":[\"default\"]}]",
+                //  "_csrftoken": "5PLO0pfeMnLEjRhxtOQGquSdN4mGJ1ML",
+                //  "q": "rmtjokar1373",
+                //  "guid": "6324ecb2-e663-4dc8-a3a1-289c699cc876",
+                //  "device_id": "android-21c311d494a974fe",
+                //  "directly_sign_in": "true"
+                //}
+                var countryCodes = new JArray
+                {
+                    new JObject
+                    {
+                        {"country_code", "1"},
+                        {"source", new JArray("default")},
+                    }
+                };
                 var data = new JObject
                 {
+                    {"country_codes", countryCodes.ToString(Formatting.None)},
                     {"_csrftoken", csrfToken},
-                    {"q", usernameOrEmailOrPhoneNumber},
+                    {"q", usernameOrEmailOrPhoneNumber?.ToLower()},
                     {"guid",  _deviceInfo.DeviceGuid.ToString()},
                     {"device_id", _deviceInfo.DeviceId},
                     {"directly_sign_in", "true"},
@@ -1306,25 +1468,26 @@ namespace InstagramApiSharp.API
             try
             {
                 var token = "";
-                if (!string.IsNullOrEmpty(_user.CsrfToken))
+                if (!string.IsNullOrEmpty(_user?.CsrfToken))
                     token = _user.CsrfToken;
                 else
                 {
-                    var firstResponse = await _httpRequestProcessor.GetAsync(_httpRequestProcessor.Client.BaseAddress);
+                    await GetToken();
                     var cookies =
                         _httpRequestProcessor.HttpHandler.CookieContainer.GetCookies(_httpRequestProcessor.Client
                             .BaseAddress);
-                    _logger?.LogResponse(firstResponse);
                     token = cookies[InstaApiConstants.CSRFTOKEN]?.Value ?? string.Empty;
+                    if (_user != null)
+                        _user.CsrfToken = token;
                 }
 
                 var postData = new JObject
                 {
-                    {"query", email },
-                    {"adid", _deviceInfo.GoogleAdId },
-                    {"device_id",  ApiRequestMessage.GenerateDeviceId()},
-                    {"guid",  _deviceInfo.DeviceGuid.ToString()},
-                    {"_csrftoken", token },
+                    {"_csrftoken", token},
+                    {"adid", _deviceInfo.GoogleAdId},
+                    {"guid", _deviceInfo.DeviceGuid.ToString()},
+                    {"device_id", ApiRequestMessage.GenerateDeviceId()},
+                    {"query", email}
                 };
 
                 var instaUri = UriCreator.GetAccountRecoveryEmailUri();
@@ -1361,22 +1524,34 @@ namespace InstagramApiSharp.API
             try
             {
                 var token = "";
-                if (!string.IsNullOrEmpty(_user.CsrfToken))
+                if (!string.IsNullOrEmpty(_user?.CsrfToken))
                     token = _user.CsrfToken;
                 else
                 {
-                    var firstResponse = await _httpRequestProcessor.GetAsync(_httpRequestProcessor.Client.BaseAddress);
+                    await GetToken();
                     var cookies =
                         _httpRequestProcessor.HttpHandler.CookieContainer.GetCookies(_httpRequestProcessor.Client
                             .BaseAddress);
-                    _logger?.LogResponse(firstResponse);
                     token = cookies[InstaApiConstants.CSRFTOKEN]?.Value ?? string.Empty;
+                    if (_user != null)
+                        _user.CsrfToken = token;
                 }
-
+                //{
+                //  "supports_sms_code": "true",
+                //  "_csrftoken": "5PLO0pfeMnLEjRhxtOQGquSdN4mGJ1ML",
+                //  "guid": "6324ecb2-e663-4dc8-a3a1-289c699cc876",
+                //  "device_id": "android-21c311d494a974fe",
+                //  "query": "+989174314006",
+                //  "use_whatsapp": "false"
+                //}
                 var postData = new JObject
                 {
-                    {"query",  phone},
-                    {"_csrftoken",  _user.CsrfToken},
+                    {"supports_sms_code", "true"},
+                    {"_csrftoken", token},
+                    {"guid", _deviceInfo.DeviceGuid.ToString()},
+                    {"device_id", ApiRequestMessage.GenerateDeviceId()},
+                    {"query", phone},
+                    {"use_whatsapp", "false"},
                 };
 
                 var instaUri = UriCreator.GetAccountRecoverPhoneUri();
@@ -1427,11 +1602,11 @@ namespace InstagramApiSharp.API
 
                 var postData = new Dictionary<string, string>
                 {
-                    { "two_factor_identifier",  _twoFactorInfo.TwoFactorIdentifier },
-                    { "username",    _httpRequestProcessor.RequestMessage.Username},
-                    { "device_id",   _httpRequestProcessor.RequestMessage.DeviceId},
-                    { "guid",        _deviceInfo.DeviceGuid.ToString()},
-                    { "_csrftoken",    _user.CsrfToken }
+                    {"_csrftoken", _user.CsrfToken},
+                    {"two_factor_identifier", _twoFactorInfo.TwoFactorIdentifier },
+                    {"username", _httpRequestProcessor.RequestMessage.Username},
+                    {"guid", _deviceInfo.DeviceGuid.ToString()},
+                    {"device_id", _httpRequestProcessor.RequestMessage.DeviceId}
                 };
 
                 var instaUri = UriCreator.GetAccount2FALoginAgainUri();
@@ -1494,7 +1669,7 @@ namespace InstagramApiSharp.API
         ///     <para>You must call <see cref="IInstaApi.GetLoggedInChallengeDataInfoAsync"/> first,
         ///     if you across to <see cref="ResultInfo.ResponseType"/> equals to <see cref="ResponseType.ChallengeRequired"/> while you logged in!</para>
         /// </summary>
-        public async Task<IResult<bool>> AcceptChallengeAsync(int verificationCase = 0, string verificationData = "")
+        public async Task<IResult<bool>> AcceptChallengeAsync()
         {
             UserAuthValidator.Validate(_userAuthValidate);
             try
@@ -1509,16 +1684,8 @@ namespace InstagramApiSharp.API
                     {"guid", _deviceInfo.DeviceGuid.ToString()},
                     {"device_id", _deviceInfo.DeviceId},
                     {"_uuid", _deviceInfo.DeviceGuid.ToString()}
-                    
                 };
 
-                switch (verificationCase)
-                {
-                    case 1: data.Add("phone_number", verificationData); break;
-                    case 2: data.Add("security_code", verificationData); break;
-                    default: break;
-                }
-               
                 var request = _httpHelper.GetSignedRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
                 var response = await _httpRequestProcessor.SendAsync(request);
                 var json = await response.Content.ReadAsStringAsync();
@@ -1549,8 +1716,19 @@ namespace InstagramApiSharp.API
 
             try
             {
-                var instaUri = UriCreator.GetChallengeRequireFirstUri(_challengeinfo.ApiPath, _deviceInfo.DeviceGuid.ToString(), _deviceInfo.DeviceId);
-                var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, instaUri, _deviceInfo);
+                //var instaUri = new Uri(_challengeinfo.Url);
+                var data = new Dictionary<string, string>
+                {
+                    {"guid", _deviceInfo.PhoneGuid.ToString()},
+                    {"device_id", _deviceInfo.DeviceGuid.ToString()},
+                    {"android_device_id", _deviceInfo.DeviceId},
+                    {"phone_id", _deviceInfo.PhoneGuid.ToString()},
+                    {"_uuid", _deviceInfo.DeviceGuid.ToString()},
+                    //{"", ""},
+                };
+                //var instaUri = UriCreator.GetChallengeRequireFirstUri(_challengeinfo.ApiPath, _deviceInfo.DeviceGuid.ToString(), _deviceInfo.DeviceId);
+                var instaUri = UriCreator.GetChallengeRequireFirstUri(_challengeinfo.ApiPath, _deviceInfo);
+                var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, instaUri, _deviceInfo/*, data*/);
                 var response = await _httpRequestProcessor.SendAsync(request);
                 var json = await response.Content.ReadAsStringAsync();
                 if (response.StatusCode != HttpStatusCode.OK)
@@ -1664,6 +1842,7 @@ namespace InstagramApiSharp.API
                     data.Add("choice", "0");
 
                 var request = _httpHelper.GetSignedRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
+                request.Headers.Add("Host", "i.instagram.com");
                 var response = await _httpRequestProcessor.SendAsync(request);
                 var json = await response.Content.ReadAsStringAsync();
                 if (response.StatusCode != HttpStatusCode.OK)
@@ -1721,6 +1900,7 @@ namespace InstagramApiSharp.API
                     {"device_id", _deviceInfo.DeviceId},
                 };
                 var request = _httpHelper.GetSignedRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
+                request.Headers.Add("Host", "i.instagram.com");
                 var response = await _httpRequestProcessor.SendAsync(request);
                 var json = await response.Content.ReadAsStringAsync();
                 if (response.StatusCode != HttpStatusCode.OK)
@@ -1777,6 +1957,7 @@ namespace InstagramApiSharp.API
                     {"device_id", _deviceInfo.DeviceId},
                 };
                 var request = _httpHelper.GetSignedRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
+                request.Headers.Add("Host", "i.instagram.com");
                 var response = await _httpRequestProcessor.SendAsync(request);
                 var json = await response.Content.ReadAsStringAsync();
                 if (response.StatusCode != HttpStatusCode.OK)
@@ -1826,11 +2007,19 @@ namespace InstagramApiSharp.API
         }
         #endregion Challenge part
 
+        internal async Task GetToken(bool fromBaseUri = true)
+        {
+            try
+            {
+                await _httpRequestProcessor.SendAsync(_httpHelper.GetDefaultRequest(HttpMethod.Get, !fromBaseUri ? UriCreator.GetLoginUri() : _httpRequestProcessor.Client.BaseAddress , _deviceInfo));
+            }
+            catch { }
+        }
         #endregion Authentication and challenge functions
 
         #region ORIGINAL FACEBOOK LOGIN
+        private string FbAccessToken = null;
 
-        string _facebookAccessToken = null;
         /// <summary>
         ///     Login with Facebook access token
         /// </summary>
@@ -1854,12 +2043,8 @@ namespace InstagramApiSharp.API
         {
             try
             {
-                _facebookAccessToken = null;
                 if (newToken)
-                {
-                    var firstResponse = await _httpRequestProcessor.GetAsync(_httpRequestProcessor.Client.BaseAddress);
-                    await firstResponse.Content.ReadAsStringAsync();
-                }
+                    await GetToken();
                 else
                     System.Diagnostics.Debug.WriteLine("--------------------RELOGIN-------------------------");
                 var cookies =
@@ -1876,7 +2061,7 @@ namespace InstagramApiSharp.API
 
                 if (waterfallId.IsEmpty())
                     waterfallId = Guid.NewGuid().ToString();
-
+                FbAccessToken = fbAccessToken;
                 var instaUri = UriCreator.GetFacebookSignUpUri();
 
                 var data = new JObject
@@ -1894,7 +2079,6 @@ namespace InstagramApiSharp.API
                 if (username.IsNotEmpty())
                     data.Add("username", username);
 
-                _facebookAccessToken = fbAccessToken;
                 var request = _httpHelper.GetSignedRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
                 var response = await _httpRequestProcessor.SendAsync(request);
                 var json = await response.Content.ReadAsStringAsync();
@@ -1911,6 +2095,7 @@ namespace InstagramApiSharp.API
                     if (loginFailReason.TwoFactorRequired)
                     {
                         _twoFactorInfo = loginFailReason.TwoFactorLoginInfo;
+                        SetUser(_twoFactorInfo.Username, "ALAKIMASALAN");
                         _httpRequestProcessor.RequestMessage.Username = _twoFactorInfo.Username;
                         _httpRequestProcessor.RequestMessage.DeviceId = _deviceInfo.DeviceId;
                         return Result.Fail("Two Factor Authentication is required", InstaLoginResult.TwoFactorRequired);
@@ -2163,6 +2348,10 @@ namespace InstagramApiSharp.API
         /// </summary>
         public InstaApiVersion GetApiVersionInfo() => _apiVersion;
         /// <summary>
+        ///     Get api version type
+        /// </summary>
+        public InstaApiVersionType GetApiVersionType() => _apiVersionType;
+        /// <summary>
         ///     Get user agent of current <see cref="IInstaApi"/>
         /// </summary>
         public string GetUserAgent() => _deviceInfo.GenerateUserAgent(_apiVersion);
@@ -2187,25 +2376,40 @@ namespace InstagramApiSharp.API
             _httpRequestProcessor.SetHttpClientHandler(handler);
         }
         /// <summary>
-        /// Sets user credentials
+        ///     Sets user credentials
         /// </summary>
         public void SetUser(string username, string password)
         {
-            _user.UserName = username;
+            _user.UserName = username.ToLower();
             _user.Password = password;
 
-            _httpRequestProcessor.RequestMessage.Username = username;
+            _httpRequestProcessor.RequestMessage.Username = username.ToLower();
             _httpRequestProcessor.RequestMessage.Password = password;
         }
 
         /// <summary>
-        /// Sets user credentials
+        ///     Sets user credentials
         /// </summary>
         public void SetUser(UserSessionData user)
         {
             SetUser(user.UserName, user.Password);
         }
-
+        /// <summary>
+        ///     Update user information (private, profile picture, username and etc.)
+        ///     <para>Note 1. Login required!</para>
+        ///     <para>Note 2. It's necessary to save session, after you called this function</para>
+        /// </summary>
+        /// <param name="updatedUser">Updated user</param>
+        public void UpdateUser(InstaUserShort updatedUser)
+        {
+            if (updatedUser == null) return;
+            ValidateUser();
+            ValidateLoggedIn();
+            updatedUser.UserName = updatedUser.UserName.ToLower();
+            _user.UserName = updatedUser.UserName;
+            _user.LoggedInUser = updatedUser;
+            _httpRequestProcessor.RequestMessage.Username = updatedUser.UserName;
+        }
         /// <summary>
         ///     Gets current device
         /// </summary>
@@ -2269,7 +2473,17 @@ namespace InstagramApiSharp.API
             _delay = delay;
             _httpRequestProcessor.Delay = _delay;
         }
-
+        /// <summary>
+        ///     Set delay before configuring medias [only for uploading parts]
+        /// </summary>
+        /// <param name="configureMediaDelay">Timespan delay for configuring Media</param>
+        public void SetConfigureMediaDelay(IConfigureMediaDelay configureMediaDelay)
+        {
+            if (configureMediaDelay == null)
+                configureMediaDelay = ConfigureMediaDelay.PreferredDelay();
+            _configureMediaDelay = configureMediaDelay;
+            _httpRequestProcessor.ConfigureMediaDelay = _configureMediaDelay;
+        }
         internal IRequestDelay GetRequestDelay() => _delay;
 
         /// <summary>
@@ -2345,7 +2559,7 @@ namespace InstagramApiSharp.API
         ///     Send get request
         /// </summary>
         /// <param name="uri">Desire uri (must include https://i.instagram.com/api/v...) </param>
-        public async Task<IResult<string>> SendGetRequestAsync(Uri uri)
+        public async Task<IResult<string>> SendGetRequestAsync(Uri uri, bool keepAlive = false)
         {
             try
             {
@@ -2353,7 +2567,8 @@ namespace InstagramApiSharp.API
                     return Result.Fail("Uri cannot be null!", default(string));
                 
                 var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, uri, _deviceInfo);
-                var response = await _httpRequestProcessor.SendAsync(request);
+                request.Headers.Add("Host", "i.instagram.com");
+                var response = await _httpRequestProcessor.SendAsync(request, keepAlive);
                 var json = await response.Content.ReadAsStringAsync();
 
                 if (response.StatusCode != HttpStatusCode.OK)
@@ -2433,6 +2648,36 @@ namespace InstagramApiSharp.API
                 return Result.Fail(exception, default(string));
             }
         }
+        public async Task<IResult<string>> SendSignedPostRequestV2Async(Uri uri, JObject data)
+        {
+            try
+            {
+                if (uri == null)
+                    return Result.Fail("Uri cannot be null!", default(string));
+
+                HttpRequestMessage request;
+                data.Add("_csrftoken", _user.CsrfToken);
+                request = _httpHelper.GetSignedRequest(HttpMethod.Post, uri, _deviceInfo, data);
+
+                var response = await _httpRequestProcessor.SendAsync(request);
+                var json = await response.Content.ReadAsStringAsync();
+
+                if (response.StatusCode != HttpStatusCode.OK)
+                    return Result.UnExpectedResponse<string>(response, json);
+
+                return Result.Success(json);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+                return Result.Fail(httpException, default(string), ResponseType.NetworkProblem);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogException(exception);
+                return Result.Fail(exception, default(string));
+            }
+        }
         /// <summary>
         ///     Send post request
         /// </summary>
@@ -2468,8 +2713,169 @@ namespace InstagramApiSharp.API
                 return Result.Fail(exception, default(string));
             }
         }
+        public async Task<IResult<bool>> LauncherSyncAsync(bool isAfterLogin = false)
+        {
+            try
+            {
+                var data = new JObject
+                {
+                    {"_csrftoken", _user.CsrfToken},
+                    {"id", isAfterLogin ? _user.LoggedInUser.Pk.ToString() : _deviceInfo.DeviceGuid.ToString()},
+                };
 
+                if(isAfterLogin)
+                {
+                    data.Add("_uid", _user.LoggedInUser.Pk.ToString());
+                    data.Add("_uuid", _deviceInfo.DeviceGuid.ToString());
+                }
+
+                data.Add("server_config_retrieval", "1");
+
+                var uri = UriCreator.GetLauncherSyncUri();
+                var request = _httpHelper.GetSignedRequest(HttpMethod.Post, uri, _deviceInfo, data);
+                request.Headers.Add("Host", "i.instagram.com");
+
+                var response = await _httpRequestProcessor.SendAsync(request, true);
+                var json = await response.Content.ReadAsStringAsync();
+
+                if (response.StatusCode != HttpStatusCode.OK)
+                    return Result.UnExpectedResponse<bool>(response, json);
+
+                return Result.Success(true);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+                return Result.Fail(httpException, default(bool), ResponseType.NetworkProblem);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogException(exception);
+                return Result.Fail(exception, default(bool));
+            }
+        }
+
+        public async Task<IResult<InstaBanyanSuggestions>> GetBanyanSuggestionsAsync()
+        {
+            var suggestions = new InstaBanyanSuggestions();
+            try
+            {
+                var uri = UriCreator.GetBanyanUri();
+                var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, uri, _deviceInfo);
+
+                var response = await _httpRequestProcessor.SendAsync(request, true);
+                var json = await response.Content.ReadAsStringAsync();
+
+                if (response.StatusCode != HttpStatusCode.OK)
+                    return Result.UnExpectedResponse<InstaBanyanSuggestions>(response, json);
+
+                var obj = JsonConvert.DeserializeObject<InstaBanyanContainerResponse>(json);
+                if (obj != null && obj?.Entities != null)
+                {
+                    try
+                    {
+                        if (obj.Entities.Threads?.Count > 0)
+                        {
+                            foreach (var thread in obj.Entities.Threads)
+                            {
+                                try
+                                {
+                                    suggestions.Threads.Add(ConvertersFabric.Instance.GetDirectThreadConverter(thread).Convert());
+                                }
+                                catch { }
+                            }
+                        }
+                        if (obj.Entities.Users?.Count > 0)
+                        {
+                            foreach (var user in obj.Entities.Users)
+                            {
+                                try
+                                {
+                                    suggestions.Users.Add(ConvertersFabric.Instance.GetUserShortConverter(user).Convert());
+                                }
+                                catch { }
+                            }
+                        }
+                        if (suggestions.Threads?.Count > 0)
+                        {
+                            foreach (var thread in suggestions.Threads)
+                                suggestions.Items.Add(thread.Users.FirstOrDefault());
+                        }
+                        if (suggestions.Users?.Count > 0)
+                        {
+                            foreach (var user in suggestions.Users)
+                                suggestions.Items.Add(user);
+                        }
+
+                        //if (suggestions.Items?.Count > 0)
+                        //    suggestions.Items.Reverse();
+
+                        return Result.Success(suggestions);
+                    }
+                    catch { }
+                }
+                return Result.Fail("Nothing found...", suggestions);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+                return Result.Fail(httpException, suggestions, ResponseType.NetworkProblem);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogException(exception);
+                return Result.Fail(exception, suggestions);
+            }
+        }
         #endregion Other public functions
+
+        #region Giphy
+
+        public async Task<IResult<GiphyList>> GetGiphyTrendingAsync(int count = 100)
+        {
+            try
+            {
+                var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, GiphyUrls.GetTrendingUri(count), _deviceInfo);
+                var response = await _httpRequestProcessor.SendAsync(request);
+                var json = await response.Content.ReadAsStringAsync();
+                var obj = JsonConvert.DeserializeObject<GiphyList>(json);
+                return Result.Success(obj);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+                return Result.Fail(httpException, default(GiphyList), ResponseType.NetworkProblem);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogException(exception);
+                return Result.Fail<GiphyList>(exception);
+            }
+        }
+
+        public async Task<IResult<GiphyList>> SearchGiphyAsync(string query, int count = 100)
+        {
+            try
+            {
+                var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, GiphyUrls.GetSearchUri(query, count), _deviceInfo);
+                var response = await _httpRequestProcessor.SendAsync(request);
+                var json = await response.Content.ReadAsStringAsync();
+                var obj = JsonConvert.DeserializeObject<GiphyList>(json);
+                return Result.Success(obj);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+                return Result.Fail(httpException, default(GiphyList), ResponseType.NetworkProblem);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogException(exception);
+                return Result.Fail<GiphyList>(exception);
+            }
+        }
+
+        #endregion Giphy
 
         #region State data
 
@@ -2596,6 +3002,8 @@ namespace InstagramApiSharp.API
             if (!IsCustomDeviceSet)
                 _deviceInfo = data.DeviceInfo;
             _user = data.UserSession;
+            if (string.IsNullOrEmpty(_deviceInfo.IGBandwidthSpeedKbps))
+                _deviceInfo.RandomizeBandwithConnection();
 
             _httpRequestProcessor.RequestMessage.Username = data.UserSession.UserName;
             _httpRequestProcessor.RequestMessage.Password = data.UserSession.Password;
@@ -2611,10 +3019,12 @@ namespace InstagramApiSharp.API
             }
 
             if (data.InstaApiVersion == null)
-                data.InstaApiVersion = InstaApiVersionType.Version86;
+                data.InstaApiVersion = InstaApiVersionType.Version130;
+            if(!LoadApiVersionFromSessionFile)
+                data.InstaApiVersion = InstaApiVersionType.Version130;
             _apiVersionType = data.InstaApiVersion.Value;
             _apiVersion = InstaApiVersionList.GetApiVersionList().GetApiVersion(_apiVersionType);
-            _httpHelper = new HttpHelper(_apiVersion);
+            _httpHelper = new HttpHelper(_apiVersion, _httpRequestProcessor, this);
 
             IsUserAuthenticated = data.IsAuthenticated;
             InvalidateProcessors();
@@ -2628,6 +3038,9 @@ namespace InstagramApiSharp.API
             if (!IsCustomDeviceSet)
                 _deviceInfo = data.DeviceInfo;
             _user = data.UserSession;
+
+            if (string.IsNullOrEmpty(_deviceInfo.IGBandwidthSpeedKbps))
+                _deviceInfo.RandomizeBandwithConnection();
 
             //Load Stream Edit 
             _httpRequestProcessor.RequestMessage.Username = data.UserSession.UserName;
@@ -2644,10 +3057,12 @@ namespace InstagramApiSharp.API
             }
 
             if (data.InstaApiVersion == null)
-                data.InstaApiVersion = InstaApiVersionType.Version86;
+                data.InstaApiVersion = InstaApiVersionType.Version130;
+            if (!LoadApiVersionFromSessionFile)
+                data.InstaApiVersion = InstaApiVersionType.Version130;
             _apiVersionType = data.InstaApiVersion.Value;
             _apiVersion = InstaApiVersionList.GetApiVersionList().GetApiVersion(_apiVersionType);
-            _httpHelper = new HttpHelper(_apiVersion);
+            _httpHelper = new HttpHelper(_apiVersion, _httpRequestProcessor, this);
 
             IsUserAuthenticated = data.IsAuthenticated;
             InvalidateProcessors();
@@ -2664,6 +3079,9 @@ namespace InstagramApiSharp.API
                 _deviceInfo = stateData.DeviceInfo;
             _user = stateData.UserSession;
 
+            if (string.IsNullOrEmpty(_deviceInfo.IGBandwidthSpeedKbps))
+                _deviceInfo.RandomizeBandwithConnection();
+
             //Load Stream Edit 
             _httpRequestProcessor.RequestMessage.Username = stateData.UserSession.UserName;
             _httpRequestProcessor.RequestMessage.Password = stateData.UserSession.Password;
@@ -2679,10 +3097,12 @@ namespace InstagramApiSharp.API
             }
 
             if (stateData.InstaApiVersion == null)
-                stateData.InstaApiVersion = InstaApiVersionType.Version86;
+                stateData.InstaApiVersion = InstaApiVersionType.Version130;
+            if (!LoadApiVersionFromSessionFile)
+                stateData.InstaApiVersion = InstaApiVersionType.Version130;
             _apiVersionType = stateData.InstaApiVersion.Value;
             _apiVersion = InstaApiVersionList.GetApiVersionList().GetApiVersion(_apiVersionType);
-            _httpHelper = new HttpHelper(_apiVersion);
+            _httpHelper = new HttpHelper(_apiVersion, _httpRequestProcessor, this);
 
             IsUserAuthenticated = stateData.IsAuthenticated;
             InvalidateProcessors();
@@ -2735,6 +3155,8 @@ namespace InstagramApiSharp.API
             _businessProcessor = new BusinessProcessor(_deviceInfo, _user, _httpRequestProcessor, _logger, _userAuthValidate, this, _httpHelper);
             _shoppingProcessor = new ShoppingProcessor(_deviceInfo, _user, _httpRequestProcessor, _logger, _userAuthValidate, this, _httpHelper);
             _webProcessor = new WebProcessor(_deviceInfo, _user, _httpRequestProcessor, _logger, _userAuthValidate, this, _httpHelper);
+            _videoCallProcessor = new VideoCallProcessor(_deviceInfo, _user, _httpRequestProcessor, _logger, _userAuthValidate, this, _httpHelper);
+            _pushProcessor = new PushProcessor(_deviceInfo, _user, _httpRequestProcessor, _logger, _userAuthValidate, this, _httpHelper);
 
         }
 
@@ -2789,6 +3211,603 @@ namespace InstagramApiSharp.API
             _logger?.LogException(exception);
         }
 
+        #endregion
+
+        #region internal calls
+        /// <summary>
+        ///     Send requests for login flows (contact prefill, launcher sync and qe sync)
+        ///     <para>Note 1: You should call this function before you calling <see cref="IInstaApi.LoginAsync(bool)"/>, if you want your account act like original instagram app.</para>
+        ///     <para>Note 2: One call per one account! No need to call while you are loading a session</para>
+        /// </summary>
+        public async Task<IResult<bool>> SendRequestsBeforeLoginAsync()
+        {
+            try
+            {
+                await GetContactPointPrefill();
+                await QeSync(false);
+                await LauncherSyncAsync(false);
+                await GetPrefillCandidates();
+                return Result.Success(true);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+                return Result.Fail(httpException, default(bool), ResponseType.NetworkProblem);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogException(exception);
+                return Result.Fail<bool>(exception);
+            }
+        }
+        /// <summary>
+        ///     Send requests after you logged in successfully (Act as an real instagram user)
+        /// </summary>
+        public async Task<IResult<bool>> SendRequestsAfterLoginAsync()
+        {
+            try
+            {
+                await GetAccountFamilyAsync();
+                await LauncherSyncAsync(true);
+                await QeSync(true);
+                return Result.Success(true);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+                return Result.Fail(httpException, default(bool), ResponseType.NetworkProblem);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogException(exception);
+                return Result.Fail<bool>(exception);
+            }
+        }
+        public async Task<IResult<bool>> SendRequestsAfterFeedFetchAsync()
+        {
+            try
+            {
+                await PushProcessor.RegisterPushAsync(InstaPushChannelType.Fcm);
+                await PushProcessor.RegisterPushAsync(InstaPushChannelType.Mqtt);
+                await FeedProcessor.GetRecentActivityFeedAsync(PaginationParameters.MaxPagesToLoad(1));
+                await MediaProcessor.GetBlockedMediasAsync();
+                await GetLoomConfigAsync();
+                await GetBusinessBrandedContentAsync();
+                await GetUserScoresAsync();
+                await GetBusinessEligibilityAsync();
+                await GetLinkageStatusAsync();
+                await GetQpCooldownsAsync();
+                return Result.Success(true);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+                return Result.Fail(httpException, default(bool), ResponseType.NetworkProblem);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogException(exception);
+                return Result.Fail<bool>(exception);
+            }
+        }
+        public async Task GetNotificationBadge()
+        {
+            try
+            {
+                var data = new Dictionary<string, string>
+                {
+                    {"phone_id", _deviceInfo.PhoneGuid.ToString()},
+                    {"_csrftoken", _user.CsrfToken},
+                    {"user_ids", _user.LoggedInUser.Pk.ToString()},
+                    {"device_id", _deviceInfo.DeviceGuid.ToString()},
+                    {"_uuid", _deviceInfo.DeviceGuid.ToString()},
+                };
+                var cookies = _httpRequestProcessor.HttpHandler.CookieContainer
+                    .GetCookies(_httpRequestProcessor.Client.BaseAddress);
+
+                var csrftoken = cookies[InstaApiConstants.CSRFTOKEN]?.Value;
+                if (!string.IsNullOrEmpty(csrftoken))
+                    data.Add("_csrftoken", csrftoken);
+                var instaUri = UriCreator.GetNotificationBadgeUri();
+                var request = _httpHelper.GetDefaultRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
+                var response = await _httpRequestProcessor.SendAsync(request);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogException(exception);
+            }
+        }
+        public async Task QpBatchFetch(bool loggedIn = false)
+        {
+            try
+            {
+                var data = new Dictionary<string, string>
+                {
+                    {"surfaces_to_triggers", InstaApiConstants.SURFACES_TO_TRIGGERS},
+                    {"surfaces_to_queries", InstaApiConstants.SURFACES_TO_QUERIES},
+                    {"vc_policy", "default"},
+                    {"_csrftoken", _user.CsrfToken},
+                    {"uid", _user.LoggedInUser.Pk.ToString()},
+                    {"_uuid", _deviceInfo.DeviceGuid.ToString()},
+                    {"scale", "3"},
+                    {"version", "1"}
+                };
+
+                if(loggedIn)
+                    data.Add("trigger_context", $"{{\"logged_in_user_ids\":\"{_user.LoggedInUser.Pk},\"");
+
+                var instaUri = UriCreator.GetQpBatchFetchUri();
+                var request = _httpHelper.GetSignedRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
+                request.Headers.Add("Host", "i.instagram.com");
+                var response = await _httpRequestProcessor.SendAsync(request);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogException(exception);
+            }
+        }
+        private async Task GetContactPointPrefill()
+        {
+            try
+            {
+                var cookies = _httpRequestProcessor.HttpHandler.CookieContainer
+                   .GetCookies(_httpRequestProcessor.Client.BaseAddress);
+
+                var csrftoken = cookies[InstaApiConstants.CSRFTOKEN]?.Value;
+                var data = new Dictionary<string, string>
+                {
+                    {"phone_id", _deviceInfo.PhoneGuid.ToString()},
+                    {"_crsftoken", csrftoken},
+                    {"usage", "prefill"}
+                };
+
+                var instaUri = UriCreator.GetContactPointPrefillUri();
+                var request = _httpHelper.GetSignedRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
+                // b.i.instagram.com??
+                request.Headers.Add("Host", "i.instagram.com");
+                var response = await _httpRequestProcessor.SendAsync(request, true);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogException(exception);
+            }
+        }
+        private async Task GetReadMsisdnHeader()
+        {
+            try
+            {
+                //.{"mobile_subno_usage":"default","device_id":"----"}&
+                var data = new Dictionary<string, string>
+                {
+                    {"mobile_subno_usage", "default"},
+                    {"device_id", _deviceInfo.DeviceGuid.ToString()},
+                };
+
+                var instaUri = UriCreator.GetReadMsisdnHeaderUri();
+                var request = _httpHelper.GetSignedRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
+                var response = await _httpRequestProcessor.SendAsync(request);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogException(exception);
+            }
+        }
+        private async Task GetPrefillCandidates()
+        {
+            try
+            {
+                var clientContactPointsArray = new JArray(new JObject
+                {
+                    {"type", "omnistring"},
+                    {"value", _user?.UserName?.ToLower()},
+                    {"source", "last_login_attempt"},
+                });
+
+                var clientContactPoints = clientContactPointsArray.ToString(Formatting.None);
+
+                var data = new Dictionary<string, string>
+                {
+                    {"android_device_id", _deviceInfo.AndroidId},
+                    {"client_contact_points", clientContactPoints},
+                    {"phone_id", _deviceInfo.PhoneGuid.ToString()},
+                    // NOTE: big_blue_token is just an OAuth token taken from the Facebook app
+                    // present on the android device. It is used to prefill "login in as <facebook>"
+                    // option. It only present with Facebook app installed. If you uninstall it, the
+                    // token is gone. We pretend that we don't have Facebook on our phone so we omit it.
+
+                    //{"big_blue_token", "EAAAAUaZA8jlABAE2bZBKWoyjRnnGTmxDXJesEOICUbVZB7mhodyj5hJ9RYo8MVZBBBURKwQZBZAWY9Fznph8jpxbVyZCvYG2P52KEVZA2IwWz2O4RMZCaHC65Q93wfnUmj3WZBxTrrDg8TMjgPTnCbKotl2PMpvS4PtCXZB1OX0VYV11UMnq5hnPpRa" },
+                    {"usages", "[\"account_recovery_omnibox\"]"}
+                };
+
+                var cookies = _httpRequestProcessor.HttpHandler.CookieContainer
+                .GetCookies(_httpRequestProcessor.Client.BaseAddress);
+                var csrftoken = cookies[InstaApiConstants.CSRFTOKEN]?.Value;
+                if (!string.IsNullOrEmpty(csrftoken))
+                    data.Add("_csrftoken", csrftoken);
+                else if (!string.IsNullOrEmpty(_user.CsrfToken))
+                    data.Add("_csrftoken", _user.CsrfToken);
+
+                data.Add("device_id", _deviceInfo.DeviceGuid.ToString());
+
+                var instaUri = UriCreator.GetPrefillCandidatesUri();
+                var request = _httpHelper.GetSignedRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
+                request.Headers.Add("Host", "i.instagram.com");
+                var response = await _httpRequestProcessor.SendAsync(request, true);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogException(exception);
+            }
+        }
+        public async Task GetAccountFamilyAsync()
+        {
+            await SendGetRequestAsync(UriCreator.GetAccountFamilyUri(), true);
+        }
+        public async Task GetQpCooldownsAsync()
+        {
+            await SendGetRequestAsync(UriCreator.GetQpCooldownsUri(), true);
+        }
+        public async Task GetUserScoresAsync()
+        {
+            await SendGetRequestAsync(UriCreator.GetUserScoresUri(), true);
+        }
+        public async Task GetLinkageStatusAsync()
+        {
+            await SendGetRequestAsync(UriCreator.GetLinkageStatusUri(), true);
+        }
+        public async Task GetLoomConfigAsync()
+        {
+            await SendGetRequestAsync(UriCreator.GetLoomConfigUri(), true);
+        }
+        public async Task GetBusinessEligibilityAsync()
+        {
+            await SendGetRequestAsync(UriCreator.GetBusinessEligibilityUri(), true);
+        }
+        public async Task GetBusinessBrandedContentAsync()
+        {
+            await SendGetRequestAsync(UriCreator.GetBusinessBrandedContentUri(), true);
+        }
+        public async Task GetViewableStatusesAsync()
+        {
+            await SendGetRequestAsync(UriCreator.GetViewableStatusesUri(), true);
+        }
+        // TODO: return a value
+        public async Task GetInitialUserFeedAsync(long userPk)
+        {
+            await SendGetRequestAsync(UriCreator.GetUserMediaListUri(userPk, "", true), true);
+        }
+        public async Task GetUserFeedCapabilities(long userPk)
+        {
+            await SendGetRequestAsync(UriCreator.GetUserFeedCapabilitiesUri(userPk), true);
+        }
+        public async Task GetCommerceBagCount()
+        {
+            await SendGetRequestAsync(UriCreator.GetCommerceBagCountUri(), true);
+        }
+        public async Task GetProfileSuBadge()
+        {
+            await SendGetRequestAsync(UriCreator.GetProfileSuBadgeUri(), true);
+        }
+        public async Task<IResult<bool>> GetProfileArchiveBadge()
+        {
+            try
+            {
+                var cookies = _httpRequestProcessor.HttpHandler.CookieContainer.GetCookies(_httpRequestProcessor.Client
+                    .BaseAddress);
+
+                var csrftoken = cookies[InstaApiConstants.CSRFTOKEN]?.Value ?? string.Empty;
+                _user.CsrfToken = csrftoken;
+                var instaUri = UriCreator.GetProfileArchiveBadgeUri();
+                var data = new Dictionary<string, string>
+                {
+                    {"timezone_offset", InstaApiConstants.TIMEZONE_OFFSET.ToString()},
+                    {"_csrftoken", _user.CsrfToken},
+                    {"_uuid", _deviceInfo.DeviceGuid.ToString()}
+                };
+                var request = _httpHelper.GetDefaultRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
+                var json = await response.Content.ReadAsStringAsync();
+
+                if (response.StatusCode != HttpStatusCode.OK)
+                    return Result.UnExpectedResponse<bool>(response, json);
+
+                return Result.Success(true);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+                return Result.Fail(httpException, default(bool), ResponseType.NetworkProblem);
+            }
+            catch (Exception exception)
+            {
+                LogException(exception);
+                return Result.Fail(exception, false);
+            }
+        }
+        private async Task LauncherSyncPrivate(bool second = false, bool third = false)
+        {
+            try
+            {
+                var data = new JObject();
+                var cookies = _httpRequestProcessor.HttpHandler.CookieContainer
+                   .GetCookies(_httpRequestProcessor.Client.BaseAddress);
+
+                var csrftoken = cookies[InstaApiConstants.CSRFTOKEN]?.Value;
+                if (!string.IsNullOrEmpty(csrftoken))
+                    data.Add("_csrftoken", csrftoken);
+                if (IsUserAuthenticated && _user?.LoggedInUser != null)
+                {
+                    //data.Add("_csrftoken", _user.CsrfToken);
+                    data.Add("id", _deviceInfo.DeviceGuid.ToString());
+                    //data.Add("_uuid", _deviceInfo.DeviceGuid.ToString());
+                    //data.Add("id", _deviceInfo.DeviceGuid.ToString());
+                }
+                else
+                {
+                    data.Add("id", _deviceInfo.DeviceGuid.ToString());
+                    //if (second)
+                    //{
+                    //    var cookies = _httpRequestProcessor.HttpHandler.CookieContainer
+                    //        .GetCookies(_httpRequestProcessor.Client.BaseAddress);
+
+                    //    var csrftoken = cookies[InstaApiConstants.CSRFTOKEN]?.Value;
+                    //    if (!string.IsNullOrEmpty(csrftoken))
+                    //        data.Add("_csrftoken", csrftoken);
+                    //}
+                }
+                data.Add("server_config_retrieval", "1");
+                var uri = UriCreator.GetLauncherSyncUri();
+                var request = _httpHelper.GetSignedRequest(HttpMethod.Post, uri, _deviceInfo, data);
+
+                var response = await _httpRequestProcessor.SendAsync(request);
+                if (!third)
+                {
+                    _user.PublicKey = string.Join("", response.Headers.GetValues("ig-set-password-encryption-pub-key"));
+                    _user.PublicKeyId = string.Join("", response.Headers.GetValues("ig-set-password-encryption-key-id"));
+                }
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogException(exception);
+            }
+        }
+        public async Task QeSync(bool isAfterLogin = false)
+        {
+            try
+            {
+                var data = new JObject();
+                var cookies = _httpRequestProcessor.HttpHandler.CookieContainer
+                .GetCookies(_httpRequestProcessor.Client.BaseAddress);
+                var csrftoken = cookies[InstaApiConstants.CSRFTOKEN]?.Value;
+                if (!string.IsNullOrEmpty(csrftoken))
+                    data.Add("_csrftoken", csrftoken);
+                else if (!string.IsNullOrEmpty(_user.CsrfToken))
+                    data.Add("_csrftoken", _user.CsrfToken);
+                if (IsUserAuthenticated && _user?.LoggedInUser != null)
+                {
+                    if(isAfterLogin)
+                    {
+                        data.Add("id", _user.LoggedInUser.Pk.ToString());
+                        data.Add("_uid", _user.LoggedInUser.Pk.ToString());
+                        data.Add("_uuid", _deviceInfo.DeviceGuid.ToString());
+                        data.Add("experiments", InstaApiConstants.AFTER_LOGIN_EXPERIMENTS_CONFIGS);
+                    }
+                    else
+                    {
+                        data.Add("id", _deviceInfo.DeviceGuid.ToString());
+                        data.Add("experiments", InstaApiConstants.LOGIN_EXPERIMENTS_CONFIGS);
+                    }
+                    data.Add("server_config_retrieval", "1");
+                }
+                else
+                {
+                    data.Add("id", _deviceInfo.DeviceGuid.ToString());
+                    data.Add("server_config_retrieval", "1");
+                    data.Add("experiments", InstaApiConstants.LOGIN_EXPERIMENTS_CONFIGS);
+                }
+
+                var uri = UriCreator.GetQeSyncUri();
+                var request = _httpHelper.GetSignedRequest(HttpMethod.Post, uri, _deviceInfo, data);
+                request.Headers.Add("X-DEVICE-ID", _deviceInfo.DeviceGuid.ToString());
+                request.Headers.Add("Host", "i.instagram.com");
+
+                var response = await _httpRequestProcessor.SendAsync(request, true);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogException(exception);
+            }
+        }
+
+
+        private async Task<IResult<InstaConsentRequiredResponse>> AcceptFirstStepConsentAsync()
+        {
+            try
+            {
+                var cookies = _httpRequestProcessor.HttpHandler.CookieContainer.GetCookies(_httpRequestProcessor.Client
+                    .BaseAddress);
+
+                var csrftoken = cookies[InstaApiConstants.CSRFTOKEN]?.Value ?? string.Empty;
+                _user.CsrfToken = csrftoken;
+
+                var instaUri = UriCreator.GetConsentExistingUserFlowUri();
+                var data = new Dictionary<string, string>
+                {
+                    {"_uuid", _deviceInfo.DeviceGuid.ToString()},
+                    {"_uid", _user.LoggedInUser.Pk.ToString()},
+                    {"_csrftoken", _user.CsrfToken}
+                };
+                var request = _httpHelper.GetDefaultRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
+                var response = await _httpRequestProcessor.SendAsync(request);
+                var json = await response.Content.ReadAsStringAsync();
+
+                if (response.StatusCode != HttpStatusCode.OK)
+                    return Result.UnExpectedResponse<InstaConsentRequiredResponse>(response, json);
+
+
+                return Result.Success(JsonConvert.DeserializeObject<InstaConsentRequiredResponse>(json));
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+                return Result.Fail(httpException, default(InstaConsentRequiredResponse), ResponseType.NetworkProblem);
+            }
+            catch (Exception exception)
+            {
+                LogException(exception);
+                return Result.Fail(exception, default(InstaConsentRequiredResponse));
+            }
+        }
+        private async Task<IResult<bool>> AcceptSecondStepConsentAsync()
+        {
+            try
+            {
+                var cookies = _httpRequestProcessor.HttpHandler.CookieContainer.GetCookies(_httpRequestProcessor.Client
+                    .BaseAddress);
+
+                var csrftoken = cookies[InstaApiConstants.CSRFTOKEN]?.Value ?? string.Empty;
+                _user.CsrfToken = csrftoken;
+
+                var instaUri = UriCreator.GetConsentExistingUserFlowUri();
+                var data = new Dictionary<string, string>
+                {
+                    {"_uuid", _deviceInfo.DeviceGuid.ToString()},
+                    {"_uid", _user.LoggedInUser.Pk.ToString()},
+                    {"_csrftoken", _user.CsrfToken},
+                    {"current_screen_key", "qp_intro"},
+                    {"existing_user_intro_state", "2"},
+                };
+                var request = _httpHelper.GetDefaultRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
+                var response = await _httpRequestProcessor.SendAsync(request);
+                var json = await response.Content.ReadAsStringAsync();
+
+                if (response.StatusCode != HttpStatusCode.OK)
+                    return Result.UnExpectedResponse<bool>(response, json);
+
+                return Result.Success(true);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+                return Result.Fail(httpException, default(bool), ResponseType.NetworkProblem);
+            }
+            catch (Exception exception)
+            {
+                LogException(exception);
+                return Result.Fail(exception, false);
+            }
+        }
+        private async Task<IResult<bool>> AcceptThirdStepConsentAsync()
+        {
+            try
+            {
+                var cookies = _httpRequestProcessor.HttpHandler.CookieContainer.GetCookies(_httpRequestProcessor.Client
+                    .BaseAddress);
+
+                var csrftoken = cookies[InstaApiConstants.CSRFTOKEN]?.Value ?? string.Empty;
+                _user.CsrfToken = csrftoken;
+                var instaUri = UriCreator.GetConsentExistingUserFlowUri();
+                var data = new Dictionary<string, string>
+                {
+                    {"_uuid", _deviceInfo.DeviceGuid.ToString()},
+                    {"_uid", _user.LoggedInUser.Pk.ToString()},
+                    {"_csrftoken", _user.CsrfToken},
+                    {"current_screen_key", "tos_and_two_age_button"},
+                    {"updates", "{\"age_consent_state\":\"2\",\"tos_data_policy_consent_state\":\"2\"}"},
+                };
+                var request = _httpHelper.GetDefaultRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
+                var response = await _httpRequestProcessor.SendAsync(request);
+                var json = await response.Content.ReadAsStringAsync();
+
+                if (response.StatusCode != HttpStatusCode.OK)
+                    return Result.UnExpectedResponse<bool>(response, json);
+
+                return Result.Success(true);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+                return Result.Fail(httpException, default(bool), ResponseType.NetworkProblem);
+            }
+            catch (Exception exception)
+            {
+                LogException(exception);
+                return Result.Fail(exception, false);
+            }
+        }
+
+        private async Task<IResult<bool>> SetBirthdayConsentAsync()
+        {
+            try
+            {
+                int day = Rnd.Next(1, 29);
+                int month = Rnd.Next(1, 12);
+                int year = Rnd.Next(1980, 1998);
+
+                var cookies = _httpRequestProcessor.HttpHandler.CookieContainer.GetCookies(_httpRequestProcessor.Client
+                    .BaseAddress);
+
+                var csrftoken = cookies[InstaApiConstants.CSRFTOKEN]?.Value ?? string.Empty;
+                _user.CsrfToken = csrftoken;
+                var instaUri = UriCreator.GetConsentExistingUserFlowUri();
+                var data = new Dictionary<string, string>
+                {
+                    {"current_screen_key", "dob"},
+                    {"_csrftoken", _user.CsrfToken},
+                    {"day", day.ToString()},
+                    {"_uid", _user.LoggedInUser.Pk.ToString()},
+                    {"year", year.ToString()},
+                    {"_uuid", _deviceInfo.DeviceGuid.ToString()},
+                    {"month", month.ToString()},
+                };
+                var request = _httpHelper.GetSignedRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
+                var response = await _httpRequestProcessor.SendAsync(request);
+                var json = await response.Content.ReadAsStringAsync();
+
+                if (response.StatusCode != HttpStatusCode.OK)
+                    return Result.UnExpectedResponse<bool>(response, json);
+
+                return Result.Success(true);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+                return Result.Fail(httpException, default(bool), ResponseType.NetworkProblem);
+            }
+            catch (Exception exception)
+            {
+                LogException(exception);
+                return Result.Fail(exception, false);
+            }
+        }
         #endregion
     }
 }

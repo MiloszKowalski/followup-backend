@@ -241,104 +241,25 @@ namespace FollowUP.Infrastructure.Services
             var account = await _instagramAccountRepository.GetAsync(username);
 
             if(account == null)
-                throw new ServiceException(ErrorCodes.AccountDoesntExist, "Can't login to account that hasn't been created.");
+                throw new ServiceException(ErrorCodes.AccountDoesntExist, "Can't login to an account that hasn't been created yet.");
 
-            // Set the user's credentials
-            var userSession = new UserSessionData
-            {
-                UserName = username,
-                Password = password
-            };
+            if (account.Password != password)
+                account.SetPassword(password);
 
-            var instaPath = account.FilePath;
-            instaPath = instaPath.Replace('\\', Path.DirectorySeparatorChar);
-            instaPath = instaPath.Replace('/', Path.DirectorySeparatorChar);
+            var instaApi = await _instagramApiService.GetInstaApi(account, true);
 
-            var accountProxy = await _proxyRepository.GetAccountsProxyAsync(account.Id);
-
-            if (accountProxy == null)
-            {
-                Console.WriteLine($"User {account.Username} doesn't have any working proxy, skipping...");
-                await Task.Delay(5000);
-                return;
-            }
-
-            var proxyInfo = await _proxyRepository.GetAsync(accountProxy.ProxyId);
-
-            if (proxyInfo.ExpiryDate < DateTime.UtcNow)
-            {
-                Console.WriteLine($"Proxy {proxyInfo.Ip} for user {account.Username} is expired, skipping...");
-                await Task.Delay(5000);
-                return;
-            }
-
-            var proxy = new InstaProxy(proxyInfo.Ip, proxyInfo.Port)
-            {
-                Credentials = new NetworkCredential(proxyInfo.Username, proxyInfo.Password)
-            };
-
-            // Now create a client handler which uses that proxy
-            var httpClientHandler = new HttpClientHandler()
-            {
-                Proxy = proxy,
-            };
-
-            // Create new instance of InstaApi with given credentials, setting request delay and session handler for user
-            var instaApi =  InstaApiBuilder.CreateBuilder()
-                                        .SetUser(userSession)
-                                        .UseLogger(new DebugLogger(InstagramApiSharp.Logger.LogLevel.Exceptions))
-                                        .SetRequestDelay(RequestDelay.FromSeconds(0, 1))
-                                        .SetSessionHandler(new FileSessionHandler() { FilePath = instaPath })
-                                        .UseHttpClientHandler(httpClientHandler)
-                                        .Build();
-
-            // Check if there is an instaApi instance bound to the account...
-            var instaApiCache = (IInstaApi)_cache.Get(account.Id);
-
-            if(instaApiCache != null)
-            {
-                // ...if true, use it
-                instaApi = instaApiCache;
-            }
-
-            instaApi.SetApiVersion(InstaApiVersionType.Version117);
-            instaApi.SetDevice(AndroidDeviceGenerator.GetByName(account.AndroidDevice));
-
-            // Get appropriate directories of the folder and file
-            var fullPath = instaPath.Split(Path.DirectorySeparatorChar);
-            var directory = Path.Combine(fullPath[0], fullPath[1]);
-            
-            // Create directory if it doesn't exist yet
-            if (!Directory.Exists(directory))
-                Directory.CreateDirectory(directory);
-
-            // Create file if it doesn't exist yet
-            if (!File.Exists(instaApi.SessionHandler.FilePath))
-            {
-                using (FileStream fs = File.Create(instaApi.SessionHandler.FilePath))
-                {
-                    Console.WriteLine($"Created file for {username}.");
-                }
-            }
-
-            // Try logging in from session
-            try
-            {
-                instaApi?.SessionHandler?.Load();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-            }
-
-            // If user isn't authenticated (the session didn't work out)
+            // If user is authenticated
             if (instaApi.IsUserAuthenticated)
             {
                 account.SetAuthenticationStep(AuthenticationStep.Authenticated);
                 await _instagramAccountRepository.UpdateAsync(account);
-                await SendMockupRequests(instaApi);
+                await SendMockupRequestsAfterLogin(instaApi);
                 return;
             }
+
+            if(verificationCode.Empty())
+                await instaApi.SendRequestsBeforeLoginAsync();
+
             // Log in the user (only, if there is no two factor code)
             var logInResult = twoFactorCode.Empty() ? verificationCode.Empty()
                 ? await instaApi.LoginAsync() : new Result<InstaLoginResult>(false, InstaLoginResult.ChallengeRequired)
@@ -351,7 +272,7 @@ namespace FollowUP.Infrastructure.Services
 
                 // Set the authentiaction step to authenticated
                 await SetAuthenticationStepAndSaveAccount(AuthenticationStep.Authenticated, account);
-                await SendMockupRequests(instaApi);
+                await SendMockupRequestsAfterLogin(instaApi);
                 return;
             }
             // If the challenge is required
@@ -375,7 +296,7 @@ namespace FollowUP.Infrastructure.Services
             // Start the challenge response
             var challenge = await instaApi.GetChallengeRequireVerifyMethodAsync();
 
-            // If it succeeded
+            // If it didn't succeed
             if (!challenge.Succeeded)
             {
                 await SetAuthenticationStepAndSaveAccount(AuthenticationStep.ChallengeRequired, account);
@@ -443,7 +364,7 @@ namespace FollowUP.Infrastructure.Services
                     {
                         instaApi.SaveSession();
                         await SetAuthenticationStepAndSaveAccount(AuthenticationStep.Authenticated, account);
-                        await SendMockupRequests(instaApi);
+                        await SendMockupRequestsAfterLogin(instaApi);
                         return;
                     }
                     else if (verifyCodeLogin.Value == InstaLoginResult.TwoFactorRequired)
@@ -470,14 +391,25 @@ namespace FollowUP.Infrastructure.Services
             return;
         }
 
-        private async Task SendMockupRequests(IInstaApi instaApi)
+        private async Task SendMockupRequestsAfterLogin(IInstaApi instaApi)
         {
-            //var test = await instaApi.FeedProcessor.GetUserTimelineFeedAsync(PaginationParameters.MaxPagesToLoad(1));
-            await instaApi.FeedProcessor.GetExploreFeedAsync(PaginationParameters.MaxPagesToLoad(1));
-            await instaApi.UserProcessor.GetCurrentUserAsync();
-            await instaApi.FeedProcessor.GetRecentActivityFeedAsync(PaginationParameters.MaxPagesToLoad(1));
-            await instaApi.MessagingProcessor.GetDirectInboxAsync(PaginationParameters.MaxPagesToLoad(1));
-            await instaApi.StoryProcessor.GetStoryFeedAsync();
+            instaApi.GetCurrentDevice().PigeonSessionId = Guid.NewGuid();
+            await instaApi.SendRequestsAfterLoginAsync();
+            var banyanDirect = await instaApi.GetBanyanSuggestionsAsync();
+            var storyFeed = await instaApi.StoryProcessor.GetStoryFeedWithPostMethodAsync(/* preloaded reel ids */);
+            var userTimeline = await instaApi.FeedProcessor.GetUserTimelineFeedAsync(PaginationParameters.MaxPagesToLoad(1));
+            await instaApi.SendRequestsAfterFeedFetchAsync();
+            var currentUser = await instaApi.BusinessProcessor.GetBusinessAccountInformationAsync();
+            var userPresence = await instaApi.MessagingProcessor.GetUsersPresenceAsync();
+            await instaApi.GetViewableStatusesAsync();
+            await instaApi.MessagingProcessor.GetDirectInboxAsync(PaginationParameters.MaxPagesToLoad(1), 1);
+            await instaApi.MessagingProcessor.GetDirectInboxAsync(PaginationParameters.MaxPagesToLoad(1), 2);
+            var exploreFeed = await instaApi.FeedProcessor.GetTopicalExploreFeedAfterLogin();
+            await instaApi.GetNotificationBadge();
+            instaApi.SetDevice(instaApi.GetCurrentDevice().RandomizeBandwithConnection());
+            Console.WriteLine(instaApi.GetCurrentDevice().IGBandwidthSpeedKbps);
+            Console.WriteLine(instaApi.GetCurrentDevice().IGBandwidthTotalTimeMS);
+            Console.WriteLine(instaApi.GetCurrentDevice().IGBandwidthTotalBytesB);
             await Task.Delay(1);
         }
 
@@ -716,7 +648,7 @@ namespace FollowUP.Infrastructure.Services
                 instaApi.SaveSession();
 
                 await SetAuthenticationStepAndSaveAccount(AuthenticationStep.Authenticated, account);
-                await SendMockupRequests(instaApi);
+                await SendMockupRequestsAfterLogin(instaApi);
                 return;
             }
             else

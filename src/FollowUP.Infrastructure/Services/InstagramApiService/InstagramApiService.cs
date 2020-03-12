@@ -1,16 +1,19 @@
 ﻿using FollowUP.Core.Domain;
 using FollowUP.Core.Repositories;
+using InstagramApiSharp;
 using InstagramApiSharp.API;
 using InstagramApiSharp.API.Builder;
 using InstagramApiSharp.Classes;
 using InstagramApiSharp.Classes.Android.DeviceInfo;
+using InstagramApiSharp.Classes.Models;
 using InstagramApiSharp.Classes.SessionHandlers;
 using InstagramApiSharp.Enums;
 using InstagramApiSharp.Helpers;
 using InstagramApiSharp.Logger;
 using Microsoft.Extensions.Caching.Memory;
 using System;
-using System.Net;
+using System.Collections.Generic;
+using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
 
@@ -30,7 +33,7 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
             _cache = cache;
         }
 
-        public async Task<IInstaApi> GetInstaApi(InstagramAccount account)
+        public async Task<IInstaApi> GetInstaApi(InstagramAccount account, bool forLogin = false)
         {
             // Divide proxy to proper proxy parts
             var accountProxy = await _proxyRepository.GetAccountsProxyAsync(account.Id);
@@ -44,23 +47,20 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
 
             var proxyInfo = await _proxyRepository.GetAsync(accountProxy.ProxyId);
 
-            if (proxyInfo.ExpiryDate < DateTime.UtcNow)
-            {
-                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Proxy {proxyInfo.Ip} is expired, skipping...");
-                await Task.Delay(TimeSpan.FromSeconds(5));
-                return null;
-            }
+            //if (proxyInfo.ExpiryDate < DateTime.UtcNow)
+            //{
+            //    Console.WriteLine($"[{DateTime.Now}][{account.Username}] Proxy {proxyInfo.Ip} is expired, skipping...");
+            //    await Task.Delay(TimeSpan.FromSeconds(5));
+            //    return null;
+            //}
 
-            var proxy = new InstaProxy("127.0.0.1", "8888");//proxyInfo.Ip, proxyInfo.Port);
+            var proxy = new InstaProxy("localhost", "8888");//proxyInfo.Ip, proxyInfo.Port);
             //{
             //    Credentials = new NetworkCredential(proxyInfo.Username, proxyInfo.Password)
             //};
 
             // Now create a client handler which uses that proxy
-            var httpClientHandler = new HttpClientHandler()
-            {
-                Proxy = proxy,
-            };
+            var httpClientHandler = new HttpClientHandler() { Proxy = proxy };
 
             // Set the user's credentials
             var userSession = new UserSessionData
@@ -72,9 +72,11 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
             // Create new instance of InstaApi with given credentials, setting request delay and session handler for user
             var instaApi = InstaApiBuilder.CreateBuilder()
                                         .SetUser(userSession)
-                                        .UseLogger(new DebugLogger(InstagramApiSharp.Logger.LogLevel.Exceptions))
+                                        .UseLogger(new DebugLogger(LogLevel.Exceptions))
                                         .SetSessionHandler(new FileSessionHandler() { FilePath = account.FilePath })
                                         .UseHttpClientHandler(httpClientHandler)
+                                        .SetDevice(AndroidDeviceGenerator.GetByName(account.AndroidDevice))
+                                        .SetApiVersion(InstaApiVersionType.Version130)
                                         .Build();
 
             // Check if there is an instaApi instance bound to the account...
@@ -86,24 +88,38 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
                 instaApi = instaApiCache;
             }
 
-            // TODO: Device service
-            instaApi.SetApiVersion(InstaApiVersionType.Version117);
-            instaApi.SetDevice(AndroidDeviceGenerator.GetByName(account.AndroidDevice));
+            var instaPath = account.FilePath;
+            instaPath = instaPath.Replace('\\', Path.DirectorySeparatorChar);
+            instaPath = instaPath.Replace('/', Path.DirectorySeparatorChar);
+
+            // Get appropriate directories of the folder and file
+            var fullPath = instaPath.Split(Path.DirectorySeparatorChar);
+            var directory = Path.Combine(fullPath[0], fullPath[1]);
+
+            // Create directory if it doesn't exist yet
+            if (!Directory.Exists(directory))
+                Directory.CreateDirectory(directory);
+
+            // Create file if it doesn't exist yet
+            if (!File.Exists(instaApi.SessionHandler.FilePath))
+            {
+                using (FileStream fs = File.Create(instaApi.SessionHandler.FilePath))
+                {
+                    Console.WriteLine($"Created file for {account.Username}.");
+                }
+            }
 
             // Try logging in from session
             try
             {
                 instaApi?.SessionHandler?.Load();
-                instaApi?.SessionHandler?.Save();
             }
             catch (Exception e)
             {
                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] Could not load state from file, error info: {e.Message}");
-                await Task.Delay(TimeSpan.FromSeconds(10));
-                return null;
             }
 
-            if (!instaApi.IsUserAuthenticated)
+            if (!instaApi.IsUserAuthenticated && !forLogin)
             {
                 Console.WriteLine($"[{DateTime.Now}][{account.Username}] User not logged in, please authenticate first.");
                 await Task.Delay(TimeSpan.FromSeconds(1));
@@ -113,9 +129,107 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
             return instaApi;
         }
 
+        // TODO: Randomize the accounts from the account pool
         public async Task<InstagramAccount> GetRandomSlaveAccount()
         {
             return await _accountRepository.GetAsync("kontotestowefollowup1");
+        }
+
+        // TODO: preloaded reel ids
+        public async Task SendColdStartMockupRequests(IInstaApi instaApi)
+        {
+            await instaApi.StoryProcessor.GetStoryFeedWithPostMethodAsync(/* preloaded reel ids */);
+            await instaApi.FeedProcessor.GetUserTimelineFeedAsync(PaginationParameters.MaxPagesToLoad(1));
+            await instaApi.LauncherSyncAsync(false);
+            await instaApi.QeSync(false);
+            await instaApi.LauncherSyncAsync(true);
+            await instaApi.QeSync(true);
+            await instaApi.GetLoomConfigAsync();
+            await instaApi.GetLinkageStatusAsync();
+            await instaApi.GetBusinessBrandedContentAsync();
+            await instaApi.GetBusinessEligibilityAsync();
+            await instaApi.GetAccountFamilyAsync();
+            await instaApi.FeedProcessor.GetRecentActivityFeedAsync(PaginationParameters.MaxPagesToLoad(1));
+            // arlink
+            await instaApi.FeedProcessor.GetTopicalExploreFeedAfterLogin();
+            await instaApi.PushProcessor.RegisterPushAsync(InstaPushChannelType.Mqtt);
+            await instaApi.BusinessProcessor.GetBusinessAccountInformationAsync();
+            await instaApi.MessagingProcessor.GetUsersPresenceAsync();
+            await instaApi.GetViewableStatusesAsync();
+            await instaApi.GetBanyanSuggestionsAsync();
+            await instaApi.MessagingProcessor.GetDirectInboxAsync(PaginationParameters.MaxPagesToLoad(1), 1);
+            await instaApi.GetUserScoresAsync();
+            instaApi.GetCurrentDevice().RandomizeBandwithConnection();
+            instaApi.SetDevice(instaApi.GetCurrentDevice());
+        }
+
+        public async Task GetUserProfileMockAsync(IInstaApi instaApi)
+        {
+            await instaApi.QpBatchFetch(true);
+            var userPk = instaApi.GetLoggedUser().LoggedInUser.Pk;
+            await instaApi.GetInitialUserFeedAsync(userPk);
+            await instaApi.UserProcessor.GetUserInfoByIdAsync(userPk, true);
+            await instaApi.GetUserFeedCapabilities(userPk);
+            await instaApi.StoryProcessor.GetHighlightFeedsAsync(userPk);
+            await instaApi.GetProfileSuBadge();
+            await instaApi.GetProfileArchiveBadge();
+        }
+
+        public async Task GetUserFollowedAsync(IInstaApi instaApi, InstagramAccount account)
+        {
+            var userPk = instaApi.GetLoggedUser().LoggedInUser.Pk;
+            var followingResponse = await instaApi.UserProcessor.GetUserFollowingByIdAsync(userPk, PaginationParameters.MaxPagesToLoad(1));
+            await instaApi.UserProcessor.GetUserFollowersByIdAsync(userPk, PaginationParameters.MaxPagesToLoad(1));
+            await instaApi.UserProcessor.GetSuggestionUsersAsync(PaginationParameters.MaxPagesToLoad(1), "self_followers");
+            await instaApi.UserProcessor.GetSuggestionUsersAsync(PaginationParameters.MaxPagesToLoad(1), "self_following");
+            var following = followingResponse.Value;
+            var followingIds = new List<long>();
+
+            foreach (var followed in following)
+                followingIds.Add(followed.Pk);
+
+            var followedResponse = await instaApi.UserProcessor.GetFriendshipStatusesAsync(followingIds.ToArray());
+
+            if (followedResponse.Succeeded)
+            {
+                _cache.Set($"{account.Id}-followed", followedResponse.Value);
+                Console.WriteLine($"Got followed for account {account.Username} succesfully.");
+            }
+            else
+            {
+                Console.WriteLine($"Getting followed for account {account.Username} failed.");
+            }
+        }
+
+        public async Task UnfollowUsersAsync(IInstaApi instaApi, InstagramAccount account, int count)
+        {
+            var random = new Random();
+            var profiles = (InstaFriendshipShortStatusList)_cache.Get($"{account.Id}-followed");
+            var unfollowedProfiles = new InstaFriendshipShortStatusList();
+
+            for(int i = 0; i < count; i++)
+            {
+                var unfollowResponse = await instaApi.UserProcessor.UnFollowUserAsync(profiles[i].Pk);
+
+                if(unfollowResponse.Succeeded)
+                {
+                    unfollowedProfiles.Add(profiles[i]);
+                    Console.WriteLine($"Account {account.Username} unfollowed profile {profiles[i].Pk} succesfully");
+                }
+                else
+                {
+                    Console.WriteLine($"Account {account.Username} failed to unfollow profile {profiles[i].Pk} - {unfollowResponse.Info.ToString()}");
+                    return;
+                }
+
+                if (i % 6 == 0)
+                    await Task.Delay(random.Next(2000, 5000));
+                else
+                    await Task.Delay(random.Next(800, 3000));
+            }
+
+            profiles.RemoveRange(0, count);
+            _cache.Set($"{account.Id}-followed", profiles);
         }
     }
 }

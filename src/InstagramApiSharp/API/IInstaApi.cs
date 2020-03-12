@@ -12,19 +12,19 @@
  *  
  */
 
-using System.IO;
-using System.Threading.Tasks;
 using InstagramApiSharp.API.Processors;
-using InstagramApiSharp.Classes;
-using InstagramApiSharp.Classes.Models;
-using InstagramApiSharp.Classes.Android.DeviceInfo;
-using InstagramApiSharp.Enums;
-using InstagramApiSharp.Classes.SessionHandlers;
-using System.Net.Http;
-using System.Collections.Generic;
-using System;
 using InstagramApiSharp.API.Versions;
+using InstagramApiSharp.Classes;
+using InstagramApiSharp.Classes.Android.DeviceInfo;
+using InstagramApiSharp.Classes.Models;
+using InstagramApiSharp.Classes.SessionHandlers;
+using InstagramApiSharp.Enums;
 using InstagramApiSharp.Helpers;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Net.Http;
+using System.Threading.Tasks;
 
 namespace InstagramApiSharp.API
 {
@@ -34,6 +34,18 @@ namespace InstagramApiSharp.API
     public interface IInstaApi
     {
         #region Properties
+        /// <summary>
+        ///     Gets or sets two factor login info
+        /// </summary>
+        InstaTwoFactorLoginInfo TwoFactorLoginInfo { get; set; }
+        /// <summary>
+        ///     Gets or sets challenge login info
+        /// </summary>
+        InstaChallengeLoginInfo ChallengeLoginInfo { get; set; }
+        /// <summary>
+        ///     Get HttpHelper class
+        /// </summary>
+        HttpHelper HttpHelper { get; }
         /// <summary>
         ///     Current <see cref="IHttpRequestProcessor"/>
         /// </summary>
@@ -47,6 +59,11 @@ namespace InstagramApiSharp.API
         /// </summary>
         bool IsUserAuthenticated { get; }
 
+        /// <summary>
+        ///     Load instagram's api version from session file
+        ///     <para>Default is False</para>
+        /// </summary>
+        bool LoadApiVersionFromSessionFile { get; set; }
         /// <summary>
         ///     Live api functions.
         /// </summary>
@@ -113,7 +130,11 @@ namespace InstagramApiSharp.API
         ///     <para>It's related to https://instagram.com/accounts/ </para>
         /// </summary>
         IWebProcessor WebProcessor { get; }
-
+        IVideoCallProcessor VideoCallProcessor { get; }
+        /// <summary>
+        ///     Push notification helper processor
+        /// </summary>
+        IPushProcessor PushProcessor { get; }
         /// <summary>
         ///     Session handler
         /// </summary>
@@ -188,6 +209,10 @@ namespace InstagramApiSharp.API
         /// </summary>
         InstaApiVersion GetApiVersionInfo();
         /// <summary>
+        ///     Get api version type
+        /// </summary>
+        InstaApiVersionType GetApiVersionType();
+        /// <summary>
         ///     Get user agent of current <see cref="IInstaApi"/>
         /// </summary>
         string GetUserAgent();
@@ -202,18 +227,24 @@ namespace InstagramApiSharp.API
         /// <param name="handler">HttpClientHandler</param>
         void UseHttpClientHandler(HttpClientHandler handler);
         /// <summary>
-        /// Sets user credentials
+        ///     Sets user credentials
         /// </summary>
         /// <param name="username"></param>
         /// <param name="password"></param>
         void SetUser(string username, string password);
 
         /// <summary>
-        /// Sets user credentials
+        ///     Sets user credentials
         /// </summary>
         /// <param name="user"></param>
         void SetUser(UserSessionData user);
-
+        /// <summary>
+        ///     Update user information (private, profile picture, username and etc.)
+        ///     <para>Note 1. Login required!</para>
+        ///     <para>Note 2. It's necessary to save session, after you called this function</para>
+        /// </summary>
+        /// <param name="updatedUser">Updated user</param>
+        void UpdateUser(InstaUserShort updatedUser);
         /// <summary>
         ///     Gets current device
         /// </summary>
@@ -243,6 +274,11 @@ namespace InstagramApiSharp.API
         /// </summary>
         /// <param name="delay">Timespan delay</param>
         void SetRequestDelay(IRequestDelay delay);
+        /// <summary>
+        ///     Set delay before configuring medias [only for uploading parts]
+        /// </summary>
+        /// <param name="configureMediaDelay">Timespan delay for configuring Media</param>
+        void SetConfigureMediaDelay(IConfigureMediaDelay configureMediaDelay);
         /// <summary>
         ///     Set instagram api version (for user agent version)
         /// </summary>
@@ -285,7 +321,7 @@ namespace InstagramApiSharp.API
         ///     Send get request
         /// </summary>
         /// <param name="uri">Desire uri (must include https://i.instagram.com/api/v...) </param>
-        Task<IResult<string>> SendGetRequestAsync(System.Uri uri);
+        Task<IResult<string>> SendGetRequestAsync(System.Uri uri, bool keepAlive = false);
         /// <summary>
         ///     Send signed post request (include signed signature) 
         /// </summary>
@@ -298,6 +334,12 @@ namespace InstagramApiSharp.API
         /// <param name="uri">Desire uri (must include https://i.instagram.com/api/v...) </param>
         /// <param name="data">Data to post</param>
         Task<IResult<string>> SendSignedPostRequestAsync(System.Uri uri, Newtonsoft.Json.Linq.JObject data);
+        /// <summary>
+        ///     Send signed post request (include signed signature) 
+        /// </summary>
+        /// <param name="uri">Desire uri (must include https://i.instagram.com/api/v...) </param>
+        /// <param name="data">Data to post</param>
+        Task<IResult<string>> SendSignedPostRequestV2Async(System.Uri uri, Newtonsoft.Json.Linq.JObject data);
         /// <summary>
         ///     Send post request
         /// </summary>
@@ -313,8 +355,13 @@ namespace InstagramApiSharp.API
 
         //////////////////////////////////////////////////////////////////////////////////////////////////
         /////////////////////////////////// Challenge for logged in user /////////////////////////////////
-        
 
+        [Obsolete("Deprecated. Please use IInstaApi.ChallengeLoginInfo property instead.")]
+        /// <summary>
+        ///     Set Challenge Info when server asks for a challenge on calling functions
+        /// </summary>
+        /// <param name="Challenge">Challenge info</param>
+        void SetChallengeInfo(InstaChallengeLoginInfo Challenge);
 
         /// <summary>
         ///     Get challenge data for logged in user
@@ -327,7 +374,7 @@ namespace InstagramApiSharp.API
         ///     <para>You must call <see cref="GetLoggedInChallengeDataInfoAsync"/> first,
         ///     if you across to <see cref="ResultInfo.ResponseType"/> equals to <see cref="ResponseType.ChallengeRequired"/> while you logged in!</para>
         /// </summary>
-        Task<IResult<bool>> AcceptChallengeAsync(int verificationCase = 0, string verificationData = "");
+        Task<IResult<bool>> AcceptChallengeAsync();
 
 
         /////////////////////////////////// Challenge for logged in user /////////////////////////////////
@@ -418,6 +465,85 @@ namespace InstagramApiSharp.API
         /// <param name="delay">Delay between requests. null = 2.5 seconds</param>
         Task<IResult<InstaAccountCreation>> CreateNewAccountAsync(string username, string password, string email, string firstName = ""/*, TimeSpan? delay = null*/);
         /// <summary>
+        ///     Accept consent required (only for GDPR countries)
+        /// </summary>
+        /// <param name="delay">Delay time between requests (null => 1.5 seconds)</param>
+        Task<IResult<bool>> AcceptConsentAsync(TimeSpan? delay = null);
+        /// <summary>
+        ///     Send requests for login flows (contact prefill, read msisdn header, launcher sync and qe sync)
+        ///     <para>Note 1: You should call this function before you calling <see cref="IInstaApi.LoginAsync(bool)"/>, if you want your account act like original instagram app.</para>
+        ///     <para>Note 2: One call per one account! No need to call while you are loading a session</para>
+        /// </summary>
+        Task<IResult<bool>> SendRequestsBeforeLoginAsync();
+        /// <summary>
+        ///     Send requests after you logged in successfully (Act as an real instagram user)
+        /// </summary>
+        Task<IResult<bool>> SendRequestsAfterLoginAsync();
+        /// <summary>
+        ///     Mock request for simulating user behaviour
+        /// </summary>
+        Task QeSync(bool isAfterLogin = false);
+        /// <summary>
+        ///     Mock request for simulating user behaviour
+        /// </summary>
+        Task GetLoomConfigAsync();
+        /// <summary>
+        ///     Mock request for simulating user behaviour
+        /// </summary>
+        Task GetLinkageStatusAsync();
+        /// <summary>
+        ///     Mock request for simulating user behaviour
+        /// </summary>
+        Task GetBusinessBrandedContentAsync();
+        /// <summary>
+        ///     Mock request for simulating user behaviour
+        /// </summary>
+        Task GetBusinessEligibilityAsync();
+        /// <summary>
+        ///     Mock request for simulating user behaviour
+        /// </summary>
+        Task GetAccountFamilyAsync();
+        /// <summary>
+        ///     Send mock request to get notification badge and act as a real user
+        /// </summary>
+        Task GetNotificationBadge();
+        /// <summary>
+        ///     Mockup request to act as a real user
+        /// </summary>
+        Task GetViewableStatusesAsync();
+        /// <summary>
+        ///     Mockup request to act as a real user
+        /// </summary>
+        Task GetUserScoresAsync();
+        /// <summary>
+        ///     Mockup request to act as a real user
+        /// </summary>
+        Task GetCommerceBagCount();
+        /// <summary>
+        ///     Mockup request to act as a real user
+        /// </summary>
+        Task GetProfileSuBadge();
+        /// <summary>
+        ///     Mockup request to act as a real user
+        /// </summary>
+        Task<IResult<bool>> GetProfileArchiveBadge();
+        /// <summary>
+        ///     Mockup request to act as a real user
+        /// </summary>
+        Task QpBatchFetch(bool loggedIn = false);
+        /// <summary>
+        ///     Get user media when clicked on profile tab
+        /// </summary>
+        Task GetInitialUserFeedAsync(long userPk);
+        /// <summary>
+        ///     Get user media when clicked on profile tab
+        /// </summary>
+        Task GetUserFeedCapabilities(long userPk);
+        /// <summary>
+        ///     Send requests after fetching feed to act as a real user
+        /// </summary>
+        Task<IResult<bool>> SendRequestsAfterFeedFetchAsync();
+        /// <summary>
         ///     Login using given credentials asynchronously
         /// </summary>
         /// <param name="isNewLogin"></param>
@@ -457,13 +583,15 @@ namespace InstagramApiSharp.API
         ///     Before call this method, please run LoginAsync first.
         /// </summary>
         /// <param name="verificationCode">Verification Code sent to your phone number</param>
+        /// <param name="trustThisDevice">Trust this device or not?!</param>
+        /// <param name="twoFactorVerifyOptions">Two factor verification option</param>
         /// <returns>
         ///     Success --> is succeed
         ///     InvalidCode --> The code is invalid
         ///     CodeExpired --> The code is expired, please request a new one.
         ///     Exception --> Something wrong happened
         /// </returns>
-        Task<IResult<InstaLoginTwoFactorResult>> TwoFactorLoginAsync(string verificationCode);
+        Task<IResult<InstaLoginTwoFactorResult>> TwoFactorLoginAsync(string verificationCode, bool trustThisDevice = false, InstaTwoFactorVerifyOptions twoFactorVerifyOptions = InstaTwoFactorVerifyOptions.SmsCode);
 
         /// <summary>
         ///     Get Two Factor Authentication details
@@ -510,7 +638,17 @@ namespace InstagramApiSharp.API
         ///     <see cref="InstaCurrentUser" />
         /// </returns>
         Task<IResult<InstaCurrentUser>> GetCurrentUserAsync();
-        
+        Task<IResult<bool>> LauncherSyncAsync(bool isAfterLogin = false);
+        Task<IResult<InstaBanyanSuggestions>> GetBanyanSuggestionsAsync();
+
         #endregion Authentication, challenge functions
+
+        #region Giphy
+
+        Task<IResult<GiphyList>> GetGiphyTrendingAsync(int count = 100);
+
+        Task<IResult<GiphyList>> SearchGiphyAsync(string query, int count = 100);
+
+        #endregion Giphy
     }
 }

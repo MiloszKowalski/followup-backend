@@ -45,12 +45,12 @@ namespace InstagramApiSharp.Classes
 
         public static IResult<T> Fail<T>(Exception exception)
         {
-            return new Result<T>(false, default(T), new ResultInfo(exception));
+            return new Result<T>(false, default, new ResultInfo(exception));
         }
 
         public static IResult<T> Fail<T>(string errMsg)
         {
-            return new Result<T>(false, default(T), new ResultInfo(errMsg));
+            return new Result<T>(false, default, new ResultInfo(errMsg));
         }
 
         public static IResult<T> Fail<T>(string errMsg, T resValue)
@@ -84,7 +84,7 @@ namespace InstagramApiSharp.Classes
             {
                 var resultInfo = new ResultInfo(ResponseType.UnExpectedResponse,
                     $"Unexpected response status: {response.StatusCode}");
-                return new Result<T>(false, default(T), resultInfo);
+                return new Result<T>(false, default, resultInfo);
             }
             else
             {
@@ -95,7 +95,7 @@ namespace InstagramApiSharp.Classes
                 {
                     Challenge = status.Challenge
                 };
-                return new Result<T>(false, default(T), resultInfo);
+                return new Result<T>(false, default, resultInfo);
             }
         }
 
@@ -105,7 +105,7 @@ namespace InstagramApiSharp.Classes
             {
                 var resultInfo = new ResultInfo(ResponseType.UnExpectedResponse,
                     $"{message}\r\nUnexpected response status: {response.StatusCode}");
-                return new Result<T>(false, default(T), resultInfo);
+                return new Result<T>(false, default, resultInfo);
             }
             else
             {
@@ -117,7 +117,7 @@ namespace InstagramApiSharp.Classes
                     Challenge = status.Challenge
                 };
 
-                return new Result<T>(false, default(T), resultInfo);
+                return new Result<T>(false, default, resultInfo);
             }
         }
         static ResponseType GetResponseType(BadStatusResponse status)

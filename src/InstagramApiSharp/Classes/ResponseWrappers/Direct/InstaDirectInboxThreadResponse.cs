@@ -7,7 +7,7 @@ namespace InstagramApiSharp.Classes.ResponseWrappers
 {
     public class InstaDirectInboxThreadResponse : BaseStatusResponse
     {
-        [JsonProperty("muted")] public bool Muted { get; set; }
+        [JsonProperty("muted")] public bool? Muted { get; set; }
 
         [JsonProperty("users")] public List<InstaUserShortFriendshipResponse> Users { get; set; }
 
@@ -21,19 +21,19 @@ namespace InstagramApiSharp.Classes.ResponseWrappers
 
         [JsonProperty("thread_id")] public string ThreadId { get; set; }
 
-        [JsonProperty("has_older")] public bool HasOlder { get; set; }
+        [JsonProperty("has_older")] public bool? HasOlder { get; set; }
 
         [JsonProperty("inviter")] public InstaUserShortResponse Inviter { get; set; }
 
-        [JsonProperty("named")] public bool Named { get; set; }
+        [JsonProperty("named")] public bool? Named { get; set; }
 
-        [JsonProperty("pending")] public bool Pending { get; set; }
+        [JsonProperty("pending")] public bool? Pending { get; set; }
 
-        [JsonProperty("canonical")] public bool Canonical { get; set; }
+        [JsonProperty("canonical")] public bool? Canonical { get; set; }
 
-        [JsonProperty("has_newer")] public bool HasNewer { get; set; }
+        [JsonProperty("has_newer")] public bool? HasNewer { get; set; }
 
-        [JsonProperty("is_spam")] public bool IsSpam { get; set; }
+        [JsonProperty("is_spam")] public bool? IsSpam { get; set; }
 
         [JsonProperty("thread_type")] public InstaDirectThreadType ThreadType { get; set; }
 
@@ -43,23 +43,36 @@ namespace InstagramApiSharp.Classes.ResponseWrappers
 
         [JsonProperty("mentions_muted")] public bool? MentionsMuted { get; set; }
 
-        [JsonProperty("is_pin")] public bool IsPin { get; set; }
+        [JsonProperty("is_pin")] public bool? IsPin { get; set; }
 
-        [JsonProperty("valued_request")] public bool ValuedRequest { get; set; }
+        [JsonProperty("valued_request")] public bool? ValuedRequest { get; set; }
 
         [JsonProperty("pending_score")] public long? PendingScore { get; set; }
 
-        [JsonProperty("vc_muted")] public bool VCMuted { get; set; }
+        [JsonProperty("vc_muted")] public bool? VCMuted { get; set; }
 
-        [JsonProperty("is_group")] public bool IsGroup { get; set; }
+        [JsonProperty("is_group")] public bool? IsGroup { get; set; }
 
-        [JsonProperty("reshare_send_count")] public int ReshareSendCount { get; set; }
+        [JsonProperty("archived")] public bool? Archived { get; set; }
 
-        [JsonProperty("reshare_receive_count")] public int ReshareReceiveCount { get; set; }
+        [JsonProperty("approval_required_for_new_members")] public bool? ApprovalRequiredForNewMembers { get; set; }
 
-        [JsonProperty("expiring_media_send_count")] public int ExpiringMediaSendCount { get; set; }
 
-        [JsonProperty("expiring_media_receive_count")] public int ExpiringMediaReceiveCount { get; set; }
+        [JsonProperty("reshare_send_count")] public int? ReshareSendCount { get; set; }
+
+        [JsonProperty("reshare_receive_count")] public int? ReshareReceiveCount { get; set; }
+
+        [JsonProperty("expiring_media_send_count")] public int? ExpiringMediaSendCount { get; set; }
+
+        [JsonProperty("expiring_media_receive_count")] public int? ExpiringMediaReceiveCount { get; set; }
+
+        [JsonProperty("folder")] public int? Folder { get; set; }
+
+        [JsonProperty("input_mode")] public int? InputMode { get; set; }
+
+        [JsonProperty("business_thread_folder")] public int? BusinessThreadFolder { get; set; }
+    
+        [JsonProperty("read_state")] public int? ReadState { get; set; }
 
         [JsonProperty("left_users")] public List<InstaUserShortFriendshipResponse> LeftUsers { get; set; }
 
@@ -68,7 +81,11 @@ namespace InstagramApiSharp.Classes.ResponseWrappers
 
         [JsonProperty("last_seen_at")] public object LastSeenAt { get; set; }
 
+        [JsonProperty("direct_story")] public InstaDirectInboxItemContainerResponse DirectStory { get; set; }
 
+
+
+        [JsonProperty("admin_user_ids")] public List<long> AdminUserIds { get; set; }
 
     }
 }

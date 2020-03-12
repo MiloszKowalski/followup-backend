@@ -12,9 +12,17 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
     }
     public class ApiRequestMessage
     {
-        static readonly Random Rnd = new Random();
+        readonly static Random Rnd = new Random();
+        //[JsonProperty("jazoest")]
+        [JsonIgnore()]
+        public string Jazoest { get; set; } = "22451";
+        [JsonProperty("country_codes")]
+        public string CountryCodes { get; set; } = "[{\"country_code\":\"1\",\"source\":[\"default\"]}]";
         [JsonProperty("phone_id")]
         public string PhoneId { get; set; }
+        //[JsonProperty("enc_password")]
+        [JsonIgnore()]
+        public string EncPassword { get; set; }
         [JsonProperty("username")]
         public string Username { get; set; }
         [JsonProperty("adid")]
@@ -30,7 +38,7 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
         [JsonProperty("password")]
         public string Password { get; set; }
         [JsonProperty("login_attempt_count")]
-        public string LoginAttemptCount { get; set; } = "1";
+        public string LoginAttemptCount { get; set; } = "0";
         public static ApiRequestMessage CurrentDevice { get; private set; }
         internal string GetMessageString()
         {
@@ -44,11 +52,13 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                 CsrtToken = csrfToken,
                 DeviceId = DeviceId,
                 Guid = Guid,
-                LoginAttemptCount = "1",
+                LoginAttemptCount = "0",
                 Password = Password,
                 PhoneId = PhoneId,
                 Username = Username,
-                AdId = AdId
+                AdId = AdId,
+                CountryCodes = CountryCodes,
+                EncPassword = Password
             };
             var json = JsonConvert.SerializeObject(api);
             return json;
@@ -79,11 +89,13 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
                 CsrtToken = csrfToken,
                 DeviceId = DeviceId,
                 Guid = Guid,
-                LoginAttemptCount = "1",
+                LoginAttemptCount = "0",
                 Password = Password,
                 PhoneId = PhoneId,
                 Username = Username,
-                AdId = AdId
+                AdId = AdId,
+                CountryCodes = CountryCodes,
+                EncPassword = Password
             };
             var res = CryptoHelper.CalculateHash(signatureKey,
                 JsonConvert.SerializeObject(api));
@@ -117,7 +129,17 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
         //}
         internal static string GenerateRandomUploadId()
         {
-            return DateTime.UtcNow.ToUnixTimeMiliSeconds().ToString();
+            return DateTime.UtcNow.ToUnixTimeMilliseconds().ToString();
+        }
+        internal static string GenerateUnknownUploadId()
+        {
+            var mil = DateTime.UtcNow.ToUnixTimeMilliseconds();
+            var sec = DateTime.UtcNow.ToUnixTime();
+            var s = mil + sec;
+            s += s;
+            s -= Rnd.Next(10000, 999999);
+            s += Rnd.Next(1000, 9999);
+            return ((int)s).ToString();
         }
         public static ApiRequestMessage FromDevice(AndroidDevice device)
         {
@@ -135,5 +157,11 @@ namespace InstagramApiSharp.Classes.Android.DeviceInfo
             var hashedGuid = CryptoHelper.CalculateMd5(guid.ToString());
             return $"android-{hashedGuid.Substring(0, 16)}";
         }
+        //public static string GenerateDeviceIdFromGuid(Guid guid)
+        //{
+        //    var unixMiliSec = Math.Round((double)DateTime.UtcNow.ToUnixTimeMiliSeconds()).ToString() + Rnd.Next(6789, 9999).ToString();
+        //    var hashedGuid = CryptoHelper.CalculateMd5(unixMiliSec);
+        //    return $"android-{hashedGuid.Substring(0, 16)}";
+        //}
     }
 }

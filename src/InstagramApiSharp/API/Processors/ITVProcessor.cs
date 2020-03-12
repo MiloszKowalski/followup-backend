@@ -20,6 +20,12 @@ namespace InstagramApiSharp.API.Processors
     public interface ITVProcessor
     {
         /// <summary>
+        ///     Browse Feed
+        /// </summary>
+        /// <param name="paginationParameters">Pagination parameters: next id and max amount of pages to load</param>
+        Task<IResult<InstaTVBrowseFeed>> BrowseFeedAsync(PaginationParameters paginationParameters);
+
+        /// <summary>
         ///     Get channel by user id (pk) => channel owner
         /// </summary>
         /// <param name="userId">User id (pk) => channel owner</param>
@@ -53,6 +59,7 @@ namespace InstagramApiSharp.API.Processors
         /// <param name="video">Video to upload (aspect ratio is very important for thumbnail and video | range 0.5 - 1.0 | Width = 480, Height = 852)</param>
         /// <param name="title">Title</param>
         /// <param name="caption">Caption</param>
+        /// <param name="videoUploadOption">Video options</param>
         Task<IResult<InstaMedia>> UploadVideoAsync(InstaVideoUpload video, string title, string caption);
         /// <summary>
         ///     Upload video to Instagram TV with progress
@@ -61,6 +68,22 @@ namespace InstagramApiSharp.API.Processors
         /// <param name="video">Video to upload (aspect ratio is very important for thumbnail and video | range 0.5 - 1.0 | Width = 480, Height = 852)</param>
         /// <param name="title">Title</param>
         /// <param name="caption">Caption</param>
+        /// <param name="videoUploadOption">Video options</param>
         Task<IResult<InstaMedia>> UploadVideoAsync(Action<InstaUploaderProgress> progress, InstaVideoUpload video, string title, string caption);
+        /// <summary>
+        ///     Upload segmented video to igtv 
+        /// </summary>
+        /// <param name="tvVideo">IgTV Video to upload</param>
+        /// <param name="title">Title</param>
+        /// <param name="caption">Caption</param>
+        Task<IResult<InstaMedia>> UploadSegmentedVideoToTVAsync(InstaTVVideoUpload tvVideo, string title, string caption);
+
+        /// <summary>
+        ///     Mark a media or medias as seen
+        /// </summary>
+        /// <param name="mediaPkImpression">Media Pk impression (<see cref="InstaMedia.Pk"/>)</param>
+        /// <param name="progress">Progress time</param>
+        /// <param name="mediaPKsGridImpressions">Media PKs grid impressions</param>
+        Task<IResult<bool>> MarkAsSeenAsync(string mediaPkImpression, int progress = 0, string[] mediaPKsGridImpressions = null);
     }
 }

@@ -41,7 +41,7 @@ namespace InstagramApiSharp.Helpers
             {
                 var init = new JObject
                 {
-                    {"init", DateTime.UtcNow.ToUnixTimeMiliSeconds()}
+                    {"init", DateTime.UtcNow.ToUnixTimeMilliseconds()}
                 };
                 if (Uri.TryCreate(string.Format(InstaApiConstants.FACEBOOK_LOGIN_URI,
                     init.ToString(Formatting.None)), UriKind.RelativeOrAbsolute, out Uri fbUri))

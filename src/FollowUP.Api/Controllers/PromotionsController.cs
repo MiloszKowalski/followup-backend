@@ -1,4 +1,5 @@
 ﻿using FollowUP.Controllers;
+using FollowUP.Core.Repositories;
 using FollowUP.Infrastructure.Commands;
 using FollowUP.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -12,11 +13,16 @@ namespace FollowUP.Api.Controllers
     public class PromotionsController : ApiControllerBase
     {
         private readonly IPromotionService _promotionService;
+        private readonly IInstagramApiService _apiService;
+        private readonly IInstagramAccountRepository _accountRepository;
 
-        public PromotionsController(IPromotionService promotionService,
+        public PromotionsController(IPromotionService promotionService, IInstagramApiService apiService,
+            IInstagramAccountRepository accountRepository,
             ICommandDispatcher commandDispatcher) : base(commandDispatcher)
         {
             _promotionService = promotionService;
+            _apiService = apiService;
+            _accountRepository = accountRepository;
         }
 
         [HttpGet("{accountId}")]
@@ -25,6 +31,23 @@ namespace FollowUP.Api.Controllers
             var promotionComments = await _promotionService.GetAllPromotionCommentsByAccountId(accountId);
 
             return Json(promotionComments);
+        }
+
+        [HttpPost("{accountId}/unfollow/{count}")]
+        public async Task<IActionResult> UnfollowUsers(Guid accountId, int count)
+        {
+            var account = await _accountRepository.GetAsync(accountId);
+            var instaApi = await _apiService.GetInstaApi(account);
+            await _apiService.SendColdStartMockupRequests(instaApi);
+            await Task.Delay(2137);
+            await _apiService.GetUserProfileMockAsync(instaApi);
+            await Task.Delay(1428);
+            await _apiService.GetUserFollowedAsync(instaApi, account);
+            await Task.Delay(4000);
+            await _apiService.UnfollowUsersAsync(instaApi, account, count);
+
+
+            return Json("Jej kurwa");
         }
 
         [HttpGet("comments/{accountId}")]

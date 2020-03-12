@@ -80,7 +80,7 @@ namespace InstagramApiSharp.Helpers
             }
         }
 
-        public static long ToUnixTimeMiliSeconds(this DateTime date)
+        public static long ToUnixTimeMilliseconds(this DateTime date)
         {
             try
             {

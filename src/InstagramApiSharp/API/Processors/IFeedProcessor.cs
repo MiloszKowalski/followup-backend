@@ -1,6 +1,7 @@
 ﻿using System.Threading.Tasks;
 using InstagramApiSharp.Classes;
 using InstagramApiSharp.Classes.Models;
+using InstagramApiSharp.Classes.ResponseWrappers;
 
 namespace InstagramApiSharp.API.Processors
 {
@@ -9,6 +10,18 @@ namespace InstagramApiSharp.API.Processors
     /// </summary>
     public interface IFeedProcessor
     {
+
+        /// <summary>
+        ///     Get medias for explore channel
+        /// </summary>
+        /// <param name="channelId">Channel id</param>
+        /// <param name="firstMediaId">First media id</param>
+        /// <param name="paginationParameters">Pagination parameters: next id and max amount of pages to load</param>
+        /// <returns>
+        ///     <see cref="InstaMediaList" />
+        /// </returns>
+        Task<IResult<InstaMediaList>> GetExploreChannelVideosAsync(string channelId, string firstMediaId, PaginationParameters paginationParameters);
+
         /// <summary>
         ///     Get user explore feed (Explore tab info) asynchronously
         /// </summary>
@@ -76,8 +89,12 @@ namespace InstagramApiSharp.API.Processors
         ///     Get user topical explore feeds asynchronously
         /// </summary>
         /// <param name="paginationParameters">Pagination parameters: next id and max amount of pages to load</param>
-        /// <param name="clusterId">Cluster id ( get it from <see cref="InstaTopicalExploreCluster.Id"/> )</param>
+        /// <param name="clusterId">Cluster id</param>
         /// <returns><see cref="InstaTopicalExploreFeed" /></returns>
         Task<IResult<InstaTopicalExploreFeed>> GetTopicalExploreFeedAsync(PaginationParameters paginationParameters, string clusterId = null);
+        /// <summary>
+        ///     Send topical request after login
+        /// </summary>
+        Task<IResult<InstaTopicalExploreFeedResponse>> GetTopicalExploreFeedAfterLogin();
     }
 }
