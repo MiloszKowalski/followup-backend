@@ -3310,7 +3310,7 @@ namespace InstagramApiSharp.API
                     data.Add("_csrftoken", csrftoken);
                 var instaUri = UriCreator.GetNotificationBadgeUri();
                 var request = _httpHelper.GetDefaultRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
-                var response = await _httpRequestProcessor.SendAsync(request);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
             }
             catch (HttpRequestException httpException)
             {

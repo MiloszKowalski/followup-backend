@@ -29,6 +29,8 @@ namespace FollowUP.Infrastructure.IoC.Modules
                    .SingleInstance();
             builder.RegisterInstance(_configuration.GetSettings<EmailSettings>())
                    .SingleInstance();
+            builder.RegisterInstance(_configuration.GetSettings<InstaLoggerSettings>())
+                   .SingleInstance();
         }
     }
 }

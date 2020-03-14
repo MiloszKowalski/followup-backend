@@ -1,6 +1,7 @@
 ﻿using Autofac;
 using FollowUP.Core.Domain;
 using FollowUP.Infrastructure.Services;
+using FollowUP.Infrastructure.Services.Logging;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using System.Reflection;
@@ -34,6 +35,10 @@ namespace FollowUP.Infrastructure.IoC.Modules
 
             builder.RegisterType<HttpContextAccessor>()
                    .As<IHttpContextAccessor>()
+                   .SingleInstance();
+
+            builder.RegisterType<InstaActionLogger>()
+                   .As<IInstaActionLogger>()
                    .SingleInstance();
         }
     }
