@@ -1,5 +1,6 @@
 ﻿using FollowUP.Core.Domain;
 using FollowUP.Core.Repositories;
+using FollowUP.Infrastructure.Services.Logging;
 using InstagramApiSharp;
 using InstagramApiSharp.API;
 using InstagramApiSharp.API.Builder;
@@ -21,15 +22,17 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
 {
     public class InstagramApiService : IInstagramApiService
     {
-        private readonly IProxyRepository _proxyRepository;
         private readonly IInstagramAccountRepository _accountRepository;
+        private readonly IProxyRepository _proxyRepository;
+        private readonly IInstaActionLogger _logger;
         private readonly IMemoryCache _cache;
 
         public InstagramApiService(IProxyRepository proxyRepository, IMemoryCache cache,
-                                   IInstagramAccountRepository accountRepository)
+                                   IInstagramAccountRepository accountRepository, IInstaActionLogger logger)
         {
-            _proxyRepository = proxyRepository;
             _accountRepository = accountRepository;
+            _proxyRepository = proxyRepository;
+            _logger = logger;
             _cache = cache;
         }
 
@@ -159,6 +162,7 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
             await instaApi.GetBanyanSuggestionsAsync();
             await instaApi.MessagingProcessor.GetDirectInboxAsync(PaginationParameters.MaxPagesToLoad(1), 1);
             await instaApi.GetUserScoresAsync();
+            await instaApi.GetNotificationBadge();
             instaApi.GetCurrentDevice().RandomizeBandwithConnection();
             instaApi.SetDevice(instaApi.GetCurrentDevice());
         }
@@ -207,6 +211,9 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
             var profiles = (InstaFriendshipShortStatusList)_cache.Get($"{account.Id}-followed");
             var unfollowedProfiles = new InstaFriendshipShortStatusList();
 
+            if (profiles.Count < count)
+                count = profiles.Count;
+
             for(int i = 0; i < count; i++)
             {
                 var unfollowResponse = await instaApi.UserProcessor.UnFollowUserAsync(profiles[i].Pk);
@@ -214,11 +221,11 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
                 if(unfollowResponse.Succeeded)
                 {
                     unfollowedProfiles.Add(profiles[i]);
-                    Console.WriteLine($"Account {account.Username} unfollowed profile {profiles[i].Pk} succesfully");
+                    _logger.Log($"Unfollowed profile {profiles[i].Pk} succesfully", InstaLogLevel.User, account);
                 }
                 else
                 {
-                    Console.WriteLine($"Account {account.Username} failed to unfollow profile {profiles[i].Pk} - {unfollowResponse.Info.ToString()}");
+                    _logger.Log($"Failed to unfollow profile {profiles[i].Pk} - {unfollowResponse.Info.ToString()}", InstaLogLevel.User, account);
                     return;
                 }
 
