@@ -1333,7 +1333,7 @@ namespace InstagramApiSharp.Helpers
                 out var instaUri))
                 throw new Exception("Cant create search tag URI");
             return instaUri
-                .AddQueryParameter("exclude_list", excludeListStr)
+                //.AddQueryParameter("exclude_list", excludeListStr)
                 .AddQueryParameter("rank_token", rankToken)
                 .AddQueryParameter(InstaApiConstants.HEADER_TIMEZONE, InstaApiConstants.TIMEZONE_OFFSET.ToString());
         }
@@ -1522,10 +1522,32 @@ namespace InstagramApiSharp.Helpers
 
         public static Uri GetSuggestedSearchUri(InstaDiscoverSearchType searchType)
         {
-            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.FBSEARCH_SUGGESTED_SEARCHS, searchType.ToString().ToLower()), out var instaUri))
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.FBSEARCH_SUGGESTED_SEARCHES, searchType.ToString().ToLower()), out var instaUri))
                 throw new Exception("Cant create URI for suggested search");
             return instaUri;
         }
+        
+        public static Uri GetNullStateDynamicSectionsUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.FBSEARCH_NULLSTATE_DYNAMIC_SECTIONS, out var instaUri))
+                throw new Exception("Cant create URI for null state dynamic sections");
+            return instaUri;
+        }
+        
+        public static Uri GetRegisterRecentSearchClickUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.FBSEARCH_REGISTER_RECENT_SEARCH_CLICK, out var instaUri))
+                throw new Exception("Cant create URI for registering recent search click");
+            return instaUri;
+        }
+
+        public static Uri GetAccountsRecsUri(long userPk)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.FBSEARCH_ACCOUNTS_RECS, userPk), out var instaUri))
+                throw new Exception("Cant create URI for getting accounts recs");
+            return instaUri;
+        }
+
         public static Uri GetTopSearchUri(string rankToken,string querry = "", InstaDiscoverSearchType searchType = InstaDiscoverSearchType.Users, int timezone_offset = 12600)
         {
             if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.FBSEARCH_TOPSEARCH_FALT_PARAMETER,rankToken,timezone_offset,querry, searchType.ToString().ToLower()), out var instaUri))
@@ -2386,9 +2408,7 @@ namespace InstagramApiSharp.Helpers
                 instaUri = instaUri.AddQueryParameter("module", "explore_popular");
             instaUri = instaUri
                 .AddQueryParameter("use_sectional_payload", "true")
-                .AddQueryParameter("timezone_offset", InstaApiConstants.TIMEZONE_OFFSET.ToString())
-                .AddQueryParameter("session_id", sessionId)
-                .AddQueryParameter("include_fixed_destinations", "true");
+                .AddQueryParameter("timezone_offset", InstaApiConstants.TIMEZONE_OFFSET.ToString());
             if (clusterId.ToLower() == "explore_all:0" || clusterId.ToLower() == "explore_all%3A0")
             {
                 if (!string.IsNullOrEmpty(maxId))
@@ -2400,6 +2420,9 @@ namespace InstagramApiSharp.Helpers
             {
                 instaUri = instaUri.AddQueryParameter("cluster_id", Uri.EscapeDataString(clusterId));
             }
+            instaUri = instaUri
+                .AddQueryParameter("session_id", sessionId)
+                .AddQueryParameter("include_fixed_destinations", "true");
             return instaUri;
         }
 

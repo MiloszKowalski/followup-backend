@@ -91,7 +91,8 @@ namespace InstagramApiSharp.API.Processors
         ///     Like media (photo or video)
         /// </summary>
         /// <param name="mediaId">Media id</param>
-        Task<IResult<bool>> LikeMediaAsync(string mediaId);
+        /// <param name="feedPosition">Media position in feed</param>
+        Task<IResult<bool>> LikeMediaAsync(string mediaId, int feedPosition);
 
         /// <summary>
         ///     Report media
@@ -117,7 +118,7 @@ namespace InstagramApiSharp.API.Processors
         ///     Remove like from media (photo or video)
         /// </summary>
         /// <param name="mediaId">Media id</param>
-        Task<IResult<bool>> UnLikeMediaAsync(string mediaId);
+        Task<IResult<bool>> UnLikeMediaAsync(string mediaId, int feedPosition);
 
         /// <summary>
         ///     Unsave media

@@ -297,7 +297,7 @@ namespace InstagramApiSharp.API.Processors
             {
                 var instaUri = UriCreator.GetRecentSearchUri();
                 var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, instaUri, _deviceInfo);
-                var response = await _httpRequestProcessor.SendAsync(request);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
                 var json = await response.Content.ReadAsStringAsync();
 
                 if (response.StatusCode != HttpStatusCode.OK)
@@ -316,6 +316,13 @@ namespace InstagramApiSharp.API.Processors
                 _logger?.LogException(exception);
                 return Result.Fail<InstaDiscoverRecentSearches>(exception);
             }
+        }
+
+        public async Task GetNullStateDynamicSections()
+        {
+            var instaUri = UriCreator.GetNullStateDynamicSectionsUri();
+            var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, instaUri, _deviceInfo);
+            await _httpRequestProcessor.SendAsync(request, true);
         }
 
         /// <summary>
@@ -363,7 +370,7 @@ namespace InstagramApiSharp.API.Processors
             {
                 var instaUri = UriCreator.GetSuggestedSearchUri(searchType);
                 var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, instaUri, _deviceInfo);
-                var response = await _httpRequestProcessor.SendAsync(request);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
                 var json = await response.Content.ReadAsStringAsync();
 
                 if (response.StatusCode != HttpStatusCode.OK)
@@ -383,6 +390,76 @@ namespace InstagramApiSharp.API.Processors
                 return Result.Fail<InstaDiscoverSuggestedSearches>(exception);
             }
         }
+
+        /// <summary>
+        ///     Get follow suggestions after following a user in discover tab
+        /// </summary>
+        /// <param name="userPk">ID of the current logged in user</param>
+        /// <returns>Bool indicating if the operation was succesfull</returns>
+        public async Task<IResult<bool>> GetAccountsRecsAsync(long userPk)
+        {
+            try
+            {
+                var instaUri = UriCreator.GetAccountsRecsUri(userPk);
+                var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, instaUri, _deviceInfo);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
+                var json = await response.Content.ReadAsStringAsync();
+
+                if (response.StatusCode != HttpStatusCode.OK)
+                    return Result.UnExpectedResponse<bool>(response, json);
+
+                return Result.Success(true);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+                return Result.Fail(httpException, default(bool), ResponseType.NetworkProblem);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogException(exception);
+                return Result.Fail<bool>(exception);
+            }
+        }
+
+        /// <summary>
+        ///     Register recent search click for media searching
+        /// </summary>
+        /// <param name="entityId">ID of the entity from request to search for entities</param>
+        /// <param name="entityType">Entity type (i.e. hashtag)</param>
+        public async Task<IResult<bool>> RegisterRecentSearchClickAsync(long entityId, InstaEntityType entityType)
+        {
+            try
+            {
+                var instaUri = UriCreator.GetRegisterRecentSearchClickUri();
+                var data = new Dictionary<string, string>
+                {
+                    {"entity_id", entityId.ToString()},
+                    {"_csrftoken", _user.CsrfToken},
+                    {"_uuid", _deviceInfo.DeviceGuid.ToString()},
+                    {"entity_type", entityType.ToString().ToLowerInvariant()},
+                };
+
+                var request = _httpHelper.GetDefaultRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
+                var json = await response.Content.ReadAsStringAsync();
+                if (response.StatusCode != HttpStatusCode.OK)
+                    return Result.UnExpectedResponse<bool>(response, json);
+                var obj = JsonConvert.DeserializeObject<InstaDefaultResponse>(json);
+                return obj.IsSucceed ? Result.Success(true) : Result.Fail(obj.Message ?? string.Empty, false);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+                return Result.Fail(httpException, default(bool), ResponseType.NetworkProblem);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogException(exception);
+                return Result.Fail<bool>(exception);
+            }
+        }
+
         /// <summary>
         ///     Search user people
         /// </summary>

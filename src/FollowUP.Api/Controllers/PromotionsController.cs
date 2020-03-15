@@ -38,9 +38,9 @@ namespace FollowUP.Api.Controllers
         {
             var account = await _accountRepository.GetAsync(accountId);
             var instaApi = await _apiService.GetInstaApi(account);
-            await _apiService.SendColdStartMockupRequests(instaApi);
+            await _apiService.SendColdStartMockupRequests(instaApi, account);
             await Task.Delay(2137);
-            await _apiService.GetUserProfileMockAsync(instaApi);
+            await _apiService.GetUserProfileMockAsync(instaApi, account);
             await Task.Delay(1428);
             await _apiService.GetUserFollowedAsync(instaApi, account);
             await Task.Delay(4000);
@@ -48,6 +48,20 @@ namespace FollowUP.Api.Controllers
 
 
             return Json("Jej kurwa");
+        }
+
+        [HttpPost("{accountId}/tag/{tag}/{count}")]
+        public async Task<IActionResult> UnfollowUsers(Guid accountId, string tag, int count)
+        {
+            var account = await _accountRepository.GetAsync(accountId);
+            var instaApi = await _apiService.GetInstaApi(account);
+            await _apiService.SendColdStartMockupRequests(instaApi, account);
+            await Task.Delay(2137);
+            await _apiService.GetHashtagMediaAsync(instaApi, account, tag);
+            await Task.Delay(3412);
+            await _apiService.LikeHashtagMediaAsync(instaApi, account, tag, count);
+
+            return Json("Jej kurwa xd");
         }
 
         [HttpGet("comments/{accountId}")]

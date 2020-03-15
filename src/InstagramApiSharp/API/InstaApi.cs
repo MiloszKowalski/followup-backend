@@ -3302,12 +3302,7 @@ namespace InstagramApiSharp.API
                     {"device_id", _deviceInfo.DeviceGuid.ToString()},
                     {"_uuid", _deviceInfo.DeviceGuid.ToString()},
                 };
-                var cookies = _httpRequestProcessor.HttpHandler.CookieContainer
-                    .GetCookies(_httpRequestProcessor.Client.BaseAddress);
 
-                var csrftoken = cookies[InstaApiConstants.CSRFTOKEN]?.Value;
-                if (!string.IsNullOrEmpty(csrftoken))
-                    data.Add("_csrftoken", csrftoken);
                 var instaUri = UriCreator.GetNotificationBadgeUri();
                 var request = _httpHelper.GetDefaultRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
                 var response = await _httpRequestProcessor.SendAsync(request, true);
@@ -3321,14 +3316,36 @@ namespace InstagramApiSharp.API
                 _logger?.LogException(exception);
             }
         }
-        public async Task QpBatchFetch(bool loggedIn = false)
+        public async Task QpBatchFetch(InstaQpBatchFetchSurfaceType surfaceType, bool loggedIn = false)
         {
             try
             {
+                string surfacesToTriggers, surfacesToQueries;
+                switch(surfaceType)
+                {
+                    case InstaQpBatchFetchSurfaceType.IstagramOtherLoggedInUserIdLoaded:
+                        surfacesToTriggers = InstaApiConstants.SURFACES_TO_TRIGGERS_OTHER_LOGGED_IN_USER;
+                        surfacesToQueries = InstaApiConstants.SURFACES_TO_QUERIES_OTHER_LOGGED_IN_USER;
+                        break;
+                    case InstaQpBatchFetchSurfaceType.InstagramExploreHeader:
+                        surfacesToTriggers = InstaApiConstants.SURFACES_TO_TRIGGERS_EXPLORE_HEADER;
+                        surfacesToQueries = InstaApiConstants.SURFACES_TO_QUERIES_EXPLORE_HEADER;
+                        break;
+                    case InstaQpBatchFetchSurfaceType.InstagramHashtagFeedTooltip:
+                        surfacesToTriggers = InstaApiConstants.SURFACES_TO_TRIGGERS_HASHTAG_FEED_TOOLTIP;
+                        surfacesToQueries = InstaApiConstants.SURFACES_TO_QUERIES_HASHTAG_FEED_TOOLTIP;
+                        break;
+                    default:
+                        surfacesToTriggers = InstaApiConstants.SURFACES_TO_TRIGGERS_OTHER_LOGGED_IN_USER;
+                        surfacesToQueries = InstaApiConstants.SURFACES_TO_QUERIES_OTHER_LOGGED_IN_USER;
+                        break;
+                }
+
+
                 var data = new Dictionary<string, string>
                 {
-                    {"surfaces_to_triggers", InstaApiConstants.SURFACES_TO_TRIGGERS},
-                    {"surfaces_to_queries", InstaApiConstants.SURFACES_TO_QUERIES},
+                    {"surfaces_to_triggers", surfacesToTriggers},
+                    {"surfaces_to_queries", surfacesToQueries},
                     {"vc_policy", "default"},
                     {"_csrftoken", _user.CsrfToken},
                     {"uid", _user.LoggedInUser.Pk.ToString()},
@@ -3343,7 +3360,7 @@ namespace InstagramApiSharp.API
                 var instaUri = UriCreator.GetQpBatchFetchUri();
                 var request = _httpHelper.GetSignedRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
                 request.Headers.Add("Host", "i.instagram.com");
-                var response = await _httpRequestProcessor.SendAsync(request);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
             }
             catch (HttpRequestException httpException)
             {

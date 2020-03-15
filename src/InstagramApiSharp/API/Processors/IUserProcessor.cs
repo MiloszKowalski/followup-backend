@@ -60,7 +60,7 @@ namespace InstagramApiSharp.API.Processors
         ///     Follow user
         /// </summary>
         /// <param name="userId">User id</param>
-        Task<IResult<InstaFriendshipFullStatus>> FollowUserAsync(long userId);
+        Task<IResult<InstaFriendshipFullStatus>> FollowUserAsync(long userId, string mediaId = null, bool unfollow = false);
 
         /// <summary>
         ///     Get self best friends (besties)

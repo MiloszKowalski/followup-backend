@@ -67,6 +67,11 @@ namespace InstagramApiSharp.API.Processors
         Task<IResult<InstaDiscoverRecentSearches>> GetRecentSearchesAsync();
 
         /// <summary>
+        ///     Mockup request to act as a real user
+        /// </summary>
+        Task GetNullStateDynamicSections();
+
+        /// <summary>
         /// Get top searches
         /// </summary>
         /// <param name="querry">querry string of the search</param>
@@ -81,6 +86,22 @@ namespace InstagramApiSharp.API.Processors
         /// <param name="searchType">Search type(only blended and users works)</param>
         Task<IResult<InstaDiscoverSuggestedSearches>> GetSuggestedSearchesAsync(InstaDiscoverSearchType searchType =
             InstaDiscoverSearchType.Users);
+
+        /// <summary>
+        ///     Register recent search click for media searching
+        /// </summary>
+        /// <param name="entityId">ID of the entity from request to search for entities</param>
+        /// <param name="entityType">Entity type (i.e. hashtag)</param>
+        /// <returns></returns>
+        Task<IResult<bool>> RegisterRecentSearchClickAsync(long entityId, InstaEntityType entityType);
+
+        /// <summary>
+        ///     Get follow suggestions after following a user in discover tab
+        /// </summary>
+        /// <param name="userPk">ID of the current logged in user</param>
+        /// <returns>Bool indicating if the operation was succesfull</returns>
+        Task<IResult<bool>> GetAccountsRecsAsync(long userPk);
+
         /// <summary>
         ///     Search user people
         /// </summary>
