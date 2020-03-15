@@ -501,9 +501,9 @@ namespace InstagramApiSharp.API.Processors
         ///     Like media (photo or video)
         /// </summary>
         /// <param name="mediaId">Media id</param>
-        public async Task<IResult<bool>> LikeMediaAsync(string mediaId)
+        public async Task<IResult<bool>> LikeMediaAsync(string mediaId, int feedPosition)
         {
-            return await LikeUnlikeArchiveUnArchiveMediaInternal(mediaId, UriCreator.GetLikeMediaUri(mediaId));
+            return await LikeUnlikeArchiveUnArchiveMediaInternal(mediaId, UriCreator.GetLikeMediaUri(mediaId), feedPosition);
         }
 
         /// <summary>
@@ -594,9 +594,9 @@ namespace InstagramApiSharp.API.Processors
         ///     Remove like from media (photo or video)
         /// </summary>
         /// <param name="mediaId">Media id</param>
-        public async Task<IResult<bool>> UnLikeMediaAsync(string mediaId)
+        public async Task<IResult<bool>> UnLikeMediaAsync(string mediaId, int feedPosition)
         {
-            return await LikeUnlikeArchiveUnArchiveMediaInternal(mediaId, UriCreator.GetUnLikeMediaUri(mediaId));
+            return await LikeUnlikeArchiveUnArchiveMediaInternal(mediaId, UriCreator.GetUnLikeMediaUri(mediaId), feedPosition);
         }
 
         /// <summary>
@@ -1407,7 +1407,7 @@ namespace InstagramApiSharp.API.Processors
                 return Result.Fail<bool>(exception);
             }
         }
-        private async Task<IResult<bool>> LikeUnlikeArchiveUnArchiveMediaInternal(string mediaId, Uri instaUri)
+        private async Task<IResult<bool>> LikeUnlikeArchiveUnArchiveMediaInternal(string mediaId, Uri instaUri, int feedPosition)
         {
             UserAuthValidator.Validate(_userAuthValidate);
             try
@@ -1419,11 +1419,14 @@ namespace InstagramApiSharp.API.Processors
                     {"radio_type", "wifi-none"},
                     {"_uid", _user.LoggedInUser.Pk.ToString()},
                     {"_uuid", _deviceInfo.DeviceGuid.ToString()},
-                    {"device_id", _deviceInfo.DeviceId}
+                    {"is_carousel_bumped_post", "false"},
+                    {"container_module", "feed_contextual_hashtag"},
+                    {"feed_position", feedPosition.ToString()},
+                    //{"device_id", _deviceInfo.DeviceId}
                 };
                 var request =
                     _httpHelper.GetSignedRequest(HttpMethod.Post, instaUri, _deviceInfo, fields);
-                var response = await _httpRequestProcessor.SendAsync(request);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
                 var json = await response.Content.ReadAsStringAsync();
                 return response.StatusCode == HttpStatusCode.OK
                     ? Result.Success(true)

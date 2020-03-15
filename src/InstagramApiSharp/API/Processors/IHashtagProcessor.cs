@@ -35,7 +35,7 @@ namespace InstagramApiSharp.API.Processors
         /// <param name="tagname">Tag name</param>
         /// <param name="paginationParameters">Pagination parameters: next id and max amount of pages to load</param>
         /// <param name="hashtagSectionType">Section type</param>
-        Task<IResult<InstaSectionMedia>> GetHashtagsSectionsAsync(string tagname, PaginationParameters paginationParameters, InstaHashtagSectionType hashtagSectionType = InstaHashtagSectionType.All);
+        Task<IResult<InstaSectionMedia>> GetHashtagsSectionsAsync(string tagname, PaginationParameters paginationParameters, bool specificTab = false, InstaHashtagSectionType hashtagSectionType = InstaHashtagSectionType.All);
 
         /// <summary>
         ///     Get Hashtags posts

@@ -313,7 +313,7 @@ namespace FollowUP.Infrastructure.Services
         public async Task<bool> LikeMedia(IInstaApi instaApi, InstagramAccount account, Promotion promotion,
             PromotionRepository promotionRepository, StatisticsService statisticsService, InstaMedia media, int likesDone)
         {
-            var likeResponse = await instaApi.MediaProcessor.LikeMediaAsync(media.InstaIdentifier);
+            var likeResponse = await instaApi.MediaProcessor.LikeMediaAsync(media.InstaIdentifier, 0);
             if (likeResponse.Succeeded)
             {
                 likesDone++;

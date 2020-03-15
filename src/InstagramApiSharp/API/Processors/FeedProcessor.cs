@@ -427,7 +427,7 @@ namespace InstagramApiSharp.API.Processors
         /// <param name="paginationParameters">Pagination parameters: next id and max amount of pages to load</param>
         /// <param name="clusterId">Cluster id</param>
         /// <returns><see cref="InstaTopicalExploreFeed" /></returns>
-        public async Task<IResult<InstaTopicalExploreFeed>> GetTopicalExploreFeedAsync(PaginationParameters paginationParameters, string clusterId = null)
+        public async Task<IResult<InstaTopicalExploreFeed>> GetTopicalExploreFeedAsync(PaginationParameters paginationParameters, string clusterId = null, bool isPrefetch = false)
         {
             UserAuthValidator.Validate(_userAuthValidate);
             var topicalExploreFeed = new InstaTopicalExploreFeed();
@@ -441,7 +441,7 @@ namespace InstagramApiSharp.API.Processors
                     return ConvertersFabric.Instance.GetTopicalExploreFeedConverter(topicalExploreFeedResponse).Convert();
                 }
 
-                var feeds = await GetTopicalExploreFeed(paginationParameters, clusterId);
+                var feeds = await GetTopicalExploreFeed(paginationParameters, clusterId, isPrefetch);
                 if (!feeds.Succeeded)
                 {
                     if (feeds.Value != null)
@@ -780,7 +780,7 @@ namespace InstagramApiSharp.API.Processors
         }
 
         private string TopicalSessionId = null;
-        private async Task<IResult<InstaTopicalExploreFeedResponse>> GetTopicalExploreFeed(PaginationParameters paginationParameters, string clusterId)
+        private async Task<IResult<InstaTopicalExploreFeedResponse>> GetTopicalExploreFeed(PaginationParameters paginationParameters, string clusterId, bool isPrefetch = false)
         {
             try
             {
@@ -789,7 +789,8 @@ namespace InstagramApiSharp.API.Processors
 
                 if (string.IsNullOrEmpty(TopicalSessionId))
                     TopicalSessionId = Guid.NewGuid().ToString();
-                var exploreUri = UriCreator.GetTopicalExploreUri(TopicalSessionId, false, paginationParameters?.NextMaxId, clusterId);
+
+                var exploreUri = UriCreator.GetTopicalExploreUri(TopicalSessionId, isPrefetch, paginationParameters?.NextMaxId, clusterId, true);
                 var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, exploreUri, _deviceInfo);
                 var response = await _httpRequestProcessor.SendAsync(request, true);
                 var json = await response.Content.ReadAsStringAsync();

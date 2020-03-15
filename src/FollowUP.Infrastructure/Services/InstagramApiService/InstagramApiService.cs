@@ -15,6 +15,7 @@ using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 
@@ -43,7 +44,7 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
 
             if (accountProxy == null)
             {
-                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Can't find any working proxy, skipping...");
+                _logger.Log($"Can't find any working proxy", InstaLogLevel.User, account);
                 await Task.Delay(5000);
                 return null;
             }
@@ -108,7 +109,7 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
             {
                 using (FileStream fs = File.Create(instaApi.SessionHandler.FilePath))
                 {
-                    Console.WriteLine($"Created file for {account.Username}.");
+                    _logger.Log($"Created file for user.", InstaLogLevel.Trace, account);
                 }
             }
 
@@ -119,12 +120,12 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
             }
             catch (Exception e)
             {
-                Console.WriteLine($"[{DateTime.Now}][{account.Username}] Could not load state from file, error info: {e.Message}");
+                _logger.Log($" Could not load state from file, error info: {e.Message}", InstaLogLevel.Errors, account);
             }
 
             if (!instaApi.IsUserAuthenticated && !forLogin)
             {
-                Console.WriteLine($"[{DateTime.Now}][{account.Username}] User not logged in, please authenticate first.");
+                _logger.Log($"User not logged in, please authenticate first.", InstaLogLevel.User, account);
                 await Task.Delay(TimeSpan.FromSeconds(1));
                 return null;
             }
@@ -139,7 +140,7 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
         }
 
         // TODO: preloaded reel ids
-        public async Task SendColdStartMockupRequests(IInstaApi instaApi)
+        public async Task SendColdStartMockupRequests(IInstaApi instaApi, InstagramAccount account)
         {
             await instaApi.StoryProcessor.GetStoryFeedWithPostMethodAsync(/* preloaded reel ids */);
             await instaApi.FeedProcessor.GetUserTimelineFeedAsync(PaginationParameters.MaxPagesToLoad(1));
@@ -163,13 +164,13 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
             await instaApi.MessagingProcessor.GetDirectInboxAsync(PaginationParameters.MaxPagesToLoad(1), 1);
             await instaApi.GetUserScoresAsync();
             await instaApi.GetNotificationBadge();
-            instaApi.GetCurrentDevice().RandomizeBandwithConnection();
-            instaApi.SetDevice(instaApi.GetCurrentDevice());
+            instaApi.SetDevice(instaApi.GetCurrentDevice().RandomizeBandwithConnection());
+            _logger.Log("Sent cold startup mockup requests.", InstaLogLevel.Info, account);
         }
 
-        public async Task GetUserProfileMockAsync(IInstaApi instaApi)
+        public async Task GetUserProfileMockAsync(IInstaApi instaApi, InstagramAccount account)
         {
-            await instaApi.QpBatchFetch(true);
+            await instaApi.QpBatchFetch(InstaQpBatchFetchSurfaceType.IstagramOtherLoggedInUserIdLoaded, true);
             var userPk = instaApi.GetLoggedUser().LoggedInUser.Pk;
             await instaApi.GetInitialUserFeedAsync(userPk);
             await instaApi.UserProcessor.GetUserInfoByIdAsync(userPk, true);
@@ -177,6 +178,7 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
             await instaApi.StoryProcessor.GetHighlightFeedsAsync(userPk);
             await instaApi.GetProfileSuBadge();
             await instaApi.GetProfileArchiveBadge();
+            _logger.Log("Sent user profile mock requests.", InstaLogLevel.Info, account);
         }
 
         public async Task GetUserFollowedAsync(IInstaApi instaApi, InstagramAccount account)
@@ -197,11 +199,11 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
             if (followedResponse.Succeeded)
             {
                 _cache.Set($"{account.Id}-followed", followedResponse.Value);
-                Console.WriteLine($"Got followed for account {account.Username} succesfully.");
+                _logger.Log($"Got followed list succesfully.", InstaLogLevel.User, account);
             }
             else
             {
-                Console.WriteLine($"Getting followed for account {account.Username} failed.");
+                _logger.Log($"Getting followed list failed.", InstaLogLevel.User, account);
             }
         }
 
@@ -214,18 +216,18 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
             if (profiles.Count < count)
                 count = profiles.Count;
 
-            for(int i = 0; i < count; i++)
+            for (int i = 0; i < count; i++)
             {
                 var unfollowResponse = await instaApi.UserProcessor.UnFollowUserAsync(profiles[i].Pk);
 
-                if(unfollowResponse.Succeeded)
+                if (unfollowResponse.Succeeded)
                 {
                     unfollowedProfiles.Add(profiles[i]);
-                    _logger.Log($"Unfollowed profile {profiles[i].Pk} succesfully", InstaLogLevel.User, account);
+                    _logger.Log($"Unfollowed profile {profiles[i].Pk} succesfully", InstaLogLevel.User, account, null);
                 }
                 else
                 {
-                    _logger.Log($"Failed to unfollow profile {profiles[i].Pk} - {unfollowResponse.Info.ToString()}", InstaLogLevel.User, account);
+                    _logger.Log($"Failed to unfollow profile {profiles[i].Pk} - {unfollowResponse.Info.ToString()}", InstaLogLevel.User, account, null);
                     return;
                 }
 
@@ -237,6 +239,93 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
 
             profiles.RemoveRange(0, count);
             _cache.Set($"{account.Id}-followed", profiles);
+        }
+
+        public async Task GetHashtagMediaAsync(IInstaApi instaApi, InstagramAccount account, string tag)
+        {
+            instaApi.SetDevice(instaApi.GetCurrentDevice().RandomizeBandwithConnection());
+            await instaApi.DiscoverProcessor.GetSuggestedSearchesAsync(InstaDiscoverSearchType.Users);
+            await instaApi.DiscoverProcessor.GetNullStateDynamicSections();
+            await instaApi.DiscoverProcessor.GetRecentSearchesAsync();
+            await instaApi.FeedProcessor.GetTopicalExploreFeedAsync(PaginationParameters.MaxPagesToLoad(1));
+            await instaApi.QpBatchFetch(InstaQpBatchFetchSurfaceType.InstagramExploreHeader);
+
+            string[] tagParts = tag.Split(null, 3);
+            string tagQuery = "";
+
+            for (int i = 0; i < tagParts.Length - 1; i++)
+            {
+                if (i < tagParts.Length - 2) tagQuery += tagParts[i + 1];
+                await instaApi.HashtagProcessor.SearchHashtagAsync(tagQuery);
+            }
+
+            var hashtagRepsonse = await instaApi.HashtagProcessor.SearchHashtagAsync(tag);
+
+            long entityId = 0;
+            if (hashtagRepsonse.Succeeded)
+                entityId = hashtagRepsonse.Value.FirstOrDefault(x => x.Name == tag).Id;
+
+            if (entityId == 0)
+                return;
+
+            await instaApi.DiscoverProcessor.RegisterRecentSearchClickAsync(entityId, InstaEntityType.Hashtag);
+            await instaApi.HashtagProcessor.GetHashtagsSectionsAsync(tag, PaginationParameters.MaxPagesToLoad(1));
+            await instaApi.QpBatchFetch(InstaQpBatchFetchSurfaceType.InstagramHashtagFeedTooltip);
+            var stories = await instaApi.HashtagProcessor.GetHashtagStoriesAsync(tag);
+            await instaApi.HashtagProcessor.GetHashtagInfoAsync(tag);
+
+            var media = await instaApi.HashtagProcessor.GetHashtagsSectionsAsync(tag, PaginationParameters.MaxPagesToLoad(1), true, InstaHashtagSectionType.Recent);
+            if (!media.Succeeded)
+                return;
+
+            _cache.Set($"{account.Id}-hashtag-{tag}-media", media.Value.Medias);
+
+            _logger.Log($"Fetched media from tag {tag} successfully", InstaLogLevel.User, account);
+        }
+
+        public async Task LikeHashtagMediaAsync(IInstaApi instaApi, InstagramAccount account, string tag, int count)
+        {
+            var random = new Random();
+            var media = (List<InstaMedia>)_cache.Get($"{account.Id}-hashtag-{tag}-media");
+
+            if (media.Count < count)
+                count = media.Count;
+
+            for (int i = 0; i < count; i++)
+            {
+                var likeResponse = await instaApi.MediaProcessor.LikeMediaAsync(media[i].InstaIdentifier, i + 1);
+
+                if (likeResponse.Succeeded)
+                {
+                    _logger.Log($"Liked media {media[i].Code} succesfully", InstaLogLevel.User, account, null);
+                    await Task.Delay(random.Next(750, 3000));
+                    var followResponse = await instaApi.UserProcessor.FollowUserAsync(media[i].User.Pk);
+                    if(followResponse.Succeeded)
+                    {
+                        _logger.Log($"Followed user {media[i].User.Pk} succesfully", InstaLogLevel.User, account, null);
+                        var suggestionsResponse = await instaApi.DiscoverProcessor.GetAccountsRecsAsync(instaApi.GetLoggedUser().LoggedInUser.Pk);
+                        if(suggestionsResponse.Succeeded)
+                            _logger.Log($"Got suggestions after following user {media[i].User.Pk} succesfully", InstaLogLevel.Info, account, null);
+                        else
+                            _logger.Log($"Getting suggestions after following user {media[i].User.Pk} failed - {suggestionsResponse.Info.ToString()}", InstaLogLevel.Info, account, null);
+                    }
+                    else
+                    {
+                        _logger.Log($"Failed to follow user {media[i].User.Pk} - {followResponse.Info.ToString()}", InstaLogLevel.User, account, null);
+                        return;
+                    }
+                }
+                else
+                {
+                    _logger.Log($"Failed to like media {media[i].Code} - {likeResponse.Info.ToString()}", InstaLogLevel.User, account, null);
+                    return;
+                }
+
+                await Task.Delay(random.Next(2000, 5000));
+            }
+
+            media.RemoveRange(0, count);
+            _cache.Set($"{account.Id}-hashtag-{tag}-media", media);
         }
     }
 }

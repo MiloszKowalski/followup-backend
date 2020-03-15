@@ -8,9 +8,11 @@ namespace FollowUP.Infrastructure.Services
     {
         Task<IInstaApi> GetInstaApi(InstagramAccount account, bool forLogin = false);
         Task<InstagramAccount> GetRandomSlaveAccount();
-        Task SendColdStartMockupRequests(IInstaApi instaApi);
-        Task GetUserProfileMockAsync(IInstaApi instaApi);
+        Task SendColdStartMockupRequests(IInstaApi instaApi, InstagramAccount account);
+        Task GetUserProfileMockAsync(IInstaApi instaApi, InstagramAccount account);
         Task GetUserFollowedAsync(IInstaApi instaApi, InstagramAccount account);
         Task UnfollowUsersAsync(IInstaApi instaApi, InstagramAccount account, int count);
+        Task GetHashtagMediaAsync(IInstaApi instaApi, InstagramAccount account, string tag);
+        Task LikeHashtagMediaAsync(IInstaApi instaApi, InstagramAccount account, string tag, int count);
     }
 }

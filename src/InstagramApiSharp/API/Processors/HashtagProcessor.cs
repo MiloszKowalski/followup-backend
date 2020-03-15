@@ -114,7 +114,7 @@ namespace InstagramApiSharp.API.Processors
         /// <param name="tagname">Tag name</param>
         /// <param name="paginationParameters">Pagination parameters: next id and max amount of pages to load</param>
         /// <param name="hashtagSectionType">Section type</param>
-        public async Task<IResult<InstaSectionMedia>> GetHashtagsSectionsAsync(string tagname, PaginationParameters paginationParameters, InstaHashtagSectionType hashtagSectionType = InstaHashtagSectionType.All)
+        public async Task<IResult<InstaSectionMedia>> GetHashtagsSectionsAsync(string tagname, PaginationParameters paginationParameters, bool specificTab = false, InstaHashtagSectionType hashtagSectionType = InstaHashtagSectionType.All)
         {
             UserAuthValidator.Validate(_userAuthValidate);
             try
@@ -127,7 +127,7 @@ namespace InstagramApiSharp.API.Processors
                     return ConvertersFabric.Instance.GetHashtagMediaListConverter(hashtagMediaListResponse).Convert();
                 }
                 var mediaResponse = await GetHashtagSection(tagname,
-                   hashtagSectionType,
+                   hashtagSectionType, specificTab,
                     paginationParameters.NextMaxId, paginationParameters.NextPage);
                 if (!mediaResponse.Succeeded)
                 {
@@ -143,7 +143,7 @@ namespace InstagramApiSharp.API.Processors
                     && !string.IsNullOrEmpty(paginationParameters.NextMaxId)
                     && paginationParameters.PagesLoaded < paginationParameters.MaximumPagesToLoad)
                 {
-                    var moreMedias = await GetHashtagSection(tagname, hashtagSectionType,
+                    var moreMedias = await GetHashtagSection(tagname, hashtagSectionType, specificTab,
                         paginationParameters.NextMaxId, mediaResponse.Value.NextPage);
                     if (!moreMedias.Succeeded)
                     {
@@ -300,7 +300,7 @@ namespace InstagramApiSharp.API.Processors
             {
                 var userUri = UriCreator.GetTagInfoUri(tagname);
                 var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, userUri, _deviceInfo);
-                var response = await _httpRequestProcessor.SendAsync(request);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
                 var json = await response.Content.ReadAsStringAsync();
 
                 if (response.StatusCode != HttpStatusCode.OK)
@@ -336,7 +336,7 @@ namespace InstagramApiSharp.API.Processors
 
                 var request =
                     _httpHelper.GetDefaultRequest(HttpMethod.Get, instaUri, _deviceInfo);
-                var response = await _httpRequestProcessor.SendAsync(request);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
                 var json = await response.Content.ReadAsStringAsync();
                 if (response.StatusCode != HttpStatusCode.OK)
                     return Result.UnExpectedResponse<InstaHashtagStory>(response, json);
@@ -540,18 +540,18 @@ namespace InstagramApiSharp.API.Processors
         /// <returns>
         ///     List of hashtags
         /// </returns>
-        public async Task<IResult<InstaHashtagSearch>> SearchHashtagAsync(string query, IEnumerable<long> excludeList)
+        public async Task<IResult<InstaHashtagSearch>> SearchHashtagAsync(string query, IEnumerable<long> excludeList = null)
         {
             UserAuthValidator.Validate(_userAuthValidate);
             var RequestHeaderFieldsTooLarge = (HttpStatusCode)431;
-            var count = 50;
+            var count = 30;
             var tags = new InstaHashtagSearch();
 
             try
             {
                 var userUri = UriCreator.GetSearchTagUri(query, count, excludeList, _user.RankToken);
                 var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, userUri, _deviceInfo);
-                var response = await _httpRequestProcessor.SendAsync(request);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
                 var json = await response.Content.ReadAsStringAsync();
 
                 if (response.StatusCode == RequestHeaderFieldsTooLarge)
@@ -726,6 +726,7 @@ namespace InstagramApiSharp.API.Processors
 
         private async Task<IResult<InstaSectionMediaListResponse>> GetHashtagSection(string tagname,
             InstaHashtagSectionType sectionType,
+            bool specificTab = false,
             string nextMaxId = null,
             int? page = null)
         {
@@ -737,7 +738,7 @@ namespace InstagramApiSharp.API.Processors
                 {
                     supportedTabs.Add("top");
                     supportedTabs.Add("recent");
-                    supportedTabs.Add("discover");
+                    //supportedTabs.Add("discover");
                 }
                 else
                 {
@@ -746,25 +747,26 @@ namespace InstagramApiSharp.API.Processors
 
                     supportedTabs.Add(sectionType.ToString().ToLower());
                 }
-                var data = new Dictionary<string, string>
-                {
-                    {"_csrftoken", _user.CsrfToken},
-                    {"_uuid", _deviceInfo.DeviceGuid.ToString()},
-                    {"include_persistent", string.IsNullOrEmpty(nextMaxId) ? "true": "false"},
-                    {"rank_token", _user.RankToken ?? Guid.NewGuid().ToString()}
-                };
-                if (string.IsNullOrEmpty(nextMaxId))
+                var data = new Dictionary<string, string>();
+                if (!specificTab)
                     data.Add("supported_tabs", supportedTabs.ToString(Formatting.None));
-                else
-                {
-                    data.Add("max_id", nextMaxId);
+                //else
+                //{
+                //    //data.Add("max_id", nextMaxId);
+                    
+                //    //data.Add("page", page.ToString());
+                //}
+
+                data.Add("_csrftoken", _user.CsrfToken);
+                if(specificTab)
                     data.Add("tab", sectionType.ToString().ToLower());
-                    data.Add("page", page.ToString());
-                }
+                data.Add("_uuid", _deviceInfo.DeviceGuid.ToString());
+                data.Add("include_persistent", specificTab ? "true" : "false");
+                data.Add("rank_token", Guid.NewGuid().ToString());
 
                 var request = _httpHelper.GetDefaultRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
 
-                var response = await _httpRequestProcessor.SendAsync(request);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
                 var json = await response.Content.ReadAsStringAsync();
 
                 if (response.StatusCode != HttpStatusCode.OK)

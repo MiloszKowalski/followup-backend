@@ -28,7 +28,6 @@ namespace InstagramApiSharp.API
         public const string FBSEARCH_DYNAMIC_SEARCH = API_SUFFIX + "/fbsearch/nullstate_dynamic_sections/?type={0}";
         public const string STORY_QUIZ_ANSWER = API_SUFFIX + "/media/{0}/{1}/story_quiz_answer/";
 
-
         public const string ACCOUNTS_GET_PREFILL_CANDIDATES = API_SUFFIX + "/accounts/get_prefill_candidates/";
         public const string COMMERCE_BAG_COUNT = API_SUFFIX + "/commerce/bag/count/";
         public const string PROFILE_SU_BADGE = API_SUFFIX + "/discover/profile_su_badge/";
@@ -41,9 +40,12 @@ namespace InstagramApiSharp.API
         public const string QE_SYNC = API_SUFFIX + "/qe/sync/";
         public const string BUSINESS_ELIGIBILITY = API_SUFFIX + "/business/eligibility/get_monetization_products_eligibility_data/?product_types=branded_content";
         public const string BUSINESS_BRANDED_CONTENT = API_SUFFIX + "/business/branded_content/should_require_professional_account/";
+
+        #region QpBatchFetch
+
         public const string QP_BATCH_FETCH = API_SUFFIX + "/qp/batch_fetch/";
-        public const string SURFACES_TO_TRIGGERS = "{\"4715\":[\"instagram_other_logged_in_user_id_loaded\"],\"5858\":[],\"5734\":[]}";
-        public const string SURFACES_TO_QUERIES = "{\"4715\":\"Query QuickPromotionSurfaceQuery: Viewer {viewer() {eligible_promotions.trigger_context_v2(<trigger_context_v2>).ig_parameters(<ig_parameters>).trigger_name(<trigger_name>).surface_nux_id(<surface>).external_gating_permitted_qps(<external_gatin" +
+        public const string SURFACES_TO_TRIGGERS_OTHER_LOGGED_IN_USER = "{\"4715\":[\"instagram_other_logged_in_user_id_loaded\"],\"5858\":[],\"5734\":[]}";
+        public const string SURFACES_TO_QUERIES_OTHER_LOGGED_IN_USER = "{\"4715\":\"Query QuickPromotionSurfaceQuery: Viewer {viewer() {eligible_promotions.trigger_context_v2(<trigger_context_v2>).ig_parameters(<ig_parameters>).trigger_name(<trigger_name>).surface_nux_id(<surface>).external_gating_permitted_qps(<external_gatin" +
             "g_permitted_qps>).supports_client_filters(true).include_holdouts(true) {edges {client_ttl_seconds,log_eligibility_waterfall,is_holdout,priority,time_range {start,end},node {id,promotion_id,logging_data,max_impressions,triggers,contextual_filters {clause_type,filters {filter_type,unknown_action" +
             ",value {name,required,bool_value,int_value,string_value},extra_datas {name,required,bool_value,int_value,string_value}},clauses {clause_type,filters {filter_type,unknown_action,value {name,required,bool_value,int_value,string_value},extra_datas {name,required,bool_value,int_value,string_value}" +
             "},clauses {clause_type,filters {filter_type,unknown_action,value {name,required,bool_value,int_value,string_value},extra_datas {name,required,bool_value,int_value,string_value}},clauses {clause_type,filters {filter_type,unknown_action,value {name,required,bool_value,int_value,string_value},ext" +
@@ -60,6 +62,30 @@ namespace InstagramApiSharp.API
             "auses {clause_type,filters {filter_type,unknown_action,value {name,required,bool_value,int_value,string_value},extra_datas {name,required,bool_value,int_value,string_value}},clauses {clause_type,filters {filter_type,unknown_action,value {name,required,bool_value,int_value,string_value},extra_d" +
             "atas {name,required,bool_value,int_value,string_value}}}}}},is_uncancelable,template {name,parameters {name,required,bool_value,string_value,color_value,}},creatives {title {text},content {text},footer {text},social_context {text},social_context_images,primary_action{title {text},url,limit,dis" +
             "miss_promotion},secondary_action{title {text},url,limit,dismiss_promotion},dismiss_action{title {text},url,limit,dismiss_promotion},image.scale(<scale>) {uri,width,height}}}}}}}\"}";
+
+        public const string SURFACES_TO_TRIGGERS_EXPLORE_HEADER = "{\"4715\":[\"instagram_explore_header\"],\"5734\":[\"instagram_explore_prompt\"]}";
+        public const string SURFACES_TO_QUERIES_EXPLORE_HEADER = "{\"4715\":\"Query QuickPromotionSurfaceQuery: Viewer {viewer() {eligible_promotions.trigger_context_v2(<trigger_context_v2>).ig_parameters(<ig_parameters>).trigger_name(<trigger_name>).surface_nux_id(<surface>).external_gating_permitted_qps(" +
+            "<external_gating_permitted_qps>).supports_client_filters(true).include_holdouts(true) {edges {client_ttl_seconds,log_eligibility_waterfall,is_holdout,priority,time_range {start,end},node {id,promotion_id,logging_data,max_impressions,triggers,contextual_filters {clause_type,filters {filter_type" +
+            ",unknown_action,value {name,required,bool_value,int_value,string_value},extra_datas {name,required,bool_value,int_value,string_value}},clauses {clause_type,filters {filter_type,unknown_action,value {name,required,bool_value,int_value,string_value},extra_datas {name,required,bool_value,int_valu" +
+            "e,string_value}},clauses {clause_type,filters {filter_type,unknown_action,value {name,required,bool_value,int_value,string_value},extra_datas {name,required,bool_value,int_value,string_value}},clauses {clause_type,filters {filter_type,unknown_action,value {name,required,bool_value,int_value,st" +
+            "ring_value},extra_datas {name,required,bool_value,int_value,string_value}}}}}},is_uncancelable,template {name,parameters {name,required,bool_value,string_value,color_value,}},creatives {title {text},content {text},footer {text},social_context {text},social_context_images,primary_action{title {" +
+            "text},url,limit,dismiss_promotion},secondary_action{title {text},url,limit,dismiss_promotion},dismiss_action{title {text},url,limit,dismiss_promotion},image.scale(<scale>) {uri,width,height}}}}}}}\",\"5734\":\"Query QuickPromotionSurfaceQuery: Viewer {viewer() {eligible_promotions.trigger_cont" +
+            "ext_v2(<trigger_context_v2>).ig_parameters(<ig_parameters>).trigger_name(<trigger_name>).surface_nux_id(<surface>).external_gating_permitted_qps(<external_gating_permitted_qps>).supports_client_filters(true).include_holdouts(true) {edges {client_ttl_seconds,log_eligibility_waterfall,is_holdout" +
+            ",priority,time_range {start,end},node {id,promotion_id,logging_data,max_impressions,triggers,contextual_filters {clause_type,filters {filter_type,unknown_action,value {name,required,bool_value,int_value,string_value},extra_datas {name,required,bool_value,int_value,string_value}},clauses {claus" +
+            "e_type,filters {filter_type,unknown_action,value {name,required,bool_value,int_value,string_value},extra_datas {name,required,bool_value,int_value,string_value}},clauses {clause_type,filters {filter_type,unknown_action,value {name,required,bool_value,int_value,string_value},extra_datas {name,r" +
+            "equired,bool_value,int_value,string_value}},clauses {clause_type,filters {filter_type,unknown_action,value {name,required,bool_value,int_value,string_value},extra_datas {name,required,bool_value,int_value,string_value}}}}}},is_uncancelable,template {name,parameters {name,required,bool_value,st" +
+            "ring_value,color_value,}},creatives {title {text},content {text},footer {text},social_context {text},social_context_images,primary_action{title {text},url,limit,dismiss_promotion},secondary_action{title {text},url,limit,dismiss_promotion},dismiss_action{title {text},url,limit,dismiss_promotion" +
+            "},image.scale(<scale>) {uri,width,height}}}}}}}\"}";
+
+        public const string SURFACES_TO_TRIGGERS_HASHTAG_FEED_TOOLTIP = "{\"5858\":[\"instagram_hashtag_feed_tooltip\"]}";
+        public const string SURFACES_TO_QUERIES_HASHTAG_FEED_TOOLTIP = "{\"5858\":\"Query QuickPromotionSurfaceQuery: Viewer {viewer() {eligible_promotions.trigger_context_v2(<trigger_context_v2>).ig_parameters(<ig_parameters>).trigger_name(<trigger_name>).surface_nux_id(<surface>).external_gating_permitte" +
+            "d_qps(<external_gating_permitted_qps>).supports_client_filters(true).include_holdouts(true) {edges {client_ttl_seconds,log_eligibility_waterfall,is_holdout,priority,time_range {start,end},node {id,promotion_id,logging_data,max_impressions,triggers,contextual_filters {clause_type,filters {filte" +
+            "r_type,unknown_action,value {name,required,bool_value,int_value,string_value},extra_datas {name,required,bool_value,int_value,string_value}},clauses {clause_type,filters {filter_type,unknown_action,value {name,required,bool_value,int_value,string_value},extra_datas {name,required,bool_value,in" +
+            "t_value,string_value}},clauses {clause_type,filters {filter_type,unknown_action,value {name,required,bool_value,int_value,string_value},extra_datas {name,required,bool_value,int_value,string_value}},clauses {clause_type,filters {filter_type,unknown_action,value {name,required,bool_value,int_va" +
+            "lue,string_value},extra_datas {name,required,bool_value,int_value,string_value}}}}}},is_uncancelable,template {name,parameters {name,required,bool_value,string_value,color_value,}},creatives {title {text},content {text},footer {text},social_context {text},social_context_images,primary_action{t" +
+            "itle {text},url,limit,dismiss_promotion},secondary_action{title {text},url,limit,dismiss_promotion},dismiss_action{title {text},url,limit,dismiss_promotion},image.scale(<scale>) {uri,width,height}}}}}}}\"}";
+
+        #endregion
 
         public const string DIRECT_THREAD_VIDEOCALLS_MUTE = API_SUFFIX + "/direct_v2/threads/{0}/mute_video_call/";
         public const string DIRECT_THREAD_VIDEOCALLS_UNMUTE = API_SUFFIX + "/direct_v2/threads/{0}/unmute_video_call/";
@@ -643,7 +669,10 @@ namespace InstagramApiSharp.API
         
         public const string FBSEARCH_PROFILE_SEARCH = API_SUFFIX + "/fbsearch/profile_link_search/?q={0}&count={1}";
         public const string FBSEARCH_RECENT_SEARCHES = API_SUFFIX + "/fbsearch/recent_searches/";
-        public const string FBSEARCH_SUGGESTED_SEARCHS = API_SUFFIX + "/fbsearch/suggested_searches/?type={0}";
+        public const string FBSEARCH_NULLSTATE_DYNAMIC_SECTIONS = API_SUFFIX + "/fbsearch/nullstate_dynamic_sections/?type=blended";
+        public const string FBSEARCH_REGISTER_RECENT_SEARCH_CLICK = API_SUFFIX + "/fbsearch/register_recent_search_click/";
+        public const string FBSEARCH_ACCOUNTS_RECS = API_SUFFIX + "/fbsearch/accounts_recs/?surface=discover_page&target_user_id={0}";
+        public const string FBSEARCH_SUGGESTED_SEARCHES = API_SUFFIX + "/fbsearch/suggested_searches/?type={0}";
         public const string FBSEARCH_TOPSEARCH = API_SUFFIX + "/fbsearch/topsearch/";
         public const string FBSEARCH_TOPSEARCH_FALT = API_SUFFIX + "/fbsearch/topsearch_flat/";
         public const string FBSEARCH_TOPSEARCH_FALT_PARAMETER = API_SUFFIX + "/fbsearch/topsearch_flat/?rank_token={0}&timezone_offset={1}&query={2}&context={3}";

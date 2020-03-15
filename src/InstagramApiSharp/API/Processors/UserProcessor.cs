@@ -234,10 +234,10 @@ namespace InstagramApiSharp.API.Processors
         ///     Follow user
         /// </summary>
         /// <param name="userId">User id</param>
-        public async Task<IResult<InstaFriendshipFullStatus>> FollowUserAsync(long userId)
+        public async Task<IResult<InstaFriendshipFullStatus>> FollowUserAsync(long userId, string mediaId = null, bool unfollow = false)
         {
             UserAuthValidator.Validate(_userAuthValidate);
-            return await FollowUnfollowUserInternal(userId, UriCreator.GetFollowUserUri(userId));
+            return await FollowUnfollowUserInternal(userId, UriCreator.GetFollowUserUri(userId), mediaId, unfollow);
         }
 
         /// <summary>
@@ -1352,7 +1352,7 @@ namespace InstagramApiSharp.API.Processors
         public async Task<IResult<InstaFriendshipFullStatus>> UnFollowUserAsync(long userId)
         {
             UserAuthValidator.Validate(_userAuthValidate);
-            return await FollowUnfollowUserInternal(userId, UriCreator.GetUnFollowUserUri(userId));
+            return await FollowUnfollowUserInternal(userId, UriCreator.GetUnFollowUserUri(userId), null, true);
         }
 
         /// <summary>
@@ -1551,20 +1551,19 @@ namespace InstagramApiSharp.API.Processors
             }
         }
 
-        private async Task<IResult<InstaFriendshipFullStatus>> FollowUnfollowUserInternal(long userId, Uri instaUri)
+        private async Task<IResult<InstaFriendshipFullStatus>> FollowUnfollowUserInternal(long userId, Uri instaUri, string mediaId = null, bool unfollow = false)
         {
             try
             {
-                var fields = new Dictionary<string, string>
-                {
-                    {"surface", "self_unified_follow_lists"},
-                    {"_csrftoken", _user.CsrfToken},
-                    {"user_id", userId.ToString()},
-                    {"radio_type", "wifi-none"},
-                    {"_uid", _user.LoggedInUser.Pk.ToString()},
-                    //{"device_id", _deviceInfo.DeviceId},
-                    {"_uuid", _deviceInfo.DeviceGuid.ToString()}
-                };
+                var fields = new Dictionary<string, string>();
+                if(unfollow) fields.Add("surface", "self_unified_follow_lists");
+                fields.Add("_csrftoken", _user.CsrfToken);
+                fields.Add("user_id", userId.ToString());
+                fields.Add("radio_type", "wifi-none");
+                fields.Add("_uid", _user.LoggedInUser.Pk.ToString());
+                if(!unfollow) fields.Add("device_id", _deviceInfo.AndroidId);
+                fields.Add("_uuid", _deviceInfo.DeviceGuid.ToString());
+                if(mediaId != null) fields.Add("media_id_attribution", mediaId);
                 var request =
                     _httpHelper.GetSignedRequest(HttpMethod.Post, instaUri, _deviceInfo, fields);
                 var response = await _httpRequestProcessor.SendAsync(request, true);

@@ -530,7 +530,7 @@ namespace InstagramApiSharp.API
         /// <summary>
         ///     Mockup request to act as a real user
         /// </summary>
-        Task QpBatchFetch(bool loggedIn = false);
+        Task QpBatchFetch(InstaQpBatchFetchSurfaceType surfaceType, bool loggedIn = false);
         /// <summary>
         ///     Get user media when clicked on profile tab
         /// </summary>
