@@ -3,6 +3,8 @@
     public class PromotionSettings
     {
         public bool HeadlessBrowser { get; set; }
+        public bool UseProxy { get; set; }
+        public bool UseLocalProxy { get; set; }
         public int StartingHour { get; set; }
         public int EndingHour { get; set; }
         public int MinActionInterval { get; set; }

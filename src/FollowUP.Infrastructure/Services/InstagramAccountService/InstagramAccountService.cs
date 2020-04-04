@@ -78,23 +78,25 @@ namespace FollowUP.Infrastructure.Services
                     return;
             }
 
-
-            var proxies = await _proxyRepository.GetAllAsync();
             InstagramProxy instaProxy = null;
-            foreach (var proxy in proxies)
+            if(_settings.UseProxy)
             {
-                if (proxy.ExpiryDate.ToUniversalTime() < DateTime.UtcNow || proxy.IsTaken)
-                    continue;
+                var proxies = await _proxyRepository.GetAllAsync();
+                foreach (var proxy in proxies)
+                {
+                    if (proxy.ExpiryDate.ToUniversalTime() < DateTime.UtcNow || proxy.IsTaken)
+                        continue;
 
-                instaProxy = proxy;
-                proxy.SetIsTaken(true);
-                await _proxyRepository.UpdateAsync(proxy);
-                break;
+                    instaProxy = proxy;
+                    proxy.SetIsTaken(true);
+                    await _proxyRepository.UpdateAsync(proxy);
+                    break;
+                }
+
+                if (instaProxy == null)
+                    throw new ServiceException(ErrorCodes.NoProxyAvailable, "There is no proxy available for account creation.");
             }
-
-            if (instaProxy == null)
-                throw new ServiceException(ErrorCodes.NoProxyAvailable, "There is no proxy available for account creation.");
-
+            
             var androidDevice = AndroidDeviceGenerator.GetRandomName();
 
             // If the given account doesn't exist, create one and save it to the database
@@ -105,9 +107,12 @@ namespace FollowUP.Infrastructure.Services
             var accountSettings = new AccountSettings(Guid.NewGuid(), instagramAccount.Id);
             await _instagramAccountRepository.AddAccountSettingsAsync(accountSettings);
 
-            // Give the account proper proxy
-            var accountProxy = new AccountProxy(Guid.NewGuid(), instaProxy.Id, instagramAccount.Id);
-            await _proxyRepository.AddAccountsProxyAsync(accountProxy);
+            if(_settings.UseProxy)
+            {
+                // Give the account proper proxy
+                var accountProxy = new AccountProxy(Guid.NewGuid(), instaProxy.Id, instagramAccount.Id);
+                await _proxyRepository.AddAccountsProxyAsync(accountProxy);
+            }   
         }
 
         /// <summary>
