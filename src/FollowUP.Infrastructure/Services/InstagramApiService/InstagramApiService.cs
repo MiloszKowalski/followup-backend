@@ -1,6 +1,7 @@
 ﻿using FollowUP.Core.Domain;
 using FollowUP.Core.Repositories;
 using FollowUP.Infrastructure.Services.Logging;
+using FollowUP.Infrastructure.Settings;
 using InstagramApiSharp;
 using InstagramApiSharp.API;
 using InstagramApiSharp.API.Builder;
@@ -16,6 +17,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 
@@ -26,43 +28,54 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
         private readonly IInstagramAccountRepository _accountRepository;
         private readonly IProxyRepository _proxyRepository;
         private readonly IInstaActionLogger _logger;
+        private readonly PromotionSettings _settings;
         private readonly IMemoryCache _cache;
 
         public InstagramApiService(IProxyRepository proxyRepository, IMemoryCache cache,
-                                   IInstagramAccountRepository accountRepository, IInstaActionLogger logger)
+                                   IInstagramAccountRepository accountRepository, IInstaActionLogger logger,
+                                   PromotionSettings settings)
         {
             _accountRepository = accountRepository;
             _proxyRepository = proxyRepository;
             _logger = logger;
+            _settings = settings;
             _cache = cache;
         }
 
         public async Task<IInstaApi> GetInstaApi(InstagramAccount account, bool forLogin = false)
         {
-            // Divide proxy to proper proxy parts
-            var accountProxy = await _proxyRepository.GetAccountsProxyAsync(account.Id);
-
-            if (accountProxy == null)
+            InstaProxy proxy = null;
+            if(_settings.UseProxy)
             {
-                _logger.Log($"Can't find any working proxy", InstaLogLevel.User, account);
-                await Task.Delay(5000);
-                return null;
+                // Divide proxy to proper proxy parts
+                var accountProxy = await _proxyRepository.GetAccountsProxyAsync(account.Id);
+
+                if (accountProxy == null)
+                {
+                    _logger.Log($"Can't find any working proxy", InstaLogLevel.User, account);
+                    await Task.Delay(5000);
+                    return null;
+                }
+
+                var proxyInfo = await _proxyRepository.GetAsync(accountProxy.ProxyId);
+
+                if (proxyInfo.ExpiryDate < DateTime.UtcNow)
+                {
+                    Console.WriteLine($"[{DateTime.Now}][{account.Username}] Proxy {proxyInfo.Ip} is expired, skipping...");
+                    await Task.Delay(TimeSpan.FromSeconds(5));
+                    return null;
+                }
+
+                proxy = new InstaProxy(proxyInfo.Ip, proxyInfo.Port)
+                {
+                    Credentials = new NetworkCredential(proxyInfo.Username, proxyInfo.Password)
+                };
             }
-
-            var proxyInfo = await _proxyRepository.GetAsync(accountProxy.ProxyId);
-
-            //if (proxyInfo.ExpiryDate < DateTime.UtcNow)
-            //{
-            //    Console.WriteLine($"[{DateTime.Now}][{account.Username}] Proxy {proxyInfo.Ip} is expired, skipping...");
-            //    await Task.Delay(TimeSpan.FromSeconds(5));
-            //    return null;
-            //}
-
-            var proxy = new InstaProxy("localhost", "8888");//proxyInfo.Ip, proxyInfo.Port);
-            //{
-            //    Credentials = new NetworkCredential(proxyInfo.Username, proxyInfo.Password)
-            //};
-
+            else if (_settings.UseLocalProxy)
+            {
+                proxy = new InstaProxy("127.0.0.1", "8888");
+            }
+            
             // Now create a client handler which uses that proxy
             var httpClientHandler = new HttpClientHandler() { Proxy = proxy };
 
@@ -227,7 +240,7 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
                 }
                 else
                 {
-                    _logger.Log($"Failed to unfollow profile {profiles[i].Pk} - {unfollowResponse.Info.ToString()}", InstaLogLevel.User, account, null);
+                    _logger.Log($"Failed to unfollow profile {profiles[i].Pk} - {unfollowResponse.Info}", InstaLogLevel.User, account, null);
                     return;
                 }
 
@@ -307,17 +320,17 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
                         if(suggestionsResponse.Succeeded)
                             _logger.Log($"Got suggestions after following user {media[i].User.Pk} succesfully", InstaLogLevel.Info, account, null);
                         else
-                            _logger.Log($"Getting suggestions after following user {media[i].User.Pk} failed - {suggestionsResponse.Info.ToString()}", InstaLogLevel.Info, account, null);
+                            _logger.Log($"Getting suggestions after following user {media[i].User.Pk} failed - {suggestionsResponse.Info}", InstaLogLevel.Info, account, null);
                     }
                     else
                     {
-                        _logger.Log($"Failed to follow user {media[i].User.Pk} - {followResponse.Info.ToString()}", InstaLogLevel.User, account, null);
+                        _logger.Log($"Failed to follow user {media[i].User.Pk} - {followResponse.Info}", InstaLogLevel.User, account, null);
                         return;
                     }
                 }
                 else
                 {
-                    _logger.Log($"Failed to like media {media[i].Code} - {likeResponse.Info.ToString()}", InstaLogLevel.User, account, null);
+                    _logger.Log($"Failed to like media {media[i].Code} - {likeResponse.Info}", InstaLogLevel.User, account, null);
                     return;
                 }
 
