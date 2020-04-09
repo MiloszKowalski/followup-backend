@@ -3335,6 +3335,14 @@ namespace InstagramApiSharp.API
                         surfacesToTriggers = InstaApiConstants.SURFACES_TO_TRIGGERS_HASHTAG_FEED_TOOLTIP;
                         surfacesToQueries = InstaApiConstants.SURFACES_TO_QUERIES_HASHTAG_FEED_TOOLTIP;
                         break;
+                    case InstaQpBatchFetchSurfaceType.GetUserProfile:
+                        surfacesToTriggers = InstaApiConstants.SURFACES_TO_TRIGGERS_GET_USER_PROFILE;
+                        surfacesToQueries = InstaApiConstants.SURFACES_TO_QUERIES_GET_USER_PROFILE;
+                        break;
+                    case InstaQpBatchFetchSurfaceType.InstagramSurvey:
+                        surfacesToTriggers = InstaApiConstants.SURFACES_TO_TRIGGERS_INSTAGRAM_SURVEY;
+                        surfacesToQueries = InstaApiConstants.SURFACES_TO_QUERIES_INSTAGRAM_SURVEY;
+                        break;
                     default:
                         surfacesToTriggers = InstaApiConstants.SURFACES_TO_TRIGGERS_OTHER_LOGGED_IN_USER;
                         surfacesToQueries = InstaApiConstants.SURFACES_TO_QUERIES_OTHER_LOGGED_IN_USER;
@@ -3517,6 +3525,10 @@ namespace InstagramApiSharp.API
         {
             await SendGetRequestAsync(UriCreator.GetUserFeedCapabilitiesUri(userPk), true);
         }
+        public async Task GetUnfollowChainingCount(long userPk)
+        {
+            await SendGetRequestAsync(UriCreator.GetUnfollowChainingCountUri(userPk), true);
+        }
         public async Task GetCommerceBagCount()
         {
             await SendGetRequestAsync(UriCreator.GetCommerceBagCountUri(), true);
@@ -3524,6 +3536,10 @@ namespace InstagramApiSharp.API
         public async Task GetProfileSuBadge()
         {
             await SendGetRequestAsync(UriCreator.GetProfileSuBadgeUri(), true);
+        }
+        public async Task GetArlinkDownloadInfo()
+        {
+            await SendGetRequestAsync(UriCreator.GetArlinkDownloadInfoUri(), true);
         }
         public async Task<IResult<bool>> GetProfileArchiveBadge()
         {
@@ -3619,26 +3635,30 @@ namespace InstagramApiSharp.API
                 var data = new JObject();
                 var cookies = _httpRequestProcessor.HttpHandler.CookieContainer
                 .GetCookies(_httpRequestProcessor.Client.BaseAddress);
+
                 var csrftoken = cookies[InstaApiConstants.CSRFTOKEN]?.Value;
                 if (!string.IsNullOrEmpty(csrftoken))
                     data.Add("_csrftoken", csrftoken);
                 else if (!string.IsNullOrEmpty(_user.CsrfToken))
                     data.Add("_csrftoken", _user.CsrfToken);
+
+                string experiments = isAfterLogin ? InstaApiConstants.AFTER_LOGIN_EXPERIMENTS_CONFIGS : InstaApiConstants.LOGIN_EXPERIMENTS_CONFIGS;
+
                 if (IsUserAuthenticated && _user?.LoggedInUser != null)
                 {
                     if(isAfterLogin)
                     {
                         data.Add("id", _user.LoggedInUser.Pk.ToString());
-                        data.Add("_uid", _user.LoggedInUser.Pk.ToString());
-                        data.Add("_uuid", _deviceInfo.DeviceGuid.ToString());
-                        data.Add("experiments", InstaApiConstants.AFTER_LOGIN_EXPERIMENTS_CONFIGS);
                     }
                     else
                     {
-                        data.Add("id", _deviceInfo.DeviceGuid.ToString());
-                        data.Add("experiments", InstaApiConstants.LOGIN_EXPERIMENTS_CONFIGS);
+                        data.Add("id", _deviceInfo.DeviceGuid.ToString()); 
                     }
+
+                    data.Add("_uid", _user.LoggedInUser.Pk.ToString());
+                    data.Add("_uuid", _deviceInfo.DeviceGuid.ToString());
                     data.Add("server_config_retrieval", "1");
+                    data.Add("experiments", experiments);
                 }
                 else
                 {

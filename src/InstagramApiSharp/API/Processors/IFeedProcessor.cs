@@ -54,7 +54,7 @@ namespace InstagramApiSharp.API.Processors
         /// <returns>
         ///     <see cref="T:InstagramApiSharp.Classes.Models.InstaActivityFeed" />
         /// </returns>
-        Task<IResult<InstaActivityFeed>> GetRecentActivityFeedAsync(PaginationParameters paginationParameters);
+        Task<IResult<InstaActivityFeed>> GetRecentActivityFeedAsync(PaginationParameters paginationParameters, bool? markAsSeen = null);
 
         /// <summary>
         ///     Get saved media feeds asynchronously

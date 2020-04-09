@@ -45,7 +45,7 @@ namespace InstagramApiSharp.Helpers
             request.Headers.Add(InstaApiConstants.HEADER_X_IG_MAPPED_LOCALE, InstaApiConstants.ACCEPT_LANGUAGE.Replace("-", "_"));
             request.Headers.Add(InstaApiConstants.HEADER_X_IG_DEVICE_LOCALE, InstaApiConstants.ACCEPT_LANGUAGE.Replace("-", "_"));
             request.Headers.Add(InstaApiConstants.HEADER_PIGEON_SESSION_ID, deviceInfo.PigeonSessionId.ToString());
-            request.Headers.Add(InstaApiConstants.HEADER_PIGEON_RAWCLINETTIME, $"{DateTime.UtcNow.ToUnixTimeMilliseconds()/1000}.{(DateTime.UtcNow.ToUnixTimeMilliseconds()%1000).ToString("D3")}");
+            request.Headers.Add(InstaApiConstants.HEADER_PIGEON_RAWCLINETTIME, $"{DateTime.UtcNow.ToUnixTimeMilliseconds() / 1000}.{DateTime.UtcNow.ToUnixTimeMilliseconds() % 1000:D3}");
             request.Headers.Add(InstaApiConstants.HEADER_X_IG_CONNECTION_SPEED, "-1kbps");
             request.Headers.Add(InstaApiConstants.HEADER_X_IG_BANDWIDTH_SPEED_KBPS, deviceInfo.IGBandwidthSpeedKbps);
             request.Headers.Add(InstaApiConstants.HEADER_X_IG_BANDWIDTH_TOTALBYTES_B, deviceInfo.IGBandwidthTotalBytesB);
@@ -135,7 +135,8 @@ namespace InstagramApiSharp.Helpers
         public HttpRequestMessage GetSignedRequest(HttpMethod method,
             Uri uri,
             AndroidDevice deviceInfo,
-            Dictionary<string, string> data)
+            Dictionary<string, string> data,
+            bool addDField = false)
         {
             var hash = CryptoHelper.CalculateHash(_apiVersion.SignatureKey,
                 JsonConvert.SerializeObject(data));
@@ -152,6 +153,7 @@ namespace InstagramApiSharp.Helpers
             request.Properties.Add(InstaApiConstants.HEADER_IG_SIGNATURE, signature);
             request.Properties.Add(InstaApiConstants.HEADER_IG_SIGNATURE_KEY_VERSION,
                 InstaApiConstants.IG_SIGNATURE_KEY_VERSION);
+            if(addDField) request.Properties.Add("d", "1");
             return request;
         }
         public HttpRequestMessage GetSignedRequest(HttpMethod method,

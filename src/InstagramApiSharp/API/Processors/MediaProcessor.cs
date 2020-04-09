@@ -1425,7 +1425,8 @@ namespace InstagramApiSharp.API.Processors
                     //{"device_id", _deviceInfo.DeviceId}
                 };
                 var request =
-                    _httpHelper.GetSignedRequest(HttpMethod.Post, instaUri, _deviceInfo, fields);
+                    _httpHelper.GetSignedRequest(HttpMethod.Post, instaUri, _deviceInfo, fields, true);
+
                 var response = await _httpRequestProcessor.SendAsync(request, true);
                 var json = await response.Content.ReadAsStringAsync();
                 return response.StatusCode == HttpStatusCode.OK

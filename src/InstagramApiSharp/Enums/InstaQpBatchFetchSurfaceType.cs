@@ -4,6 +4,8 @@
     {
         IstagramOtherLoggedInUserIdLoaded,
         InstagramExploreHeader,
-        InstagramHashtagFeedTooltip
+        InstagramHashtagFeedTooltip,
+        GetUserProfile,
+        InstagramSurvey
     }
 }

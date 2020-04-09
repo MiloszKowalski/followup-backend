@@ -400,7 +400,7 @@ namespace InstagramApiSharp.API.Processors
             {
                 var userUri = UriCreator.GetUserFriendshipUri(userId);
                 var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, userUri, _deviceInfo);
-                var response = await _httpRequestProcessor.SendAsync(request);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
                 var json = await response.Content.ReadAsStringAsync();
                 if (response.StatusCode != HttpStatusCode.OK)
                     return Result.UnExpectedResponse<InstaStoryFriendshipStatus>(response, json);
@@ -939,7 +939,7 @@ namespace InstagramApiSharp.API.Processors
         /// </summary>
         /// <param name="pk">User Id, like "123123123"</param>
         /// <returns></returns>
-        public async Task<IResult<InstaUserInfo>> GetUserInfoByIdAsync(long pk, bool selfProfile = false)
+        public async Task<IResult<InstaUserInfo>> GetUserInfoByIdAsync(long pk, bool? selfProfile = null)
         {
             UserAuthValidator.Validate(_userAuthValidate);
             try
@@ -1859,7 +1859,7 @@ namespace InstagramApiSharp.API.Processors
             {
                 var instaUri = UriCreator.GetUserMediaListUri(userId, paginationParameters.NextMaxId);
                 var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, instaUri, _deviceInfo);
-                var response = await _httpRequestProcessor.SendAsync(request);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
                 var json = await response.Content.ReadAsStringAsync();
 
                 if (response.StatusCode != HttpStatusCode.OK)
@@ -1921,9 +1921,9 @@ namespace InstagramApiSharp.API.Processors
             {
                 var data = new JObject
                 {
-                    {"_uuid", _deviceInfo.DeviceGuid.ToString()},
-                    {"_uid", _user.LoggedInUser.Pk.ToString()},
                     {"_csrftoken", _user.CsrfToken},
+                    {"_uid", _user.LoggedInUser.Pk.ToString()},
+                    {"_uuid", _deviceInfo.DeviceGuid.ToString()},
                 };
                 switch (muteUnmuteOption)
                 {
@@ -1940,7 +1940,7 @@ namespace InstagramApiSharp.API.Processors
                 }
                 var request =
                     _httpHelper.GetSignedRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
-                var response = await _httpRequestProcessor.SendAsync(request);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
                 var json = await response.Content.ReadAsStringAsync();
                 var obj = JsonConvert.DeserializeObject<InstaDefault>(json);
 

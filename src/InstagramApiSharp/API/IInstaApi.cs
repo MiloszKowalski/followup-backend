@@ -526,6 +526,10 @@ namespace InstagramApiSharp.API
         /// <summary>
         ///     Mockup request to act as a real user
         /// </summary>
+        Task GetArlinkDownloadInfo();
+        /// <summary>
+        ///     Mockup request to act as a real user
+        /// </summary>
         Task<IResult<bool>> GetProfileArchiveBadge();
         /// <summary>
         ///     Mockup request to act as a real user
@@ -539,6 +543,10 @@ namespace InstagramApiSharp.API
         ///     Get user media when clicked on profile tab
         /// </summary>
         Task GetUserFeedCapabilities(long userPk);
+        /// <summary>
+        ///     Get user media when clicked on profile tab
+        /// </summary>
+        Task GetUnfollowChainingCount(long userPk);
         /// <summary>
         ///     Send requests after fetching feed to act as a real user
         /// </summary>

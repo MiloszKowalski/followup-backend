@@ -117,6 +117,14 @@ namespace InstagramApiSharp.Helpers
                 throw new Exception("Cant create URI for getting media likers");
             return instaUri;
         }
+        
+        public static Uri GetUnfollowChainingCountUri(long userId)
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.FRIENDSHIPS_UNFOLLOW_CHAINING_COUNT, userId),
+                out var instaUri))
+                throw new Exception("Cant create URI for getting unfollow chaining count");
+            return instaUri;
+        }
 
         public static Uri GetBroadcastAddToPostLiveUri(string broadcastId)
         {
@@ -287,9 +295,9 @@ namespace InstagramApiSharp.Helpers
             if (!apiPath.EndsWith("/"))
                 apiPath += "/";
             if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.API_SUFFIX + apiPath +
-                $"?guid={device.PhoneGuid.ToString()}&device_id={device.DeviceGuid.ToString()}" +
-                $"&android_device_id={device.DeviceId.ToString()}&phone_id={device.PhoneGuid.ToString()}" +
-                $"&_uuid={device.DeviceGuid.ToString()}", out var instaUri))
+                $"?guid={device.PhoneGuid}&device_id={device.DeviceGuid}" +
+                $"&android_device_id={device.DeviceId}&phone_id={device.PhoneGuid}" +
+                $"&_uuid={device.DeviceGuid}", out var instaUri))
                 throw new Exception("Cant create URI for challenge require url");
             return instaUri;
         }
@@ -865,6 +873,13 @@ namespace InstagramApiSharp.Helpers
                .AddQueryParameter("is_charging", "1")
                .AddQueryParameter("will_sound_on", "0");
         }
+        
+        public static Uri GetGetFbSuggestionsUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.FB_GET_INVITE_SUGGESTIONS, out var instaUri))
+                throw new Exception("Cant create URI for fb suggestions");
+            return instaUri;
+        }
 
         public static Uri GetHighlightsArchiveUri()
         {
@@ -1225,13 +1240,12 @@ namespace InstagramApiSharp.Helpers
             return instaUri;
         }
 
-        public static Uri GetRecentActivityUri()
+        public static Uri GetRecentActivityUri(bool? markAsSeen = null)
         {
             if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.GET_RECENT_ACTIVITY, out var instaUri))
                 throw new Exception("Cant create URI (get recent activity)");
-            //var query = $"activity_module=all";
-            //var uriBuilder = new UriBuilder(instaUri) { Query = query };
-            return instaUri;
+
+            return instaUri.AddQueryParameterIfNotEmpty("mark_as_seen", markAsSeen.ToString());
         }
 
         public static Uri GetRecentRecipientsUri()
@@ -1527,13 +1541,6 @@ namespace InstagramApiSharp.Helpers
             return instaUri;
         }
         
-        public static Uri GetNullStateDynamicSectionsUri()
-        {
-            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.FBSEARCH_NULLSTATE_DYNAMIC_SECTIONS, out var instaUri))
-                throw new Exception("Cant create URI for null state dynamic sections");
-            return instaUri;
-        }
-        
         public static Uri GetRegisterRecentSearchClickUri()
         {
             if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.FBSEARCH_REGISTER_RECENT_SEARCH_CLICK, out var instaUri))
@@ -1765,11 +1772,12 @@ namespace InstagramApiSharp.Helpers
             return instaUri;
         }
 
-        public static Uri GetUserInfoByIdUri(long pk, bool selfProfile)
+        public static Uri GetUserInfoByIdUri(long pk, bool? selfProfile = null)
         {
             if (!Uri.TryCreate(BaseInstagramUri, string.Format(InstaApiConstants.GET_USER_INFO_BY_ID, pk), out var instaUri))
                 throw new Exception("Cant create user info by identifier URI");
-            if(selfProfile) instaUri.AddQueryParameter("from_module", "self_profile");
+            if(selfProfile == true) instaUri.AddQueryParameter("from_module", "self_profile");
+            else if(selfProfile == false) instaUri.AddQueryParameter("from_module", "feed_contextual_hashtag");
             return instaUri;
         }
 
@@ -1803,10 +1811,8 @@ namespace InstagramApiSharp.Helpers
 
             instaUri
                 .AddQueryParameter("exclude_comment", excludeComment.ToString())
+                .AddQueryParameterIfNotEmpty("max_id", nextId)
                 .AddQueryParameter("only_fetch_first_carousel_media", "false");
-
-            if (nextId != "")
-                instaUri.AddQueryParameter("max_id", nextId);
 
             return instaUri;
         }
@@ -2591,6 +2597,12 @@ namespace InstagramApiSharp.Helpers
                 throw new Exception("Cant create URI for get profile su badge");
             return instaUri;
         }
+        public static Uri GetMarkSuSeenUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.MARK_SU_SEEN, out var instaUri))
+                throw new Exception("Cant create URI for mark su seen");
+            return instaUri;
+        }
         public static Uri GetProfileArchiveBadgeUri()
         {
             if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.PROFILE_ARCHIVE_BADGE, out var instaUri))
@@ -2630,6 +2642,12 @@ namespace InstagramApiSharp.Helpers
         public static Uri GetQeSyncUri()
         {
             if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.QE_SYNC, out var instaUri))
+                throw new Exception("Cant create URI for qe sync");
+            return instaUri;
+        }
+        public static Uri GetArlinkDownloadInfoUri()
+        {
+            if (!Uri.TryCreate(BaseInstagramUri, InstaApiConstants.ARLINK_DOWNLOAD_INFO, out var instaUri))
                 throw new Exception("Cant create URI for qe sync");
             return instaUri;
         }
