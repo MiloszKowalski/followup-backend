@@ -155,42 +155,57 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
         // TODO: preloaded reel ids
         public async Task SendColdStartMockupRequests(IInstaApi instaApi, InstagramAccount account)
         {
-            await instaApi.StoryProcessor.GetStoryFeedWithPostMethodAsync(/* preloaded reel ids */);
-            await instaApi.FeedProcessor.GetUserTimelineFeedAsync(PaginationParameters.MaxPagesToLoad(1));
-            await instaApi.LauncherSyncAsync(false);
-            await instaApi.QeSync(false);
-            await instaApi.LauncherSyncAsync(true);
-            await instaApi.QeSync(true);
-            await instaApi.GetLoomConfigAsync();
-            await instaApi.GetLinkageStatusAsync();
-            await instaApi.GetBusinessBrandedContentAsync();
-            await instaApi.GetBusinessEligibilityAsync();
-            await instaApi.GetAccountFamilyAsync();
-            await instaApi.FeedProcessor.GetRecentActivityFeedAsync(PaginationParameters.MaxPagesToLoad(1));
-            // arlink
-            await instaApi.FeedProcessor.GetTopicalExploreFeedAfterLogin();
-            await instaApi.PushProcessor.RegisterPushAsync(InstaPushChannelType.Mqtt);
-            await instaApi.BusinessProcessor.GetBusinessAccountInformationAsync();
-            await instaApi.MessagingProcessor.GetUsersPresenceAsync();
-            await instaApi.GetViewableStatusesAsync();
-            await instaApi.GetBanyanSuggestionsAsync();
-            await instaApi.MessagingProcessor.GetDirectInboxAsync(PaginationParameters.MaxPagesToLoad(1), 1);
-            await instaApi.GetUserScoresAsync();
-            await instaApi.GetNotificationBadge();
+            var coldStartRequests = new List<Task>
+            {
+                instaApi.StoryProcessor.GetStoryFeedWithPostMethodAsync(/* preloaded reel ids */),
+                instaApi.FeedProcessor.GetUserTimelineFeedAsync(PaginationParameters.MaxPagesToLoad(1)),
+                instaApi.LauncherSyncAsync(false),
+                instaApi.QeSync(false),
+                instaApi.LauncherSyncAsync(true),
+                instaApi.QeSync(true),
+                instaApi.DiscoverProcessor.MarkSuSeen(),
+                instaApi.MediaProcessor.GetBlockedMediasAsync(),
+                instaApi.StoryProcessor.GetUsersStoriesAsHighlightsAsync(instaApi.GetLoggedUser().LoggedInUser.Pk.ToString()),
+                instaApi.GetLoomConfigAsync(),
+                instaApi.GetLinkageStatusAsync(),
+                // Not required(?): instaApi.GetBusinessBrandedContentAsync()),
+                instaApi.GetBusinessEligibilityAsync(),
+                instaApi.GetAccountFamilyAsync(),
+                instaApi.GetArlinkDownloadInfo(),
+                instaApi.FeedProcessor.GetRecentActivityFeedAsync(PaginationParameters.MaxPagesToLoad(1), false),
+                instaApi.GetViewableStatusesAsync(),
+                instaApi.FeedProcessor.GetTopicalExploreFeedAfterLogin(),
+                instaApi.BusinessProcessor.GetBusinessAccountInformationAsync(),
+                instaApi.GetBanyanSuggestionsAsync(),
+                instaApi.MessagingProcessor.GetDirectInboxAsync(PaginationParameters.MaxPagesToLoad(1), 1),
+                instaApi.GetNotificationBadge(),
+                instaApi.PushProcessor.RegisterPushAsync(InstaPushChannelType.Mqtt),
+                instaApi.MessagingProcessor.GetUsersPresenceAsync(),
+                instaApi.GetUserScoresAsync(),
+            };
+
+            await Task.WhenAll(coldStartRequests);
+
             instaApi.SetDevice(instaApi.GetCurrentDevice().RandomizeBandwithConnection());
             _logger.Log("Sent cold startup mockup requests.", InstaLogLevel.Info, account);
         }
 
         public async Task GetUserProfileMockAsync(IInstaApi instaApi, InstagramAccount account)
         {
-            await instaApi.QpBatchFetch(InstaQpBatchFetchSurfaceType.IstagramOtherLoggedInUserIdLoaded, true);
             var userPk = instaApi.GetLoggedUser().LoggedInUser.Pk;
-            await instaApi.GetInitialUserFeedAsync(userPk);
-            await instaApi.UserProcessor.GetUserInfoByIdAsync(userPk, true);
-            await instaApi.GetUserFeedCapabilities(userPk);
-            await instaApi.StoryProcessor.GetHighlightFeedsAsync(userPk);
-            await instaApi.GetProfileSuBadge();
-            await instaApi.GetProfileArchiveBadge();
+            var userProfileRequests = new List<Task>()
+            {
+                instaApi.QpBatchFetch(InstaQpBatchFetchSurfaceType.IstagramOtherLoggedInUserIdLoaded, true),
+                instaApi.GetInitialUserFeedAsync(userPk),
+                instaApi.UserProcessor.GetUserInfoByIdAsync(userPk, true),
+                instaApi.GetUserFeedCapabilities(userPk),
+                instaApi.StoryProcessor.GetHighlightFeedsAsync(userPk),
+                instaApi.GetProfileSuBadge(),
+                instaApi.GetProfileArchiveBadge(),
+            };
+            
+            await Task.WhenAll(userProfileRequests);
+
             _logger.Log("Sent user profile mock requests.", InstaLogLevel.Info, account);
         }
 
@@ -258,7 +273,7 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
         {
             instaApi.SetDevice(instaApi.GetCurrentDevice().RandomizeBandwithConnection());
             await instaApi.DiscoverProcessor.GetSuggestedSearchesAsync(InstaDiscoverSearchType.Users);
-            await instaApi.DiscoverProcessor.GetNullStateDynamicSections();
+            await instaApi.DiscoverProcessor.GetDynamicSearchesAsync(InstaDiscoverSearchType.Blended);
             await instaApi.DiscoverProcessor.GetRecentSearchesAsync();
             await instaApi.FeedProcessor.GetTopicalExploreFeedAsync(PaginationParameters.MaxPagesToLoad(1));
             await instaApi.QpBatchFetch(InstaQpBatchFetchSurfaceType.InstagramExploreHeader);
@@ -287,7 +302,8 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
             var stories = await instaApi.HashtagProcessor.GetHashtagStoriesAsync(tag);
             await instaApi.HashtagProcessor.GetHashtagInfoAsync(tag);
 
-            var media = await instaApi.HashtagProcessor.GetHashtagsSectionsAsync(tag, PaginationParameters.MaxPagesToLoad(1), true, InstaHashtagSectionType.Recent);
+            var media = await instaApi.HashtagProcessor.GetHashtagsSectionsAsync(tag, PaginationParameters.MaxPagesToLoad(1),
+                                                                                        true, InstaHashtagSectionType.Recent);
             if (!media.Succeeded)
                 return;
 
@@ -306,27 +322,14 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
 
             for (int i = 0; i < count; i++)
             {
+                // instaApi.UserProcessor.MuteUserMediaAsync() for muting
                 var likeResponse = await instaApi.MediaProcessor.LikeMediaAsync(media[i].InstaIdentifier, i + 1);
 
                 if (likeResponse.Succeeded)
                 {
                     _logger.Log($"Liked media {media[i].Code} succesfully", InstaLogLevel.User, account, null);
                     await Task.Delay(random.Next(750, 3000));
-                    var followResponse = await instaApi.UserProcessor.FollowUserAsync(media[i].User.Pk);
-                    if(followResponse.Succeeded)
-                    {
-                        _logger.Log($"Followed user {media[i].User.Pk} succesfully", InstaLogLevel.User, account, null);
-                        var suggestionsResponse = await instaApi.DiscoverProcessor.GetAccountsRecsAsync(instaApi.GetLoggedUser().LoggedInUser.Pk);
-                        if(suggestionsResponse.Succeeded)
-                            _logger.Log($"Got suggestions after following user {media[i].User.Pk} succesfully", InstaLogLevel.Info, account, null);
-                        else
-                            _logger.Log($"Getting suggestions after following user {media[i].User.Pk} failed - {suggestionsResponse.Info}", InstaLogLevel.Info, account, null);
-                    }
-                    else
-                    {
-                        _logger.Log($"Failed to follow user {media[i].User.Pk} - {followResponse.Info}", InstaLogLevel.User, account, null);
-                        return;
-                    }
+                    await FollowUserAsync(instaApi, account, media[i].User.Pk, media[i].Pk, false);
                 }
                 else
                 {
@@ -339,6 +342,54 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
 
             media.RemoveRange(0, count);
             _cache.Set($"{account.Id}-hashtag-{tag}-media", media);
+        }
+
+        private async Task<bool> FollowUserAsync(IInstaApi instaApi, InstagramAccount account, long userId,
+                                                                string mediaId = null, bool muteUser = false)
+        {
+            if(muteUser) await GetUserProfileAsync(instaApi, userId);
+            var followResponse = await instaApi.UserProcessor.FollowUserAsync(userId, mediaId);
+            if (followResponse.Succeeded)
+            {
+                _logger.Log($"Followed user {userId} succesfully", InstaLogLevel.User, account, null);
+
+                if(muteUser)
+                {
+                    var random = new Random();
+                    await instaApi.DiscoverProcessor.GetChainingUsersAsync(userId);
+                    await instaApi.GetUnfollowChainingCount(userId);
+                    await instaApi.QpBatchFetch(InstaQpBatchFetchSurfaceType.InstagramSurvey, true);
+                    await Task.Delay(random.Next(300, 500));
+                    await instaApi.UserProcessor.MuteUserMediaAsync(userId, InstaMuteOption.Post);
+                    await Task.Delay(random.Next(300, 500));
+                    await instaApi.UserProcessor.MuteUserMediaAsync(userId, InstaMuteOption.Story);
+                }
+                else
+                {
+                    await instaApi.DiscoverProcessor.GetAccountsRecsAsync(userId);
+                }
+            }
+            else
+            {
+                _logger.Log($"Failed to follow user {userId} - {followResponse.Info}", InstaLogLevel.User, account, null);
+            }
+
+            return followResponse.Succeeded;
+        }
+
+        private async Task GetUserProfileAsync(IInstaApi instaApi, long userId)
+        {
+            var tasks = new List<Task> {
+                instaApi.UserProcessor.GetFriendshipStatusAsync(userId),
+                instaApi.UserProcessor.GetUserMediaByIdAsync(userId, PaginationParameters.MaxPagesToLoad(2)),
+                instaApi.UserProcessor.GetUserInfoByIdAsync(userId, false),
+                instaApi.QpBatchFetch(InstaQpBatchFetchSurfaceType.GetUserProfile, true),
+                instaApi.GetUserFeedCapabilities(userId),
+                instaApi.StoryProcessor.GetHighlightFeedsAsync(userId),
+                instaApi.TVProcessor.GetChannelByIdAsync(userId, PaginationParameters.MaxPagesToLoad(1))
+            };
+
+            await Task.WhenAll(tasks);
         }
     }
 }

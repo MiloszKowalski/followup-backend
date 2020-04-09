@@ -228,7 +228,7 @@ namespace InstagramApiSharp.API.Processors
         /// </summary>
         /// <param name="pk">User Id, like "123123123"</param>
         /// <returns></returns>
-        Task<IResult<InstaUserInfo>> GetUserInfoByIdAsync(long pk, bool selfProfile = false);
+        Task<IResult<InstaUserInfo>> GetUserInfoByIdAsync(long pk, bool? selfProfile = null);
 
         /// <summary>
         ///     Gets the user extended information (followers count, following count, bio, etc) by username.
@@ -315,7 +315,7 @@ namespace InstagramApiSharp.API.Processors
         ///     Mute user media (story, post or all)
         /// </summary>
         /// <param name="userId">User id (pk)</param>
-        /// <param name="unmuteOption">Unmute option</param>
+        /// <param name="muteOption">Mute option</param>
         Task<IResult<InstaStoryFriendshipStatus>> MuteUserMediaAsync(long userId, InstaMuteOption muteOption);
 
         /// <summary>

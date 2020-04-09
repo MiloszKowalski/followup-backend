@@ -326,26 +326,34 @@ namespace InstagramApiSharp.API.Processors
                 var instaUri = UriCreator.GetIGTVChannelUri();
                 var data = new JObject
                 {
-                    {"_uuid", _deviceInfo.DeviceGuid.ToString()},
-                    {"_uid", _user.LoggedInUser.Pk.ToString()},
+                    {"phone_id", _deviceInfo.PhoneGuid.ToString()},
+                    {"battery_level", "100"},
                     {"_csrftoken", _user.CsrfToken}
                 };
                 if (channelType != null)
                     data.Add("id", channelType.Value.GetRealChannelType());
                 else
                     data.Add("id", $"user_{userId}");
+
+                data.Add("_uuid", _deviceInfo.DeviceGuid.ToString());
+                data.Add("is_charging", "0");
+                data.Add("is_dark_mode", "false");
+                data.Add("will_sound_on", "0");
+                
+
                 if (paginationParameters != null && !string.IsNullOrEmpty(paginationParameters.NextMaxId))
                     data.Add("max_id", paginationParameters.NextMaxId);
                 var request = _httpHelper.GetSignedRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
 
                 var rnd = new Random();
                 request.Headers.Add("X-Ads-Opt-Out", "0");
+                request.Headers.Add("X-Attribution-ID", _deviceInfo.AttributionGuid.ToString());
                 request.Headers.Add("X-Google-AD-ID", _deviceInfo.GoogleAdId.ToString());
                 request.Headers.Add("X-DEVICE-ID", _deviceInfo.DeviceGuid.ToString());
                 request.Headers.Add("X-CM-Bandwidth-KBPS", $"{rnd.Next(678, 987)}.{rnd.Next(321, 876)}");
                 request.Headers.Add("X-CM-Latency", $"{rnd.Next(100, 250)}.{rnd.Next(321, 876)}");
 
-                var response = await _httpRequestProcessor.SendAsync(request);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
                 var json = await response.Content.ReadAsStringAsync();
                 
                 if (response.StatusCode != HttpStatusCode.OK)

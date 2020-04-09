@@ -224,13 +224,13 @@ namespace InstagramApiSharp.API.Processors
             }
         }
 
-        public async Task<IResult<InstaDynamicSearch>> GetDynamicSearchesAsync()
+        public async Task<IResult<InstaDynamicSearch>> GetDynamicSearchesAsync(InstaDiscoverSearchType type)
         {
             try
             {
                 var instaUri = UriCreator.GetDynamicSearchUri(InstaDiscoverSearchType.Blended);
                 var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, instaUri, _deviceInfo);
-                var response = await _httpRequestProcessor.SendAsync(request);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
                 var json = await response.Content.ReadAsStringAsync();
 
                 if (response.StatusCode != HttpStatusCode.OK)
@@ -267,7 +267,7 @@ namespace InstagramApiSharp.API.Processors
             {
                 var instaUri = UriCreator.GetDiscoverChainingUri(userId);
                 var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, instaUri, _deviceInfo);
-                var response = await _httpRequestProcessor.SendAsync(request);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
                 var json = await response.Content.ReadAsStringAsync();
 
                 if (response.StatusCode != HttpStatusCode.OK)
@@ -316,13 +316,6 @@ namespace InstagramApiSharp.API.Processors
                 _logger?.LogException(exception);
                 return Result.Fail<InstaDiscoverRecentSearches>(exception);
             }
-        }
-
-        public async Task GetNullStateDynamicSections()
-        {
-            var instaUri = UriCreator.GetNullStateDynamicSectionsUri();
-            var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, instaUri, _deviceInfo);
-            await _httpRequestProcessor.SendAsync(request, true);
         }
 
         /// <summary>
@@ -655,6 +648,39 @@ namespace InstagramApiSharp.API.Processors
                 var response = await _httpRequestProcessor.SendAsync(request);
                 var json = await response.Content.ReadAsStringAsync();
                 Debug.WriteLine(json);
+                if (response.StatusCode != HttpStatusCode.OK)
+                    return Result.UnExpectedResponse<InstaDefaultResponse>(response, json);
+                var obj = JsonConvert.DeserializeObject<InstaDefaultResponse>(json);
+                return Result.Success(obj);
+            }
+            catch (HttpRequestException httpException)
+            {
+                _logger?.LogException(httpException);
+                return Result.Fail(httpException, default(InstaDefaultResponse), ResponseType.NetworkProblem);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogException(exception);
+                return Result.Fail<InstaDefaultResponse>(exception);
+            }
+        }
+
+        public async Task<IResult<object>> MarkSuSeen()
+        {
+            try
+            {
+                var instaUri = UriCreator.GetMarkSuSeenUri();
+                
+                var data = new Dictionary<string, string>
+                {
+                    {"_csrftoken", _user.CsrfToken},
+                    {"_uuid", _deviceInfo.DeviceGuid.ToString()}
+                };
+
+                var request = _httpHelper.GetDefaultRequest(HttpMethod.Get, instaUri, _deviceInfo, data);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
+                var json = await response.Content.ReadAsStringAsync();
+
                 if (response.StatusCode != HttpStatusCode.OK)
                     return Result.UnExpectedResponse<InstaDefaultResponse>(response, json);
                 var obj = JsonConvert.DeserializeObject<InstaDefaultResponse>(json);

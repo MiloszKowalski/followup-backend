@@ -501,6 +501,7 @@ namespace InstagramApiSharp.API.Processors
                 return Result.Fail<InstaHighlightShortList>(exception);
             }
         }
+
         public async Task<IResult<InstaUserStoriesFeeds>> GetUsersStoriesAsHighlightsAsync(params string[] usersIds)
         {
             UserAuthValidator.Validate(_userAuthValidate);
@@ -519,7 +520,7 @@ namespace InstagramApiSharp.API.Processors
                 };
 
                 var request = _httpHelper.GetSignedRequest(HttpMethod.Post, instaUri, _deviceInfo, data);
-                var response = await _httpRequestProcessor.SendAsync(request);
+                var response = await _httpRequestProcessor.SendAsync(request, true);
                 var json = await response.Content.ReadAsStringAsync();
 
                 if (response.StatusCode != HttpStatusCode.OK) return Result.UnExpectedResponse<InstaUserStoriesFeeds>(response, json);
@@ -658,9 +659,8 @@ namespace InstagramApiSharp.API.Processors
                 var storyFeedUri = UriCreator.GetStoryFeedUri();
                 var data = new Dictionary<string, string>
                 {
-                    {InstaApiConstants.SUPPORTED_CAPABALITIES_HEADER, InstaApiConstants.SupportedCapabalities.ToString(Formatting.None)},
-                    {"_csrftoken", _user.CsrfToken},
-                    {"_uuid", _deviceInfo.DeviceGuid.ToString()},
+                    { InstaApiConstants.SUPPORTED_CAPABALITIES_HEADER, InstaApiConstants.SupportedCapabalities.ToString(Formatting.None) },
+                    { "_uuid", _deviceInfo.DeviceGuid.ToString() }
                 };
 
                 if (refresh)
@@ -668,12 +668,15 @@ namespace InstagramApiSharp.API.Processors
                 else
                     data.Add("reason", "cold_start");
 
+                data.Add(InstaApiConstants.HEADER_TIMEZONE, _instaApi.GetTimezoneOffset().ToString());
+                data.Add("_csrftoken", _user.CsrfToken);
+                data.Add("_uuid", _deviceInfo.DeviceGuid.ToString());
+
                 if (preloadedReelIds?.Length > 0)
                 {
                     data.Add("preloaded_reel_ids", string.Join(",", preloadedReelIds));
                     var preloadedReelTimestamp = new List<string>();
                     var random = new Random();
-
 
                     // TODO: Store the ids and timestamps in the device's info
                     foreach (var preloadedReelId in preloadedReelIds)

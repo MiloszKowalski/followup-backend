@@ -50,7 +50,7 @@ namespace InstagramApiSharp.API.Processors
         /// <summary>
         ///     Get dynamic searches [supports hashtags and users]
         /// </summary>
-        Task<IResult<InstaDynamicSearch>> GetDynamicSearchesAsync();
+        Task<IResult<InstaDynamicSearch>> GetDynamicSearchesAsync(InstaDiscoverSearchType type);
         /// <summary>
         ///     Get discover user chaining list 
         /// </summary>
@@ -69,7 +69,7 @@ namespace InstagramApiSharp.API.Processors
         /// <summary>
         ///     Mockup request to act as a real user
         /// </summary>
-        Task GetNullStateDynamicSections();
+        Task<IResult<object>> MarkSuSeen();
 
         /// <summary>
         /// Get top searches

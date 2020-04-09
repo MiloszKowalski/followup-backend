@@ -222,10 +222,10 @@ namespace InstagramApiSharp.API.Processors
         ///     <see cref="T:InstagramApiSharp.Classes.Models.InstaActivityFeed" />
         /// </returns>
         public async Task<IResult<InstaActivityFeed>> GetRecentActivityFeedAsync(
-            PaginationParameters paginationParameters)
+            PaginationParameters paginationParameters, bool? markAsSeen = null)
         {
             UserAuthValidator.Validate(_userAuthValidate);
-            var uri = UriCreator.GetRecentActivityUri();
+            var uri = UriCreator.GetRecentActivityUri(markAsSeen);
             return await GetRecentActivityInternalAsync(uri, paginationParameters);
         }
 
@@ -615,7 +615,7 @@ namespace InstagramApiSharp.API.Processors
                 });
 
                 var userFeedUri = UriCreator.GetUserFeedUri();
-                var data = new Dictionary<string, string>
+                var data = new Dictionary<string, string>()
                 {
                     // NOTE: First all seen posts from previous timeline feed response
                     // The numbers 10, 25, 50, 75 are the image view field precentage
@@ -662,7 +662,6 @@ namespace InstagramApiSharp.API.Processors
                     // TODO: implement saving feed_view_info media ID
                     {"feed_view_info", feedViewInfo},
                     {"phone_id", _deviceInfo.PhoneGuid.ToString()},
-                    {"last_unseen_ad_id", _deviceInfo.LastUnseenAdId.ToString()},
                     {"battery_level", "100"},
                     {"timezone_offset", _instaApi.GetTimezoneOffset().ToString()},
                     {"_csrftoken", _user.CsrfToken},
@@ -673,6 +672,7 @@ namespace InstagramApiSharp.API.Processors
                     {"will_sound_on", "0"},
                     {"session_id", Guid.NewGuid().ToString()},
                     {"bloks_versioning_id", InstaApiConstants.CURRENT_BLOKS_VERSION_ID.ToString()}
+                    // Not present in new version (?): {"last_unseen_ad_id", _deviceInfo.LastUnseenAdId.ToString()},
                 };
 
                 if (refreshRequest)
@@ -699,7 +699,6 @@ namespace InstagramApiSharp.API.Processors
                 request.Headers.Add("X-Google-AD-ID", _deviceInfo.GoogleAdId.ToString());
                 request.Headers.Add("X-DEVICE-ID", _deviceInfo.DeviceGuid.ToString());
                 request.Headers.Add("X-Attribution-ID", _deviceInfo.AttributionGuid.ToString());
-                request.Headers.Add("X-FB", "1");
                 request.Headers.Add("X-CM-Bandwidth-KBPS", $"{random.Next(500, 2000)}.{random.Next(100, 999)}");
                 request.Headers.Add("X-CM-Latency", $"{random.Next(300, 1000)}.{random.Next(100, 999)}");
 
