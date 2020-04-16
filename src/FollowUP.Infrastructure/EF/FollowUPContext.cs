@@ -18,6 +18,12 @@ namespace FollowUP.Infrastructure.EF
         public DbSet<FollowedProfile> FollowedProfiles { get; set; }
         public DbSet<AccountStatistics> AccountStatistics { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<ScheduleDay> ScheduleDays { get; set; }
+        public DbSet<ScheduleBatch> ScheduleBatches { get; set; }
+        public DbSet<MonthlyDaySchedule> MonthlyDaySchedules { get; set; }
+        public DbSet<MonthlyBatchSchedule> MonthlyBatchSchedules { get; set; }
+        public DbSet<DayBatch> DayBatches { get; set; }
+        public DbSet<DailyPromotionSchedule> DailyPromotionSchedules { get; set; }
 
         public FollowUPContext(DbContextOptions<FollowUPContext> options, SqlSettings settings) : base(options)
         {
@@ -72,6 +78,24 @@ namespace FollowUP.Infrastructure.EF
 
             var refreshTokensItemBuilder = modelBuilder.Entity<RefreshToken>();
             refreshTokensItemBuilder.HasKey(x => x.Id);
+            
+            var scheduleDaysItemBuilder = modelBuilder.Entity<ScheduleDay>();
+            scheduleDaysItemBuilder.HasKey(x => x.Id);
+
+            var scheduleBatchesItemBuilder = modelBuilder.Entity<ScheduleBatch>();
+            scheduleBatchesItemBuilder.HasKey(x => x.Id);
+
+            var monthlyDaySchedulesItemBuilder = modelBuilder.Entity<MonthlyDaySchedule>();
+            monthlyDaySchedulesItemBuilder.HasKey(x => x.Id);
+
+            var monthlyBatchSchedulesItemBuilder = modelBuilder.Entity<MonthlyBatchSchedule>();
+            monthlyDaySchedulesItemBuilder.HasKey(x => x.Id);
+
+            var dayBatchesSchedulesItemBuilder = modelBuilder.Entity<DayBatch>();
+            dayBatchesSchedulesItemBuilder.HasKey(x => x.Id);
+
+            var dailyPromotionSchedulesItemBuilder = modelBuilder.Entity<DailyPromotionSchedule>();
+            dailyPromotionSchedulesItemBuilder.HasKey(x => x.Id);
         }
     }
 }
