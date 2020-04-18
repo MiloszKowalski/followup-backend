@@ -91,5 +91,9 @@ namespace FollowUP.Core.Domain
             LastMediaId = lastMediaId;
         }
 
+        public static Promotion GetUnfollowPromotion(Guid accountId)
+        {
+            return new Promotion(Guid.NewGuid(), accountId, PromotionType.Unfollow, "", DateTime.Now);
+        }
     }
 }
