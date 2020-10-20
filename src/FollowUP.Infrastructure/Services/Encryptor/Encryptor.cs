@@ -4,10 +4,10 @@ using System.Security.Cryptography;
 
 namespace FollowUP.Infrastructure.Services
 {
-    public class Encrypter : IEncrypter
+    public class Encryptor : IEncryptor
     {
-        private static readonly int DeriveBytesIterationsCount = 10000;
-        private static readonly int SaltSize = 40;
+        private static readonly int _deriveBytesIterationsCount = 10000;
+        private static readonly int _saltSize = 40;
 
         public string GetSalt(string value)
         {
@@ -16,7 +16,7 @@ namespace FollowUP.Infrastructure.Services
                 throw new ArgumentException("Can not generate salt from an empty value.", nameof(value));
             }
 
-            var saltBytes = new byte[SaltSize];
+            var saltBytes = new byte[_saltSize];
             var rng = RandomNumberGenerator.Create();
             rng.GetBytes(saltBytes);
 
@@ -34,9 +34,9 @@ namespace FollowUP.Infrastructure.Services
                 throw new ArgumentException("Can not use an empty salt from hashing value.", nameof(value));
             }
 
-            var pbkdf2 = new Rfc2898DeriveBytes(value, GetBytes(salt), DeriveBytesIterationsCount);
+            var pbkdf2 = new Rfc2898DeriveBytes(value, GetBytes(salt), _deriveBytesIterationsCount);
 
-            return Convert.ToBase64String(pbkdf2.GetBytes(SaltSize));
+            return Convert.ToBase64String(pbkdf2.GetBytes(_saltSize));
         }
 
         private static byte[] GetBytes(string value)
