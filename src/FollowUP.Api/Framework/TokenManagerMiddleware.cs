@@ -16,7 +16,7 @@ namespace FollowUP.Api.Framework
 
         public async Task InvokeAsync(HttpContext context, RequestDelegate next)
         {
-            if (await _tokenManager.IsCurrentActiveToken())
+            if (await _tokenManager.IsCurrentActiveTokenAsync())
             {
                 await next(context);
 
