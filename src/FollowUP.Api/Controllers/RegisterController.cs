@@ -18,14 +18,6 @@ namespace FollowUP.Api.Controllers
             _userService = userService;
         }
 
-        [HttpPost]
-        public async Task<IActionResult> Post([FromBody]Register command)
-        {
-            await DispatchAsync(command);
-
-            return Created($"users/{command.Email}", null);
-        }
-
         [HttpGet("{userId}/{registrationToken}")]
         public async Task<IActionResult> Get(Guid userId, string registrationToken)
         {
@@ -34,9 +26,19 @@ namespace FollowUP.Api.Controllers
             var user = await _userService.GetAsync(userId);
 
             if(user.Verified)
+            {
                 return Created($"users/{userId}", null);
+            }    
 
             return StatusCode(500);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Post([FromBody]Register command)
+        {
+            await DispatchAsync(command);
+
+            return Created($"users/{command.Email}", null);
         }
     }
 }

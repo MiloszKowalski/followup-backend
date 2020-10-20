@@ -20,17 +20,18 @@ namespace FollowUP.Api.Controllers
         }
 
         [HttpGet("{accountId}")]
-        public async Task<IActionResult> Get(Guid accountId)
+        public async Task<IActionResult> GetAllCommentsByAccountId(Guid accountId)
         {
-            var comments = await _commentsService.GetAllByAccountId(accountId);
+            var comments = await _commentsService.GetAllByAccountIdAsync(accountId);
 
             return Json(comments);
         }
 
         [HttpGet("{accountId}/{page}/{pageSize}")]
-        public async Task<IActionResult> GetPaginated(Guid accountId, int page, int pageSize)
+        public async Task<IActionResult> GetPaginatedCommentsByAccountId(Guid accountId,
+            int page, int pageSize)
         {
-            var comments = await _commentsService.GetByAccountId(accountId, page, pageSize);
+            var comments = await _commentsService.GetByAccountIdAsync(accountId, page, pageSize);
 
             return Json(comments);
         }
@@ -38,7 +39,7 @@ namespace FollowUP.Api.Controllers
         [HttpGet("{accountId}/count")]
         public async Task<IActionResult> GetCommentsCount(Guid accountId)
         {
-            var count = await _commentsService.GetCount(accountId);
+            var count = await _commentsService.GetCountAsync(accountId);
 
             return Json(count);
         }
@@ -46,7 +47,7 @@ namespace FollowUP.Api.Controllers
         [HttpPost("{accountId}")]
         public async Task<IActionResult> Post(Guid accountId)
         {
-            await _commentsService.UpdateAllByAccountId(accountId);
+            await _commentsService.UpdateAllByAccountIdAsync(accountId);
 
             return Ok();
         }

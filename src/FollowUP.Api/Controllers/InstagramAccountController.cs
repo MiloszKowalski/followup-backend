@@ -1,13 +1,10 @@
 ﻿using FollowUP.Controllers;
 using FollowUP.Infrastructure.Commands;
-using FollowUP.Infrastructure.DTO;
 using FollowUP.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 using System;
-using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace FollowUP.Api.Controllers
@@ -16,72 +13,21 @@ namespace FollowUP.Api.Controllers
     public class InstagramAccountController : ApiControllerBase
     {
         private readonly IInstagramAccountService _instagramAccountService;
+        private readonly IAccountSettingsService _settingsService;
 
         public InstagramAccountController(IInstagramAccountService instagramAccountService,
-            ICommandDispatcher commandDispatcher) : base(commandDispatcher)
+            ICommandDispatcher commandDispatcher, IAccountSettingsService settingsService)
+            : base(commandDispatcher)
         {
             _instagramAccountService = instagramAccountService;
+            _settingsService = settingsService;
         }
 
         [Authorize(Policy = "admin")]
         [HttpGet("{page}/{pageSize}")]
-        public async Task<object> GetAll(int page, int pageSize)
+        public async Task<IActionResult> GetAll(int page, int pageSize)
         {
             var accounts = await _instagramAccountService.GetAsync(page, pageSize);
-            var jsonSettings = new JsonSerializerSettings
-            {
-                DateFormatString = "yyyy-MM-dd HH:mm:ss",
-                Culture = new CultureInfo("pl-PL"),
-                Formatting = Formatting.Indented,
-                ContractResolver = new CamelCasePropertyNamesContractResolver()
-            };
-
-            return Json(accounts, jsonSettings);
-        }
-
-        [HttpGet("count")]
-        public async Task<IActionResult> GetCount()
-        {
-            var count = await _instagramAccountService.GetCount();
-
-            return Json(count);
-        }
-
-        [HttpPost("login")]
-        public async Task<IActionResult> LoginToInstagram([FromBody]LoginToInstagram command)
-        {
-            await DispatchAsync(command);
-            var accounts = await _instagramAccountService.GetAllByUserId(command.UserId);
-            var account = new AccountDto();
-            foreach(var x in accounts)
-            {
-                if (x.Username == command.Username)
-                    account = x;
-            }
-
-            return Json(account);
-        }
-
-        [HttpPost("eblogin")]
-        public async Task<IActionResult> LoginToEBInstagram([FromBody]LoginToEBInstagram command)
-        {
-            await DispatchAsync(command);
-            var accounts = await _instagramAccountService.GetAllByUserId(command.UserId);
-            var account = new AccountDto();
-            foreach (var x in accounts)
-            {
-                if (x.Username == command.Username)
-                    account = x;
-            }
-
-            return Json(account);
-        }
-
-        [HttpPost("delete")]
-        public async Task<IActionResult> DeleteInstagramAccount([FromBody]DeleteInstagramAccount command)
-        {
-            await DispatchAsync(command);
-            var accounts = await _instagramAccountService.GetAllByUserId(command.UserId);
 
             return Json(accounts);
         }
@@ -89,25 +35,64 @@ namespace FollowUP.Api.Controllers
         [HttpGet("current")]
         public async Task<IActionResult> GetCurrentUsersAccounts()
         {
-            var accounts = await _instagramAccountService.GetAllByUserIdExtended(Guid.Parse(User.Identity.Name));
+            var accounts = await _instagramAccountService
+                            .GetAllByUserIdExtendedAsync(Guid.Parse(User.Identity.Name));
 
-            var jsonSettings = new JsonSerializerSettings
-            {
-                DateFormatString = "yyyy-MM-dd HH:mm:ss",
-                Culture = new CultureInfo("pl-PL"),
-                Formatting = Formatting.Indented,
-                ContractResolver = new CamelCasePropertyNamesContractResolver()
-            };
-
-            return Json(accounts, jsonSettings);
+            return Json(accounts);
         }
 
         [HttpGet("{userId}")]
         public async Task<IActionResult> Get(Guid userId)
         {
-            var accounts = await _instagramAccountService.GetAllByUserId(userId);
+            var accounts = await _instagramAccountService.GetAllByUserIdAsync(userId);
 
             return Json(accounts);
+        }
+
+        [HttpGet("count")]
+        public async Task<IActionResult> GetCount()
+        {
+            var count = await _instagramAccountService.GetCountAsync();
+
+            return Json(count);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateInstagramAccount([FromBody]CreateInstagramAccount command)
+        {
+            await DispatchAsync(command);
+            var accounts = await _instagramAccountService.GetAllByUserIdAsync(command.UserId);
+            var account = accounts.FirstOrDefault(x => x.Username == command.Username);
+            var accountInfo = await _instagramAccountService.GetExtendedInfoByIdAsync(account.Id);
+
+            return Json(accountInfo);
+        }
+
+        [HttpDelete("{accountId}")]
+        public async Task<IActionResult> DeleteInstagramAccount(Guid accountId)
+        {
+            var command = new DeleteInstagramAccount { InstagramAccountId = accountId };
+            await DispatchAsync(command);
+            var accounts = await _instagramAccountService.GetAllByUserIdAsync(command.UserId);
+
+            return Json(accounts);
+        }
+
+        [HttpGet("{accountId}/settings")]
+        public async Task<IActionResult> GetAccountsSettings(Guid accountId)
+        {
+            var settings = await _settingsService.GetAccountsSettingsAsync(accountId);
+
+            return Json(settings);
+        }
+
+        [HttpPut("settings")]
+        public async Task<IActionResult> UpdateAccountSettings([FromBody]UpdateAccountSettings command)
+        {
+            await DispatchAsync(command);
+            var settings = await _settingsService.GetAccountsSettingsAsync(command.InstagramAccountId);
+
+            return Json(settings);
         }
 
         [HttpPost("comments")]

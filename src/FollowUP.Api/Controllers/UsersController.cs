@@ -3,6 +3,7 @@ using FollowUP.Infrastructure.Commands;
 using FollowUP.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System;
 using System.Threading.Tasks;
 
 namespace FollowUP.Api.Controllers
@@ -30,10 +31,10 @@ namespace FollowUP.Api.Controllers
         }
 
         [Authorize(Policy = "admin")]
-        [HttpGet("{email}")]
-        public async Task<IActionResult> Get(string email)
+        [HttpGet("{guid}")]
+        public async Task<IActionResult> Get(Guid guid)
         {
-            var user = await _userService.GetAsync(email);
+            var user = await _userService.GetAsync(guid);
             if (user == null)
             {
                 return NotFound();
@@ -45,13 +46,13 @@ namespace FollowUP.Api.Controllers
         [AllowAnonymous]
         [HttpPost("tokens/{token}/refresh")]
         public async Task<IActionResult> RefreshAccessToken(string token)
-        => Ok(await _userService.RefreshAccessToken(token));
+            => Ok(await _userService.RefreshAccessTokenAsync(token));
 
         [AllowAnonymous]
         [HttpPost("tokens/{token}/revoke")]
         public async Task<IActionResult> RevokeRefreshToken(string token)
         {
-            await _userService.RevokeRefreshToken(token);
+            await _userService.RevokeRefreshTokenAsync(token);
 
             return NoContent();
         }
