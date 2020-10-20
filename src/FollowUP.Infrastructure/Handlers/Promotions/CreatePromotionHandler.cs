@@ -15,7 +15,8 @@ namespace FollowUP.Infrastructure.Handlers.Accounts
 
         public async Task HandleAsync(CreatePromotion command)
         {
-            await _promotionService.CreatePromotion(command.AccountId, command.PromotionType, command.Label);
+            await _promotionService.CreatePromotionAsync(command.AccountId,
+                command.PromotionType, command.Label);
         }
     }
 }

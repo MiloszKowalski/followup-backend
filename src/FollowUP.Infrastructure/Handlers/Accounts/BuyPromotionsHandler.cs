@@ -17,7 +17,7 @@ namespace FollowUP.Infrastructure.Handlers.Accounts
 
         public async Task HandleAsync(BuyPromotions command)
         {
-            await _accountService.BuyPromotions(command.AccountId, command.DaysToAdd);
+            await _accountService.BuyPromotionsAsync(command.AccountId, command.DaysToAdd);
         }
     }
 }

@@ -17,7 +17,7 @@ namespace FollowUP.Infrastructure.Handlers.Accounts
 
         public async Task HandleAsync(BuyComments command)
         {
-            await _accountService.BuyComments(command.AccountId, command.DaysToAdd);
+            await _accountService.BuyCommentsAsync(command.AccountId, command.DaysToAdd);
         }
     }
 }

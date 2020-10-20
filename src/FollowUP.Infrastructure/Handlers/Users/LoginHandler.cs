@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using FollowUP.Core.Domain;
+﻿using FollowUP.Core.Domain;
 using FollowUP.Core.Repositories;
 using FollowUP.Infrastructure.Commands;
 using FollowUP.Infrastructure.Commands.Accounts;
@@ -20,8 +19,8 @@ namespace FollowUP.Infrastructure.Handlers.Accounts
         private readonly IJwtHandler _jwtHandler;
         private readonly IMemoryCache _cache;
         
-        public LoginHandler(IUserRepository userRepository, IUserService userService, IJwtHandler jwtHandler,
-            IMemoryCache cache, IPasswordHasher<User> passwordHasher)
+        public LoginHandler(IUserRepository userRepository, IUserService userService,
+            IJwtHandler jwtHandler, IMemoryCache cache, IPasswordHasher<User> passwordHasher)
         {
             _passwordHasher = passwordHasher;
             _userRepository = userRepository;
@@ -41,11 +40,12 @@ namespace FollowUP.Infrastructure.Handlers.Accounts
                 .Replace("=", string.Empty)
                 .Replace("/", string.Empty);
 
-            var refreshTokenCheck = await _userRepository.GetDeviceRefreshToken(user.Id, command.UserAgent);
+            var refreshTokenCheck = await _userRepository
+                                .GetDeviceRefreshTokenAsync(user.Id, command.UserAgent);
 
             if(refreshTokenCheck == null)
             {
-                await _userRepository.AddRefreshToken(
+                await _userRepository.AddRefreshTokenAsync(
                     new RefreshToken
                     {
                         Id = Guid.NewGuid(),
@@ -61,12 +61,14 @@ namespace FollowUP.Infrastructure.Handlers.Accounts
                 refreshTokenCheck.Token = refreshToken;
                 refreshTokenCheck.Revoked = false;
 
-                await _userRepository.UpdateRefreshToken(refreshTokenCheck);
+                await _userRepository.UpdateRefreshTokenAsync(refreshTokenCheck);
 
                 jwt.RefreshToken = refreshToken;
             }
             else
+            {
                 jwt.RefreshToken = refreshTokenCheck.Token;
+            }
 
 
             _cache.SetJwt(command.TokenId, jwt);
