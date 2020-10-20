@@ -6,7 +6,6 @@ using FollowUP.Infrastructure.IoC;
 using FollowUP.Infrastructure.Services;
 using FollowUP.Infrastructure.Services.Background;
 using FollowUP.Infrastructure.Settings;
-using InstagramApiSharp.Helpers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -19,6 +18,7 @@ using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System;
+using System.Globalization;
 using System.Text;
 
 namespace FollowUP
@@ -50,11 +50,18 @@ namespace FollowUP
             // Add general email template sender
             services.AddEmailTemplateSender();
 
+            // Add middleware to manage JWT
             services.AddTransient<TokenManagerMiddleware>();
+
+            // Add middleware to handle exceptions in requests
             services.AddTransient<ExceptionHandlerMiddleware>();
+
             services.AddAuthorization(x => x.AddPolicy("admin", p => p.RequireRole("admin")));
             services.AddMemoryCache();
-            services.AddDistributedRedisCache(r => { r.Configuration = Configuration["redis:connectionString"]; });
+            services.AddDistributedRedisCache(r =>
+            { 
+                r.Configuration = Configuration["redis:connectionString"];
+            });
 
             services.AddCors(o => o.AddPolicy("FollowUPCorsPolicy", corsBuilder =>
             {
@@ -64,12 +71,25 @@ namespace FollowUP
             }));
 
             if (Configuration["promotion:updateComments"] == "True")
+            {
                 services.AddHostedService<CommentsUpdater>();
+            }
+
             if (Configuration["promotion:enabled"] == "True")
-                services.AddHostedService<Promoter>();
+            {
+                services.AddHostedService<PromotionBotSpawner>();
+            }
 
             services.AddMvc()
-                    .AddJsonOptions(x => x.SerializerSettings.Formatting = Formatting.Indented)
+                    .AddJsonOptions(x =>
+                    {
+                        var y = x.SerializerSettings;
+                        y.DateFormatString = "yyyy-MM-dd HH:mm:ss";
+                        y.Culture = new CultureInfo("pl-PL");
+                        y.Formatting = Formatting.Indented;
+                        y.ContractResolver = new CamelCasePropertyNamesContractResolver();
+                        y.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
+                    })
                     .SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
             services.Configure<MvcOptions>(options =>
@@ -77,22 +97,25 @@ namespace FollowUP
                 options.Filters.Add(new CorsAuthorizationFilterFactory("FollowUPCorsPolicy"));
             });
 
-
-            services.AddAuthentication(options => {
+            services.AddAuthentication(options => 
+            {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            }).AddJwtBearer(options => {
+            }).AddJwtBearer(options => 
+            {
                 options.SaveToken = true;
                 options.RequireHttpsMetadata = !Environment.IsDevelopment();
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["jwt:key"])),
+                    IssuerSigningKey = new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(Configuration["jwt:key"])
+                    ),
                     ValidateIssuer = true,
                     ValidIssuer = Configuration["jwt:issuer"],
                     ValidateAudience = false,
-                    RequireExpirationTime = false,
+                    RequireExpirationTime = true,
                     ValidateLifetime = true
                 };
             });
