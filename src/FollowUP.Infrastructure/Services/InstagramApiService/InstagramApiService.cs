@@ -151,7 +151,7 @@ namespace FollowUP.Infrastructure.Services.InstagramApiService
         // TODO: Randomize the accounts from the account pool
         public async Task<InstagramAccount> GetRandomSlaveAccountAsync()
         {
-            return await _accountRepository.GetAsync("kontotestowefollowup1");
+            return await _accountRepository.GetByUsernameAsync("kontotestowefollowup1");
         }
 
         // TODO: preloaded reel ids
