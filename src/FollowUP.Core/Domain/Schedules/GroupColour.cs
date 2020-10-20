@@ -1,6 +1,6 @@
 ﻿namespace FollowUP.Core.Domain
 {
-    public enum BatchColour
+    public enum GroupColour
     {
         Red = 0,
         Green = 1,
