@@ -6,6 +6,21 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Migrations\20201010142204_RebuildDomainModelsAndAddRelationships.cs" />
+    <Compile Remove="Migrations\20201010142204_RebuildDomainModelsAndAddRelationships.Designer.cs" />
+    <Compile Remove="Migrations\20201010143229_RebuildDomainModelsAndAddRelationships.cs" />
+    <Compile Remove="Migrations\20201010143229_RebuildDomainModelsAndAddRelationships.Designer.cs" />
+    <Compile Remove="Migrations\20201010163517_RebuildDomainModelsAndAddRelationships.cs" />
+    <Compile Remove="Migrations\20201010163517_RebuildDomainModelsAndAddRelationships.Designer.cs" />
+    <Compile Remove="Migrations\20201010163718_RebuildDomainModelsAndAddRelationships.cs" />
+    <Compile Remove="Migrations\20201010163718_RebuildDomainModelsAndAddRelationships.Designer.cs" />
+    <Compile Remove="Migrations\20201010174105_RebuildDomainModelsAndAddRelationships.cs" />
+    <Compile Remove="Migrations\20201010174105_RebuildDomainModelsAndAddRelationships.Designer.cs" />
+    <Compile Remove="Migrations\20201017063306_AddOnDeleteBehaviour.cs" />
+    <Compile Remove="Migrations\20201017063306_AddOnDeleteBehaviour.Designer.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Autofac" Version="4.9.4" />
     <PackageReference Include="AutoMapper" Version="9.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="2.2.0" />
@@ -27,7 +42,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Models\" />
     <Folder Include="Services\Email\Templates\" />
   </ItemGroup>
 
