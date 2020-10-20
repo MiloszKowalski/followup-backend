@@ -7,63 +7,66 @@ namespace FollowUP.Core.Repositories
 {
     public interface IScheduleRepository : IRepository
     {
-        #region Monthly Batch Schedules
+        #region Monthly Group Schedules
 
-        Task<IEnumerable<MonthlyBatchSchedule>> GetMonthlyBatchSchedulesByAccountIdAsync(Guid accountId);
-        Task<MonthlyBatchSchedule> GetMonthlyBatchScheduleByIdAsync(Guid Id);
-        Task AddMonthlyBatchScheduleAsync(MonthlyBatchSchedule schedule);
-        Task UpdateMonthlyBatchScheduleAsync(MonthlyBatchSchedule schedule);
-        Task RemoveMonthlyBatchScheduleAsync(Guid scheduleId);
-
-        #endregion
-
-        #region Monthly Day Schedules
-
-        Task<IEnumerable<MonthlyDaySchedule>> GetMonthlyDaySchedulesByAccountIdAsync(Guid accountId);
-        Task<MonthlyDaySchedule> GetMonthlyDayScheduleByIdAsync(Guid Id);
-        Task AddMonthlyDayScheduleAsync(MonthlyDaySchedule schedule);
-        Task UpdateMonthlyDayScheduleAsync(MonthlyDaySchedule schedule);
-        Task RemoveMonthlyDayScheduleAsync(Guid scheduleId);
+        Task<IEnumerable<MonthlyGroupSchedule>> GetMonthlyGroupSchedulesByAccountIdAsync(Guid accountId);
+        Task<MonthlyGroupSchedule> GetMonthlyGroupScheduleByIdAsync(Guid Id);
+        Task AddMonthlyGroupScheduleAsync(MonthlyGroupSchedule schedule);
+        Task UpdateMonthlyGroupScheduleAsync(MonthlyGroupSchedule schedule);
+        Task RemoveMonthlyGroupScheduleAsync(Guid scheduleId);
 
         #endregion
 
-        #region Schedule Batches
+        #region Explicit Day Schedules
 
-        Task<ScheduleBatch> GetScheduleBatchByIdAsync(Guid batchId);
-        Task<IEnumerable<ScheduleBatch>> GetScheduleBatchesByAccountIdAsync(Guid accountId);
-        Task AddScheduleBatchAsync(ScheduleBatch batch);
-        Task UpdateScheduleBatchAsync(ScheduleBatch batch);
-        Task RemoveScheduleBatchAsync(Guid batchId);
-
-        #endregion
-
-        #region Schedule Days
-
-        Task<ScheduleDay> GetScheduleDayByIdAsync(Guid dayId);
-        Task<IEnumerable<ScheduleDay>> GetScheduleDaysByAccountIdAsync(Guid accountId);
-        Task AddScheduleDayAsync(ScheduleDay day);
-        Task UpdateScheduleDayAsync(ScheduleDay day);
-        Task RemoveScheduleDayAsync(Guid dayId);
+        Task<IEnumerable<ExplicitDaySchedule>> GetExplicitDaySchedulesByAccountIdAsync(Guid accountId);
+        Task<IEnumerable<ScheduleGroup>> GetExplicitScheduleForToday(Guid accountId);
+        Task<ExplicitDaySchedule> GetExplicitDayScheduleByIdAsync(Guid Id);
+        Task AddExplicitDayScheduleAsync(ExplicitDaySchedule schedule);
+        Task UpdateExplicitDayScheduleAsync(ExplicitDaySchedule schedule);
+        Task RemoveExplicitDayScheduleAsync(Guid scheduleId);
 
         #endregion
 
-        #region Daily Promotions
+        #region Schedule Groups
 
-        Task<IEnumerable<DailyPromotionSchedule>> GetDailyPromotionSchedulesByDayAsync(Guid scheduleDayId);
-        Task<DailyPromotionSchedule> GetDailyPromotionScheduleByIdAsync(Guid Id);
-        Task AddDailyPromotionScheduleAsync(DailyPromotionSchedule dailySchedule);
-        Task UpdateDailyPromotionScheduleAsync(DailyPromotionSchedule dailySchedule);
-        Task RemoveDailyPromotionScheduleAsync(Guid dailyScheduleId);
+        Task<ScheduleGroup> GetScheduleGroupByIdAsync(Guid batchId);
+        Task<IEnumerable<ScheduleGroup>> GetScheduleGroupsByAccountIdAsync(Guid accountId);
+        Task AddScheduleGroupAsync(ScheduleGroup group);
+        Task UpdateScheduleGroupAsync(ScheduleGroup group);
+        Task RemoveScheduleGroupAsync(Guid groupId);
+        Task RemoveMultipleScheduleGroupsAsync(IEnumerable<Guid> guids);
 
         #endregion
 
-        #region DayBatches
+        #region Single Schedule Days
 
-        Task<IEnumerable<DayBatch>> GetDayBatchesByBatchIdAsync(Guid batchId);
-        Task<DayBatch> GetDayBatchByIdAsync(Guid Id);
-        Task AddDayBatchAsync(DayBatch dayBatch);
-        Task UpdateDayBatchAsync(DayBatch dayBatch);
-        Task RemoveDayBatchAsync(Guid dayBatchId);
+        Task<SingleScheduleDay> GetSingleScheduleDayByIdAsync(Guid dayId);
+        Task<IEnumerable<SingleScheduleDay>> GetSingleScheduleDaysByAccountIdAsync(Guid accountId);
+        Task AddSingleScheduleDayAsync(SingleScheduleDay day);
+        Task UpdateSingleScheduleDayAsync(SingleScheduleDay day);
+        Task RemoveSingleScheduleDayAsync(Guid dayId);
+        Task RemoveMultipleSingleScheduleDaysAsync(IEnumerable<Guid> dayIds);
+
+        #endregion
+
+        #region Daily Promotion Percentages
+
+        Task<IEnumerable<DailyPromotionPercentage>> GetDailyPromotionPercentagesByDayAsync(Guid scheduleDayId);
+        Task<DailyPromotionPercentage> GetDailyPromotionPercentageByIdAsync(Guid Id);
+        Task AddDailyPromotionPercentageAsync(DailyPromotionPercentage dailyPromotionPercentage);
+        Task UpdateDailyPromotionPercentageAsync(DailyPromotionPercentage dailyPromotionPercentage);
+        Task RemoveDailyPromotionPercentageAsync(Guid dailyPromotionPercentageId);
+
+        #endregion
+
+        #region DayGroupConnection
+
+        Task<IEnumerable<DayGroupConnection>> GetDayGroupConnectionsByGroupIdAsync(Guid groupId);
+        Task<DayGroupConnection> GetDayGroupConnectionByIdAsync(Guid Id);
+        Task AddDayGroupConnectionAsync(DayGroupConnection dayGroupConnection);
+        Task UpdateDayGroupConnectionAsync(DayGroupConnection dayGroupConnection);
+        Task RemoveDayGroupConnectionAsync(Guid dayGroupConnectionId);
 
         #endregion
     }
