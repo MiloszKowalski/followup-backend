@@ -24,10 +24,10 @@ namespace FollowUP.Infrastructure.Repositories
         public async Task<AccountStatistics> GetAsync(Guid id)
             => await _context.AccountStatistics.SingleOrDefaultAsync(x => x.Id == id);
 
-        public async Task<AccountStatistics> GetTodaysAccountStatistics(Guid accountId)
-            => await _context.AccountStatistics.SingleOrDefaultAsync(x => x.AccountId == accountId && x.CreatedAt == DateTime.Today);
+        public async Task<AccountStatistics> GetTodaysAccountStatisticsAsync(Guid accountId)
+            => await _context.AccountStatistics.SingleOrDefaultAsync(x => x.InstagramAccountId == accountId && x.CreatedAt == DateTime.Today);
 
-        public async Task<IEnumerable<AccountStatistics>> GetAllAccountStatistics(Guid accountId)
+        public async Task<IEnumerable<AccountStatistics>> GetAllAccountStatisticsAsync(Guid accountId)
             => await _context.AccountStatistics.GroupBy(x => x.CreatedAt)
                 .Select(x => new AccountStatistics(accountId, x.Key, x.Sum(s => s.ActionsCount),
                     x.Sum(s => s.LikesCount), x.Sum(s => s.FollowsCount), x.Sum(s => s.UnfollowsCount)))

@@ -7,19 +7,23 @@ namespace FollowUP.Core.Repositories
 {
     public interface IPromotionRepository : IRepository
     {
-        Task<IEnumerable<Promotion>> GetAllAsync();
-        Task<Promotion> GetAsync(Guid Id);
-        Task<IEnumerable<Promotion>> GetAccountPromotionsAsync(Guid accountId);
+        Task<IEnumerable<FollowPromotion>> GetAllAsync();
+        Task<FollowPromotion> GetAsync(Guid Id);
+        Task<UnfollowPromotion> GetUnfollowPromotionAsync(Guid accountId);
+        Task<IEnumerable<FollowPromotion>> GetAccountPromotionsAsync(Guid accountId);
         Task<IEnumerable<PromotionComment>> GetAccountsPromotionCommentsAsync(Guid accountId);
         Task<FollowedProfile> GetFollowedProfileAsync(Guid accountId, string profileId);
         Task<FollowedProfile> GetRandomFollowedProfileAsync(Guid accountId);
         Task<IEnumerable<FollowedProfile>> GetFollowedProfilesAsync(Guid accountId);
-        Task AddAsync(Promotion promotion);
+        Task AddAsync(FollowPromotion promotion);
+        Task AddAsync(UnfollowPromotion promotion);
         Task AddFollowedProfileAsync(FollowedProfile profile);
         Task AddPromotionCommentAsync(PromotionComment comment);
-        Task UpdateAsync(Promotion promotion);
+        Task UpdateAsync(FollowPromotion promotion);
+        Task UpdateAsync(UnfollowPromotion promotion);
         Task RemoveAsync(Guid id);
+        Task RemoveUnfollowPromotionAsync(Guid accountId);
         Task RemoveFollowedProfileAsync(Guid accountId, string profileId);
-        Task ClearByAccount(Guid accountId);
+        Task ClearByAccountAsync(Guid accountId);
     }
 }

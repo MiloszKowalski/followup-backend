@@ -42,20 +42,27 @@ namespace FollowUP.Infrastructure.Repositories
             await Task.CompletedTask;
         }
 
-        public async Task<RefreshToken> GetRefreshToken(string token)
-        => await Task.FromResult(_refreshTokens.SingleOrDefault(x => x.Token == token));
+        public async Task<RefreshToken> GetRefreshTokenAsync(string token)
+            => await Task.FromResult(_refreshTokens.SingleOrDefault(x => x.Token == token));
 
-        public async Task<RefreshToken> GetDeviceRefreshToken(Guid userId, string userAgent)
-        => await Task.FromResult(_refreshTokens.SingleOrDefault(x => x.UserId == userId && x.UserAgent == userAgent));
+        public async Task<RefreshToken> GetDeviceRefreshTokenAsync(Guid userId, string userAgent)
+            => await Task.FromResult(_refreshTokens.SingleOrDefault(x => x.UserId == userId && x.UserAgent == userAgent));
 
-        public async Task AddRefreshToken(RefreshToken token)
+        public async Task AddRefreshTokenAsync(RefreshToken token)
         {
             _refreshTokens.Add(token);
             await Task.CompletedTask;
         }
 
-        public async Task UpdateRefreshToken(RefreshToken token)
+        public async Task UpdateRefreshTokenAsync(RefreshToken token)
         {
+            await Task.CompletedTask;
+        }
+
+        public async Task RemoveRefreshTokenAsync(string token)
+        {
+            var refreshToken = await GetRefreshTokenAsync(token);
+            _refreshTokens.Remove(refreshToken);
             await Task.CompletedTask;
         }
     }

@@ -22,6 +22,9 @@ namespace FollowUP.Infrastructure.Repositories
         public async Task<IEnumerable<InstagramAccount>> GetAsync(int page, int pageSize)
             => await Task.FromResult(_accounts.Page(page, pageSize));
 
+        public Task<IEnumerable<InstagramAccount>> GetAllWithCompleteInfoAsync(int page, int pageSize)
+            => throw new NotImplementedException();
+
         public async Task<int> GetCountAsync()
             => await Task.FromResult(_accounts.Count());
 
@@ -29,14 +32,14 @@ namespace FollowUP.Infrastructure.Repositories
             => await Task.FromResult(_accounts.SingleOrDefault(x => x.Username == username));
 
         public async Task<IEnumerable<InstagramAccount>> GetUsersAccountsAsync(Guid userId)
-            => await Task.FromResult(_accounts.Where(x => x.UserId == userId));
+            => await Task.FromResult(_accounts.Where(x => x.User.Id == userId));
 
         public async Task<IEnumerable<InstagramAccount>> GetAllWithCommentsAsync()
             => await Task.FromResult(_accounts.Where(x => x.CommentsModuleExpiry > DateTime.UtcNow));
         public async Task<IEnumerable<InstagramAccount>> GetAllWithPromotionsAsync()
             => await Task.FromResult(_accounts.Where(x => x.PromotionsModuleExpiry > DateTime.UtcNow));
         public async Task<AccountSettings> GetAccountSettingsAsync(Guid accountId)
-            => await Task.FromResult(_settings.SingleOrDefault(x => x.AccountId == accountId));
+            => await Task.FromResult(_settings.SingleOrDefault(x => x.InstagramAccountId == accountId));
 
         public async Task AddAsync(InstagramAccount account)
         {

@@ -20,13 +20,26 @@ namespace FollowUP.Infrastructure.Repositories
         }
 
         public async Task<InstagramAccount> GetAsync(Guid id)
-            => await _context.InstagramAccounts.SingleOrDefaultAsync(x => x.Id == id);
+            => await _context.InstagramAccounts
+                                    .Include(x => x.AccountSettings)
+                                    .Include(x => x.InstagramProxy)
+                                    .Include(x => x.ScheduleGroups)
+                                    .Include(x => x.SingleScheduleDays)
+                                    .Include(x => x.User)
+                                    .SingleOrDefaultAsync(x => x.Id == id);
 
         public async Task<InstagramAccount> GetAsync(string username)
-            => await _context.InstagramAccounts.SingleOrDefaultAsync(x => x.Username == username);
+            => await _context.InstagramAccounts
+                                    .Include(x => x.AccountSettings)
+                                    .Include(x => x.InstagramProxy)
+                                    .Include(x => x.ScheduleGroups)
+                                    .Include(x => x.SingleScheduleDays)
+                                    .Include(x => x.User)
+                                    .SingleOrDefaultAsync(x => x.Username == username);
 
         public async Task<IEnumerable<InstagramAccount>> GetUsersAccountsAsync(Guid userId)
-            => await _context.InstagramAccounts.Where(x => x.UserId == userId).ToListAsync();
+            => await _context.InstagramAccounts.Where(x => x.User.Id == userId)
+                                    .Include(x => x.AccountSettings).ToListAsync();
 
         public async Task<IEnumerable<InstagramAccount>> GetAllWithCommentsAsync()
             => await _context.InstagramAccounts.Where(x => x.CommentsModuleExpiry > DateTime.UtcNow).ToListAsync();
@@ -40,11 +53,18 @@ namespace FollowUP.Infrastructure.Repositories
         public async Task<IEnumerable<InstagramAccount>> GetAsync(int page, int pageSize)
             => await _context.InstagramAccounts.Page(page, pageSize).ToListAsync();
 
+        public async Task<IEnumerable<InstagramAccount>> GetAllWithCompleteInfoAsync(int page, int pageSize)
+            => await _context.InstagramAccounts.Page(page, pageSize)
+                            .Include(x => x.AccountSettings)
+                            .Include(x => x.InstagramProxy)
+                            .Include(x => x.User)
+                            .ToListAsync();
+
         public async Task<int> GetCountAsync()
             => await _context.InstagramAccounts.CountAsync();
 
         public async Task<AccountSettings> GetAccountSettingsAsync(Guid accountId)
-            => await _context.AccountSettings.SingleOrDefaultAsync(x => x.AccountId == accountId);
+            => await _context.AccountSettings.SingleOrDefaultAsync(x => x.InstagramAccountId == accountId);
 
         public async Task AddAccountSettingsAsync(AccountSettings settings)
         {

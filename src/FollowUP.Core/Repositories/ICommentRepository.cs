@@ -17,6 +17,6 @@ namespace FollowUP.Core.Repositories
         Task AddChildCommentAsync(ChildComment comment);
         Task UpdateAsync(Comment comment);
         Task RemoveAsync(Guid id);
-        Task ClearByAccount(Guid accountId);
+        Task ClearByAccountAsync(Guid accountId);
     }
 }
