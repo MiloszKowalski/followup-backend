@@ -1,6 +1,6 @@
 ﻿namespace FollowUP.Infrastructure.Services.Logging
 {
-    public enum InstaLogLevel
+    public enum ProfileLogLevel
     {
         All,
         Trace,

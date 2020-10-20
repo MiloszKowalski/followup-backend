@@ -8,7 +8,7 @@ namespace FollowUP.Infrastructure.Services.Logging
 {
     public class InstaActionLogger : IInstaActionLogger
     {
-        private readonly InstaLogLevel _logLevel;
+        private readonly ProfileLogLevel _logLevel;
         private readonly bool _logToFile;
 
         public InstaActionLogger(InstaLoggerSettings settings)
@@ -17,7 +17,7 @@ namespace FollowUP.Infrastructure.Services.Logging
             _logToFile = settings.LogToFile;
         }
 
-        public void Log(string message, InstaLogLevel logLevel, InstagramAccount account)
+        public void Log(string message, ProfileLogLevel logLevel, InstagramAccount account)
         {
             if (_logLevel > logLevel)
                 return;
@@ -36,24 +36,34 @@ namespace FollowUP.Infrastructure.Services.Logging
             }
         }
 
-        public void Log(string message, InstaLogLevel logLevel, InstagramAccount account, Promotion promotion = null)
+        public void Log(string message, ProfileLogLevel logLevel, InstagramAccount account, IPromotion promotion)
         {
             if (_logLevel > logLevel)
+            {
                 return;
+            }
 
             var sb = new StringBuilder();
             sb.Append($"[{DateTime.UtcNow.ToLongTimeString()}]");
 
-            string promotionName;
-            if (promotion != null)
+            string promotionName = string.Empty;
+            if (promotion == null)
             {
-                if (promotion.PromotionType == PromotionType.Hashtag)
-                    promotionName = $"#{promotion.Label}";
-                else
-                    promotionName = $"@{promotion.Label}";
+                return;
             }
-            else
+
+            if (promotion is HashtagPromotion h)
+            {
+                promotionName = $"#{h.Label}";
+            }
+            else if (promotion is ProfilePromotion p)
+            {
+                promotionName = $"@{p.Label}";
+            }
+            else if (promotion is UnfollowPromotion)
+            {
                 promotionName = "Unfollow";
+            }
 
             sb.Append($"({promotionName})");
             sb.Append($" {message}");
