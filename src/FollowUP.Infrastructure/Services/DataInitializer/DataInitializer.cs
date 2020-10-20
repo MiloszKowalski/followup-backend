@@ -23,8 +23,10 @@ namespace FollowUP.Infrastructure.Services
 
                 return;
             }
+
             Console.WriteLine("Initializing data...");
-            for (var i = 1; i <= 10; i++)
+
+            for (var i = 1; i <= 3; i++)
             {
                 var userId = Guid.NewGuid();
                 var username = $"user{i}";
@@ -33,15 +35,7 @@ namespace FollowUP.Infrastructure.Services
                                                  username, fullname, "secret", Roles.User);
                 Console.WriteLine($"Adding user: '{username}'.");
             }
-            for (var i = 1; i <= 3; i++)
-            {
-                var userId = Guid.NewGuid();
-                var username = $"admin{i}";
-                var fullname = $"Mr Admin";
-                Console.WriteLine($"Adding admin: '{username}'.");
-                await _userService.RegisterAsync(userId, $"admin{i}@test.com",
-                    username, fullname, "secret", Roles.Admin);
-            }
+
             Console.WriteLine("Data was initialized.");
         }
     }

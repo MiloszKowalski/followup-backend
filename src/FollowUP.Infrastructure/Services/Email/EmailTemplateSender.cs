@@ -1,10 +1,4 @@
 ﻿using FollowUP.Infrastructure.DTO;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace FollowUP.Infrastructure.Services
@@ -20,7 +14,8 @@ namespace FollowUP.Infrastructure.Services
             _emailSender = emailSender;
         }
 
-        public async Task<EmailResponseDTO> SendGeneralEmailAsync(EmailDetailsDTO details, string title, string content1, string content2, string buttonText, string buttonUrl)
+        public async Task<EmailResponseDTO> SendGeneralEmailAsync(EmailDetailsDTO details,
+            string title, string content1, string content2, string buttonText, string buttonUrl)
         {
             // Get the templateText from Resources
             var templateText = Properties.Resources.GeneralTemplate;

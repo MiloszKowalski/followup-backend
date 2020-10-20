@@ -14,8 +14,8 @@ namespace FollowUP.Infrastructure.Services
         Task RegisterAsync(Guid userId, string email,
             string username, string fullname, string password, string role);
         Task LoginAsync(string email, string password);
-        Task<JwtDto> RefreshAccessToken(string token);
-        Task RevokeRefreshToken(string token);
+        Task<JwtDto> RefreshAccessTokenAsync(string token);
+        Task RevokeRefreshTokenAsync(string token);
         Task ConfirmEmailTokenAsync(Guid userId, string registrationToken);
     }
 }
