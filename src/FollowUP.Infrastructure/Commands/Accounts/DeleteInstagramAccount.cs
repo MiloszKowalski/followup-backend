@@ -1,7 +1,9 @@
-﻿namespace FollowUP.Infrastructure.Commands
+﻿using System;
+
+namespace FollowUP.Infrastructure.Commands
 {
     public class DeleteInstagramAccount : AuthenticatedCommandBase
     {
-        public string Username { get; set; }
+        public Guid InstagramAccountId { get; set; }
     }
 }
