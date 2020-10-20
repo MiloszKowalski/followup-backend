@@ -18,175 +18,204 @@ namespace FollowUP.Infrastructure.Repositories
             _context = context;
         }
 
-        #region Monthly Batch Schedules
+        #region MonthlyGroupSchedules
 
-        public async Task<IEnumerable<MonthlyBatchSchedule>> GetMonthlyBatchSchedulesByAccountIdAsync(Guid accountId)
-            => await _context.MonthlyBatchSchedules.Where(x => x.AccountId == accountId).ToListAsync();
+        public async Task<IEnumerable<MonthlyGroupSchedule>> GetMonthlyGroupSchedulesByAccountIdAsync(Guid accountId)
+            => await _context.MonthlyGroupSchedules.Where(x => x.InstagramAccountId == accountId).ToListAsync();
 
-        public async Task<MonthlyBatchSchedule> GetMonthlyBatchScheduleByIdAsync(Guid Id)
-            => await _context.MonthlyBatchSchedules.SingleOrDefaultAsync(x => x.Id == Id);
+        public async Task<MonthlyGroupSchedule> GetMonthlyGroupScheduleByIdAsync(Guid Id)
+            => await _context.MonthlyGroupSchedules.SingleOrDefaultAsync(x => x.Id == Id);
 
-        public async Task AddMonthlyBatchScheduleAsync(MonthlyBatchSchedule schedule)
+        public async Task AddMonthlyGroupScheduleAsync(MonthlyGroupSchedule schedule)
         {
-            await _context.MonthlyBatchSchedules.AddAsync(schedule);
+            await _context.MonthlyGroupSchedules.AddAsync(schedule);
             await _context.SaveChangesAsync();
         }
 
-        public async Task UpdateMonthlyBatchScheduleAsync(MonthlyBatchSchedule schedule)
+        public async Task UpdateMonthlyGroupScheduleAsync(MonthlyGroupSchedule schedule)
         {
-            _context.MonthlyBatchSchedules.Update(schedule);
+            _context.MonthlyGroupSchedules.Update(schedule);
             await _context.SaveChangesAsync();
         }
 
-        public async Task RemoveMonthlyBatchScheduleAsync(Guid scheduleId)
+        public async Task RemoveMonthlyGroupScheduleAsync(Guid scheduleId)
         {
-            var schedule = await GetMonthlyBatchScheduleByIdAsync(scheduleId);
-            _context.MonthlyBatchSchedules.Remove(schedule);
-            await _context.SaveChangesAsync();
-        }
-
-        #endregion
-
-        #region Monthly Day Schedules
-
-        public async Task<IEnumerable<MonthlyDaySchedule>> GetMonthlyDaySchedulesByAccountIdAsync(Guid accountId)
-            => await _context.MonthlyDaySchedules.Where(x => x.AccountId == accountId).ToListAsync();
-
-        public async Task<MonthlyDaySchedule> GetMonthlyDayScheduleByIdAsync(Guid Id)
-            => await _context.MonthlyDaySchedules.SingleOrDefaultAsync(x => x.Id == Id);
-
-        public async Task AddMonthlyDayScheduleAsync(MonthlyDaySchedule schedule)
-        {
-            await _context.MonthlyDaySchedules.AddAsync(schedule);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task UpdateMonthlyDayScheduleAsync(MonthlyDaySchedule schedule)
-        {
-            _context.MonthlyDaySchedules.Update(schedule);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task RemoveMonthlyDayScheduleAsync(Guid scheduleId)
-        {
-            var schedule = await GetMonthlyDayScheduleByIdAsync(scheduleId);
-            _context.MonthlyDaySchedules.Remove(schedule);
+            var schedule = await GetMonthlyGroupScheduleByIdAsync(scheduleId);
+            _context.MonthlyGroupSchedules.Remove(schedule);
             await _context.SaveChangesAsync();
         }
 
         #endregion
 
-        #region Schedule Batches
+        #region ExplicitDaySchedules
 
-        public async Task<ScheduleBatch> GetScheduleBatchByIdAsync(Guid batchId)
-            => await _context.ScheduleBatches.SingleOrDefaultAsync(x => x.Id == batchId);
+        public async Task<IEnumerable<ExplicitDaySchedule>> GetExplicitDaySchedulesByAccountIdAsync(Guid accountId)
+            => await _context.ExplicitDaySchedules.Where(x => x.InstagramAccountId == accountId).ToListAsync();
 
-        public async Task<IEnumerable<ScheduleBatch>> GetScheduleBatchesByAccountIdAsync(Guid accountId)
-            => await _context.ScheduleBatches.Where(x => x.AccountId == accountId).ToListAsync();
+        public async Task<IEnumerable<ScheduleGroup>> GetExplicitScheduleForToday(Guid accountId)
+            => await _context.ScheduleGroups.Where(x => x.InstagramAccountId == accountId)
+                .Include(sg => sg.DayGroupConnections)
+                .ThenInclude(dgc => dgc.SingleScheduleDay)
+                .ThenInclude(ssd => ssd.DailyPromotionPercentages)
+                .ToListAsync();
 
-        public async Task AddScheduleBatchAsync(ScheduleBatch batch)
+        public async Task<ExplicitDaySchedule> GetExplicitDayScheduleByIdAsync(Guid Id)
+            => await _context.ExplicitDaySchedules.SingleOrDefaultAsync(x => x.Id == Id);
+
+        public async Task AddExplicitDayScheduleAsync(ExplicitDaySchedule schedule)
         {
-            await _context.ScheduleBatches.AddAsync(batch);
+            await _context.ExplicitDaySchedules.AddAsync(schedule);
             await _context.SaveChangesAsync();
         }
 
-        public async Task UpdateScheduleBatchAsync(ScheduleBatch batch)
+        public async Task UpdateExplicitDayScheduleAsync(ExplicitDaySchedule schedule)
         {
-            _context.ScheduleBatches.Update(batch);
+            _context.ExplicitDaySchedules.Update(schedule);
             await _context.SaveChangesAsync();
         }
 
-        public async Task RemoveScheduleBatchAsync(Guid batchId)
+        public async Task RemoveExplicitDayScheduleAsync(Guid scheduleId)
         {
-            var batch = await GetScheduleBatchByIdAsync(batchId);
-            _context.ScheduleBatches.Remove(batch);
+            var schedule = await GetExplicitDayScheduleByIdAsync(scheduleId);
+            _context.ExplicitDaySchedules.Remove(schedule);
             await _context.SaveChangesAsync();
         }
 
         #endregion
 
-        #region Schedule Days
+        #region ScheduleGroups
 
-        public async Task<ScheduleDay> GetScheduleDayByIdAsync(Guid dayId)
-            => await _context.ScheduleDays.SingleOrDefaultAsync(x => x.Id == dayId);
+        public async Task<ScheduleGroup> GetScheduleGroupByIdAsync(Guid batchId)
+            => await _context.ScheduleGroups.SingleOrDefaultAsync(x => x.Id == batchId);
 
-        public async Task<IEnumerable<ScheduleDay>> GetScheduleDaysByAccountIdAsync(Guid accountId)
-            => await _context.ScheduleDays.Where(x => x.AccountId == accountId).ToListAsync();
+        public async Task<IEnumerable<ScheduleGroup>> GetScheduleGroupsByAccountIdAsync(Guid accountId)
+            => await _context.ScheduleGroups.Where(x => x.InstagramAccountId == accountId).ToListAsync();
 
-        public async Task AddScheduleDayAsync(ScheduleDay day)
+        public async Task AddScheduleGroupAsync(ScheduleGroup batch)
         {
-            await _context.ScheduleDays.AddAsync(day);
+            await _context.ScheduleGroups.AddAsync(batch);
             await _context.SaveChangesAsync();
         }
 
-        public async Task UpdateScheduleDayAsync(ScheduleDay day)
+        public async Task UpdateScheduleGroupAsync(ScheduleGroup batch)
+        {
+            _context.ScheduleGroups.Update(batch);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task RemoveScheduleGroupAsync(Guid batchId)
+        {
+            var batch = await GetScheduleGroupByIdAsync(batchId);
+            _context.ScheduleGroups.Remove(batch);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task RemoveMultipleScheduleGroupsAsync(IEnumerable<Guid> ids)
+        {
+            foreach (Guid id in ids)
+            {
+                var scheduleGroup = await GetScheduleGroupByIdAsync(id);
+                _context.ScheduleGroups.Remove(scheduleGroup);
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+        #endregion
+
+        #region SingleScheduleDays
+
+        public async Task<SingleScheduleDay> GetSingleScheduleDayByIdAsync(Guid dayId)
+            => await _context.SingleScheduleDays.SingleOrDefaultAsync(x => x.Id == dayId);
+
+        public async Task<IEnumerable<SingleScheduleDay>> GetSingleScheduleDaysByAccountIdAsync(Guid accountId)
+            => await _context.SingleScheduleDays.Where(x => x.InstagramAccountId == accountId).ToListAsync();
+
+        public async Task AddSingleScheduleDayAsync(SingleScheduleDay day)
+        {
+            await _context.SingleScheduleDays.AddAsync(day);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateSingleScheduleDayAsync(SingleScheduleDay day)
         {
             _context.Update(day);
             await _context.SaveChangesAsync();
         }
 
-        public async Task RemoveScheduleDayAsync(Guid dayId)
+        public async Task RemoveSingleScheduleDayAsync(Guid dayId)
         {
-            var day = await GetScheduleDayByIdAsync(dayId);
-            _context.ScheduleDays.Remove(day);
+            var day = await GetSingleScheduleDayByIdAsync(dayId);
+            _context.SingleScheduleDays.Remove(day);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task RemoveMultipleSingleScheduleDaysAsync(IEnumerable<Guid> dayIds)
+        {
+            foreach (Guid id in dayIds)
+            {
+                var singleScheduleDay = await GetSingleScheduleDayByIdAsync(id);
+                _context.SingleScheduleDays.Remove(singleScheduleDay);
+            }
+
             await _context.SaveChangesAsync();
         }
 
         #endregion
 
-        #region Daily Promotions
+        #region DailyPromotionPercentages
 
-        public async Task<IEnumerable<DailyPromotionSchedule>> GetDailyPromotionSchedulesByDayAsync(Guid scheduleDayId)
-            => await _context.DailyPromotionSchedules.Where(x => x.ScheduleDayId == scheduleDayId).ToListAsync();
+        public async Task<IEnumerable<DailyPromotionPercentage>> GetDailyPromotionPercentagesByDayAsync(Guid scheduleDayId)
+            => await _context.DailyPromotionPercentages.Where(x => x.SingleScheduleDayId == scheduleDayId).ToListAsync();
 
-        public async Task<DailyPromotionSchedule> GetDailyPromotionScheduleByIdAsync(Guid Id)
-            => await _context.DailyPromotionSchedules.SingleOrDefaultAsync(x => x.Id == Id);
+        public async Task<DailyPromotionPercentage> GetDailyPromotionPercentageByIdAsync(Guid Id)
+            => await _context.DailyPromotionPercentages.SingleOrDefaultAsync(x => x.Id == Id);
 
-        public async Task AddDailyPromotionScheduleAsync(DailyPromotionSchedule dailySchedule)
+        public async Task AddDailyPromotionPercentageAsync(DailyPromotionPercentage dailySchedule)
         {
-            await _context.DailyPromotionSchedules.AddAsync(dailySchedule);
+            await _context.DailyPromotionPercentages.AddAsync(dailySchedule);
             await _context.SaveChangesAsync();
         }
 
-        public async Task UpdateDailyPromotionScheduleAsync(DailyPromotionSchedule dailySchedule)
+        public async Task UpdateDailyPromotionPercentageAsync(DailyPromotionPercentage dailySchedule)
         {
             _context.Update(dailySchedule);
             await _context.SaveChangesAsync();
         }
 
-        public async Task RemoveDailyPromotionScheduleAsync(Guid dailyScheduleId)
+        public async Task RemoveDailyPromotionPercentageAsync(Guid dailyScheduleId)
         {
-            var dailySchedule = await GetDailyPromotionScheduleByIdAsync(dailyScheduleId);
-            _context.DailyPromotionSchedules.Remove(dailySchedule);
+            var dailySchedule = await GetDailyPromotionPercentageByIdAsync(dailyScheduleId);
+            _context.DailyPromotionPercentages.Remove(dailySchedule);
             await _context.SaveChangesAsync();
         }
 
         #endregion
 
-        #region DayBatches
+        #region DayGroupConnections
 
-        public async Task<IEnumerable<DayBatch>> GetDayBatchesByBatchIdAsync(Guid batchId)
-            => await _context.DayBatches.Where(x => x.BatchId == batchId).ToListAsync();
+        public async Task<IEnumerable<DayGroupConnection>> GetDayGroupConnectionsByGroupIdAsync(Guid batchId)
+            => await _context.DayGroupConnections.Where(x => x.ScheduleGroupId == batchId).ToListAsync();
 
-        public async Task<DayBatch> GetDayBatchByIdAsync(Guid Id)
-            => await _context.DayBatches.SingleOrDefaultAsync(x => x.Id == Id);
+        public async Task<DayGroupConnection> GetDayGroupConnectionByIdAsync(Guid Id)
+            => await _context.DayGroupConnections.SingleOrDefaultAsync(x => x.Id == Id);
 
-        public async Task AddDayBatchAsync(DayBatch dayBatch)
+        public async Task AddDayGroupConnectionAsync(DayGroupConnection dayBatch)
         {
-            await _context.DayBatches.AddAsync(dayBatch);
+            await _context.DayGroupConnections.AddAsync(dayBatch);
             await _context.SaveChangesAsync();
         }
 
-        public async Task UpdateDayBatchAsync(DayBatch dayBatch)
+        public async Task UpdateDayGroupConnectionAsync(DayGroupConnection dayBatch)
         {
-            _context.DayBatches.Update(dayBatch);
+            _context.DayGroupConnections.Update(dayBatch);
             await _context.SaveChangesAsync();
         }
 
-        public async Task RemoveDayBatchAsync(Guid dayBatchId)
+        public async Task RemoveDayGroupConnectionAsync(Guid dayBatchId)
         {
-            var dayBatch = await GetDayBatchByIdAsync(dayBatchId);
-            _context.DayBatches.Remove(dayBatch);
+            var dayBatch = await GetDayGroupConnectionByIdAsync(dayBatchId);
+            _context.DayGroupConnections.Remove(dayBatch);
             await _context.SaveChangesAsync();
         }
 
