@@ -4,7 +4,7 @@ namespace FollowUP.Infrastructure.Settings
 {
     public class InstaLoggerSettings
     {
-        public InstaLogLevel LogLevel { get; set; }
+        public ProfileLogLevel LogLevel { get; set; }
         public bool LogToFile { get; set; }
     }
 }
