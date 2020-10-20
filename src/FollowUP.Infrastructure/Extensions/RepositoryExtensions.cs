@@ -23,11 +23,16 @@ namespace FollowUP.Infrastructure.Extensions
 
         public static void SaveSession(this IInstaApi instaApi)
         {
-            // Save session
             if (instaApi == null)
+            {
                 return;
+            }
+
             if (!instaApi.IsUserAuthenticated)
+            {
                 return;
+            }
+
             instaApi.SessionHandler.Save();
         }
     }
