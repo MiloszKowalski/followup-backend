@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using FollowUP.Core.Domain;
+using FollowUP.Infrastructure.Commands;
 using FollowUP.Infrastructure.DTO;
 
 namespace FollowUP.Infrastructure.Mappers
@@ -9,13 +10,17 @@ namespace FollowUP.Infrastructure.Mappers
         public static IMapper Initialize()
             => new MapperConfiguration(cfg =>
             {
-                cfg.CreateMap<User, UserDto>();
-                cfg.CreateMap<InstagramAccount, AccountDto>();
-                cfg.CreateMap<InstagramAccount, ExtendedAccountDto>();
+                cfg.CreateMap<AccountSettings, AccountSettingsDto>();
                 cfg.CreateMap<Comment, CommentDto>();
-                cfg.CreateMap<Promotion, PromotionDto>();
-                cfg.CreateMap<PromotionComment, PromotionCommentDto>();
+                cfg.CreateMap<FollowPromotion, PromotionDto>();
+                cfg.CreateMap<InstagramAccount, AdminExtendedAccountDto>();
+                cfg.CreateMap<InstagramAccount, ExtendedAccountDto>();
+                cfg.CreateMap<InstagramAccount, InstagramAccountDto>();
+                cfg.CreateMap<InstagramProxy, InstagramProxyDto>();
                 cfg.CreateMap<JsonWebToken, JwtDto>();
+                cfg.CreateMap<PromotionComment, PromotionCommentDto>();
+                cfg.CreateMap<UpdateAccountSettings, AccountSettingsDto>();
+                cfg.CreateMap<User, UserDto>();
             })
             .CreateMapper();
     }
