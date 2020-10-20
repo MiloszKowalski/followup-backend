@@ -28,7 +28,16 @@ namespace FollowUP.Infrastructure.Repositories
                                     .Include(x => x.User)
                                     .SingleOrDefaultAsync(x => x.Id == id);
 
-        public async Task<InstagramAccount> GetAsync(string username)
+        public async Task<InstagramAccount> GetAsync(string instagramPk)
+            => await _context.InstagramAccounts
+                                    .Include(x => x.AccountSettings)
+                                    .Include(x => x.InstagramProxy)
+                                    .Include(x => x.ScheduleGroups)
+                                    .Include(x => x.SingleScheduleDays)
+                                    .Include(x => x.User)
+                                    .SingleOrDefaultAsync(x => x.Pk == instagramPk);
+
+        public async Task<InstagramAccount> GetByUsernameAsync(string username)
             => await _context.InstagramAccounts
                                     .Include(x => x.AccountSettings)
                                     .Include(x => x.InstagramProxy)

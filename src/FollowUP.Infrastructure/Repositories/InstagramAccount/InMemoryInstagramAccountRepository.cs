@@ -19,6 +19,9 @@ namespace FollowUP.Infrastructure.Repositories
         public async Task<InstagramAccount> GetAsync(Guid id)
             => await Task.FromResult(_accounts.SingleOrDefault(x => x.Id == id));
 
+        public async Task<InstagramAccount> GetAsync(string instagramPk)
+            => await Task.FromResult(_accounts.SingleOrDefault(x => x.Pk == instagramPk));
+
         public async Task<IEnumerable<InstagramAccount>> GetAsync(int page, int pageSize)
             => await Task.FromResult(_accounts.Page(page, pageSize));
 
@@ -28,7 +31,7 @@ namespace FollowUP.Infrastructure.Repositories
         public async Task<int> GetCountAsync()
             => await Task.FromResult(_accounts.Count());
 
-        public async Task<InstagramAccount> GetAsync(string username)
+        public async Task<InstagramAccount> GetByUsernameAsync(string username)
             => await Task.FromResult(_accounts.SingleOrDefault(x => x.Username == username));
 
         public async Task<IEnumerable<InstagramAccount>> GetUsersAccountsAsync(Guid userId)

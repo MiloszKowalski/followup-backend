@@ -12,7 +12,8 @@ namespace FollowUP.Core.Repositories
         Task<IEnumerable<InstagramAccount>> GetAllWithCompleteInfoAsync(int page, int pageSize);
         Task<int> GetCountAsync();
         Task<InstagramAccount> GetAsync(Guid id);
-        Task<InstagramAccount> GetAsync(string username);
+        Task<InstagramAccount> GetAsync(string instagramPk);
+        Task<InstagramAccount> GetByUsernameAsync(string username);
         Task<IEnumerable<InstagramAccount>> GetUsersAccountsAsync(Guid userId);
         Task<IEnumerable<InstagramAccount>> GetAllWithCommentsAsync();
         Task<IEnumerable<InstagramAccount>> GetAllWithPromotionsAsync();
