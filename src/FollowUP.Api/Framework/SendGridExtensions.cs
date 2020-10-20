@@ -12,8 +12,8 @@ namespace FollowUP.Api.Framework
         /// Injects the <see cref="SendGridEmailSender"/> into the services to handle the 
         /// <see cref="IEmailSender"/> service
         /// </summary>
-        /// <param name="services"></param>
-        /// <returns></returns>
+        /// <param name="services">The <see cref="IServiceCollection"/> to inject to</param>
+        /// <returns>The <see cref="IServiceCollection"/> to inject to</returns>
         public static IServiceCollection AddSendGridEmailSender(this IServiceCollection services)
         {
             // Inject the SendGridEmailSender
