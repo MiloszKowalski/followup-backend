@@ -332,5 +332,5 @@ ASALocalRun/
 .bin
 ebaccounts/
 chromedriver.exe
-Accounts/
-#src/FollowUP.Api/appsettings.secrets.json
+src/FollowUP.Api/Accounts/
+src/FollowUP.Api/appsettings.secrets.json
