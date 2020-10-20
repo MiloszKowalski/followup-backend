@@ -21,8 +21,16 @@ namespace FollowUP.Infrastructure.IoC.Modules
                    .AsImplementedInterfaces()
                    .InstancePerLifetimeScope();
 
-            builder.RegisterType<Encrypter>()
-                   .As<IEncrypter>()
+            builder.RegisterType<AesEncryptor>()
+                   .As<IAesEncryptor>()
+                   .SingleInstance();
+
+            builder.RegisterType<Encryptor>()
+                   .As<IEncryptor>()
+                   .SingleInstance();
+
+            builder.RegisterType<HttpContextAccessor>()
+                   .As<IHttpContextAccessor>()
                    .SingleInstance();
 
             builder.RegisterType<JwtHandler>()
@@ -31,10 +39,6 @@ namespace FollowUP.Infrastructure.IoC.Modules
 
             builder.RegisterType<PasswordHasher<User>>()
                    .As<IPasswordHasher<User>>()
-                   .SingleInstance();
-
-            builder.RegisterType<HttpContextAccessor>()
-                   .As<IHttpContextAccessor>()
                    .SingleInstance();
 
             builder.RegisterType<InstaActionLogger>()

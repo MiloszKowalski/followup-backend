@@ -21,6 +21,8 @@ namespace FollowUP.Infrastructure.IoC.Modules
                    .SingleInstance();
             builder.RegisterInstance(_configuration.GetSettings<JwtSettings>())
                    .SingleInstance();
+            builder.RegisterInstance(_configuration.GetSettings<AesSettings>())
+                   .SingleInstance();
             builder.RegisterInstance(_configuration.GetSettings<SqlSettings>())
                    .SingleInstance();
             builder.RegisterInstance(_configuration.GetSettings<PromotionSettings>())
