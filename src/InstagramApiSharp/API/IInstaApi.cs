@@ -65,10 +65,6 @@ namespace InstagramApiSharp.API
         /// </summary>
         bool LoadApiVersionFromSessionFile { get; set; }
         /// <summary>
-        ///     Live api functions.
-        /// </summary>
-        ILiveProcessor LiveProcessor { get; }
-        /// <summary>
         ///     Discover api functions.
         /// </summary>
         IDiscoverProcessor DiscoverProcessor { get; }
@@ -122,15 +118,10 @@ namespace InstagramApiSharp.API
         /// </summary>
         IBusinessProcessor BusinessProcessor { get; }
         /// <summary>
-        ///     Shopping and commerce api functions
-        /// </summary>
-        IShoppingProcessor ShoppingProcessor { get; }
-        /// <summary>
         ///     Instagram Web api functions.
         ///     <para>It's related to https://instagram.com/accounts/ </para>
         /// </summary>
         IWebProcessor WebProcessor { get; }
-        IVideoCallProcessor VideoCallProcessor { get; }
         /// <summary>
         ///     Push notification helper processor
         /// </summary>
@@ -154,13 +145,6 @@ namespace InstagramApiSharp.API
         /// </summary>
         /// <returns>State data</returns>
         string GetStateDataAsString();
-        /// <summary>
-        ///     Get current state info as Json string asynchronously
-        /// </summary>
-        /// <returns>
-        ///     State data
-        /// </returns>
-        /// 
 
         ///<summary>
         ///     Get current state as StateData object
@@ -414,61 +398,6 @@ namespace InstagramApiSharp.API
         /// <param name="verifyCode">Verification code</param>
         Task<IResult<InstaLoginResult>> VerifyCodeForChallengeRequireAsync(string verifyCode);
         #endregion Challenge part
-        
-        /// <summary>
-        ///     Check email availability
-        /// </summary>
-        /// <param name="email">Email to check</param>
-        Task<IResult<InstaCheckEmailRegistration>> CheckEmailAsync(string email);
-        /// <summary>
-        ///     Check phone number availability
-        /// </summary>
-        /// <param name="phoneNumber">Phone number to check</param>
-        Task<IResult<bool>> CheckPhoneNumberAsync(string phoneNumber);
-        /// <summary>
-        ///     Check username availablity. 
-        /// </summary>
-        /// <param name="username">Username</param>
-        Task<IResult<InstaAccountCheck>> CheckUsernameAsync(string username);
-        /// <summary>
-        ///     Send sign up sms code
-        /// </summary>
-        /// <param name="phoneNumber">Phone number</param>
-        Task<IResult<bool>> SendSignUpSmsCodeAsync(string phoneNumber);
-        /// <summary>
-        ///     Verify sign up sms code
-        /// </summary>
-        /// <param name="phoneNumber">Phone number</param>
-        /// <param name="verificationCode">Verification code</param>
-        Task<IResult<InstaPhoneNumberRegistration>> VerifySignUpSmsCodeAsync(string phoneNumber, string verificationCode);
-        /// <summary>
-        ///     Get username suggestions
-        /// </summary>
-        /// <param name="name">Name</param>
-        Task<IResult<InstaRegistrationSuggestionResponse>> GetUsernameSuggestionsAsync(string name);
-        /// <summary>
-        ///     Validate new account creation with phone number
-        /// </summary>
-        /// <param name="phoneNumber">Phone number</param>
-        /// <param name="verificationCode">Verification code</param>
-        /// <param name="username">Username to set</param>
-        /// <param name="password">Password to set</param>
-        /// <param name="firstName">First name to set</param>
-        Task<IResult<InstaAccountCreation>> ValidateNewAccountWithPhoneNumberAsync(string phoneNumber, string verificationCode, string username, string password, string firstName);
-        /// <summary>
-        ///     Create a new instagram account
-        /// </summary>
-        /// <param name="username">Username</param>
-        /// <param name="password">Password</param>
-        /// <param name="email">Email</param>
-        /// <param name="firstName">First name (optional)</param>
-        /// <param name="delay">Delay between requests. null = 2.5 seconds</param>
-        Task<IResult<InstaAccountCreation>> CreateNewAccountAsync(string username, string password, string email, string firstName = ""/*, TimeSpan? delay = null*/);
-        /// <summary>
-        ///     Accept consent required (only for GDPR countries)
-        /// </summary>
-        /// <param name="delay">Delay time between requests (null => 1.5 seconds)</param>
-        Task<IResult<bool>> AcceptConsentAsync(TimeSpan? delay = null);
         /// <summary>
         ///     Send requests for login flows (contact prefill, read msisdn header, launcher sync and qe sync)
         ///     <para>Note 1: You should call this function before you calling <see cref="IInstaApi.LoginAsync(bool)"/>, if you want your account act like original instagram app.</para>
@@ -650,13 +579,5 @@ namespace InstagramApiSharp.API
         Task<IResult<InstaBanyanSuggestions>> GetBanyanSuggestionsAsync();
 
         #endregion Authentication, challenge functions
-
-        #region Giphy
-
-        Task<IResult<GiphyList>> GetGiphyTrendingAsync(int count = 100);
-
-        Task<IResult<GiphyList>> SearchGiphyAsync(string query, int count = 100);
-
-        #endregion Giphy
     }
 }
