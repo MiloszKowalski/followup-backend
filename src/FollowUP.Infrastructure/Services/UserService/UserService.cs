@@ -17,11 +17,11 @@ namespace FollowUP.Infrastructure.Services
         private readonly IFollowUPEmailSender _emailSender;
         private readonly ApiSettings _apiSettings;
         private readonly IJwtHandler _jwtHandler;
-        private readonly IEncrypter _encrypter;
+        private readonly IEncryptor _encrypter;
         private readonly IMapper _mapper;
 
         public UserService(IUserRepository userRepository, IFollowUPEmailSender emailSender,
-            ApiSettings apiSettings, IJwtHandler jwtHandler, IEncrypter encrypter, IMapper mapper)
+            ApiSettings apiSettings, IJwtHandler jwtHandler, IEncryptor encrypter, IMapper mapper)
         {
             _userRepository = userRepository;
             _emailSender = emailSender;
@@ -56,12 +56,16 @@ namespace FollowUP.Infrastructure.Services
         {
             var user = await _userRepository.GetAsync(email);
             if (user == null)
+            {
                 throw new ServiceException(ErrorCodes.InvalidCredentials,
                     "Invalid credentials");
+            }
 
             var hash = _encrypter.GetHash(password, user.Salt);
             if (user.Password == hash)
+            {
                 return;
+            }
 
             throw new ServiceException(ErrorCodes.InvalidCredentials,
                 "Invalid credentials");
@@ -89,44 +93,48 @@ namespace FollowUP.Infrastructure.Services
             user = new User(userId, email, username, fullname, role, hash, salt);
             await _userRepository.AddAsync(user);
 
+            // Generate verification url
             var verificationToken = _encrypter.GetHash(username, salt);
-            var verificationUrl = $"https://{_apiSettings.DashboardBaseUrl}/{HttpUtility.UrlEncode(userId.ToString())}/{HttpUtility.UrlEncode(verificationToken)}/";
+            var verificationUrl = $"https://{_apiSettings.DashboardBaseUrl}/" +
+                                $"{HttpUtility.UrlEncode(userId.ToString())}/" +
+                                $"{HttpUtility.UrlEncode(verificationToken)}/";
 
             // Send confirmation email
             await _emailSender.SendUserVerificationEmailAsync(username, email, verificationUrl);
         }
 
-        public async Task<JwtDto> RefreshAccessToken(string token)
+        public async Task<JwtDto> RefreshAccessTokenAsync(string token)
         {
-            var refreshToken = await _userRepository.GetRefreshToken(token);
+            var refreshToken = await _userRepository.GetRefreshTokenAsync(token);
             if (refreshToken == null)
-                throw new Exception("Refresh token was not found.");
-            
-            if (refreshToken.Revoked)
-                throw new Exception("Refresh token was revoked");
+            {
+                throw new ServiceException("Refresh token was not found.");
+            }
 
+            // Check if the user exists in database
             var user = await _userRepository.GetAsync(refreshToken.UserId);
             if (user == null)
-                throw new ServiceException(ErrorCodes.UserNotFound, "User with given id doesn't exist.");
+            {
+                throw new ServiceException(ErrorCodes.UserNotFound,
+                    "User with given id doesn't exist.");
+            }
 
+            // Create and return JWT token to the user
             var jwt = _jwtHandler.CreateToken(refreshToken.UserId, user.Role);
             jwt.RefreshToken = refreshToken.Token;
 
             return jwt;
         }
 
-        public async Task RevokeRefreshToken(string token)
+        public async Task RevokeRefreshTokenAsync(string token)
         {
-            var refreshToken = await _userRepository.GetRefreshToken(token);
+            var refreshToken = await _userRepository.GetRefreshTokenAsync(token);
             if (refreshToken == null)
-                throw new Exception("Refresh token was not found.");
+            {
+                throw new ServiceException("Refresh token was not found.");
+            }
 
-            if (refreshToken.Revoked)
-                throw new Exception("Refresh token was already revoked.");
-
-            refreshToken.Revoked = true;
-
-            await _userRepository.UpdateRefreshToken(refreshToken);
+            await _userRepository.RemoveRefreshTokenAsync(token);
         }
 
         public async Task ConfirmEmailTokenAsync(Guid userId, string registrationToken)
@@ -134,13 +142,19 @@ namespace FollowUP.Infrastructure.Services
             var user = await _userRepository.GetAsync(userId);
 
             if (user == null)
+            {
                 throw new ServiceException(ErrorCodes.AccountDoesntExist,
-                    "Confirmation link was not valid. Please contact FollowUP support at biuro@followup.social");
+                    "Confirmation link was not valid. Please contact FollowUP support " +
+                    "at biuro@followup.social");
+            }
 
             var hash = _encrypter.GetHash(user.Id.ToString(), user.Salt);
 
             if (hash != registrationToken)
-                throw new ServiceException(ErrorCodes.InvalidToken, "The provided token was not valid.");
+            {
+                throw new ServiceException(ErrorCodes.InvalidToken,
+                    "The provided token was not valid.");
+            }
 
             user.SetVerified(true);
             await _userRepository.UpdateAsync(user);

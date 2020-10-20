@@ -44,7 +44,7 @@ namespace FollowUP.Infrastructure.Services
                 notBefore: now,
                 expires: expires,
                 signingCredentials: signingCredentials
-            ) ;
+            );
             var token = new JwtSecurityTokenHandler().WriteToken(jwt);
 
             var jsonWebToken = new JsonWebToken

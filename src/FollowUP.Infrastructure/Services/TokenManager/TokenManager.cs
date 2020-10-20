@@ -24,7 +24,7 @@ namespace FollowUP.Infrastructure.Services
             _jwtSettings = jwtSettings;
         }
 
-        public async Task<bool> IsCurrentActiveToken()
+        public async Task<bool> IsCurrentActiveTokenAsync()
             => await IsActiveAsync(GetCurrentAsync());
 
         public async Task DeactivateCurrentAsync()
