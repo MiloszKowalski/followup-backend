@@ -20,16 +20,16 @@ namespace FollowUP.Infrastructure.Repositories
             => await Task.FromResult(_comments.SingleOrDefault(x => x.Id == id));
 
         public async Task<IEnumerable<Comment>> GetAccountCommentsAsync(Guid accountId)
-            => await Task.FromResult(_comments.Where(x => x.AccountId == accountId));
+            => await Task.FromResult(_comments.Where(x => x.InstagramAccountId == accountId));
 
         public async Task<IEnumerable<Comment>> GetAccountCommentsAsync(Guid accountId, int page, int pageSize)
-            => await Task.FromResult(_comments.Where(x => x.AccountId == accountId).Page(page, pageSize));
+            => await Task.FromResult(_comments.Where(x => x.InstagramAccountId == accountId).Page(page, pageSize));
 
         public async Task<int> GetAccountCommentsCountAsync(Guid accountId)
-            => await Task.FromResult(_comments.Where(x => x.AccountId == accountId).Count());
+            => await Task.FromResult(_comments.Where(x => x.InstagramAccountId == accountId).Count());
 
         public async Task<IEnumerable<ChildComment>> GetChildCommentsAsync(Guid commentId)
-            => await Task.FromResult(_childComments.Where(x => x.ParentCommentId == commentId));
+            => await Task.FromResult(_childComments.Where(x => x.CommentId == commentId));
 
         public async Task AddAsync(Comment comment)
         {
@@ -56,7 +56,7 @@ namespace FollowUP.Infrastructure.Repositories
             await Task.CompletedTask;
         }
 
-        public async Task ClearByAccount(Guid accountId)
+        public async Task ClearByAccountAsync(Guid accountId)
         {
             _comments.Clear();
             _childComments.Clear();
