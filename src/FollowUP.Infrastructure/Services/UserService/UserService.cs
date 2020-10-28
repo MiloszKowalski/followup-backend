@@ -19,9 +19,11 @@ namespace FollowUP.Infrastructure.Services
         private readonly IJwtHandler _jwtHandler;
         private readonly IEncryptor _encrypter;
         private readonly IMapper _mapper;
+        private readonly EmailSettings _emailSettings;
 
         public UserService(IUserRepository userRepository, IFollowUPEmailSender emailSender,
-            ApiSettings apiSettings, IJwtHandler jwtHandler, IEncryptor encrypter, IMapper mapper)
+            ApiSettings apiSettings, IJwtHandler jwtHandler, IEncryptor encrypter,
+            IMapper mapper, EmailSettings emailSettings)
         {
             _userRepository = userRepository;
             _emailSender = emailSender;
@@ -29,6 +31,7 @@ namespace FollowUP.Infrastructure.Services
             _jwtHandler = jwtHandler;
             _encrypter = encrypter;
             _mapper = mapper;
+            _emailSettings = emailSettings;
         }
 
         public async Task<UserDto> GetAsync(string email)
@@ -100,7 +103,10 @@ namespace FollowUP.Infrastructure.Services
                                 $"{HttpUtility.UrlEncode(verificationToken)}/";
 
             // Send confirmation email
-            await _emailSender.SendUserVerificationEmailAsync(username, email, verificationUrl);
+            if (_emailSettings.SendVerificationMail)
+            {
+                await _emailSender.SendUserVerificationEmailAsync(username, email, verificationUrl);
+            }
         }
 
         public async Task<JwtDto> RefreshAccessTokenAsync(string token)
