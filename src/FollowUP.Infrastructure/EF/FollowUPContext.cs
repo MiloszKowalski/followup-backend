@@ -1,5 +1,6 @@
 ﻿using FollowUP.Core.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System.Linq;
 
@@ -49,6 +50,11 @@ namespace FollowUP.Infrastructure.EF
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // Set the default string length to 256 to avoid nvarchar(MAX)
+            // NOTE: We are surpressing the EF Core internal API warning,
+            // as we are conciously using it for optimization
+
+#pragma warning disable EF1001 // Internal EF Core API usage.
+
             foreach (var property in modelBuilder.Model.GetEntityTypes()
                 .SelectMany(t => t.GetProperties())
                 .Where(p => p.ClrType == typeof(string)))
@@ -57,6 +63,7 @@ namespace FollowUP.Infrastructure.EF
                     .HasMaxLength(256, ConfigurationSource.Convention);
             }
 
+#pragma warning restore EF1001 // Internal EF Core API usage.
 
             #region AccountSettings
 

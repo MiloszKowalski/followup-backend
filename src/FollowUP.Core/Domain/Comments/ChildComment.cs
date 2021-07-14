@@ -39,12 +39,6 @@ namespace FollowUP.Core.Domain
                 return;
             }
 
-            if (parentCommentId == null)
-            {
-                throw new DomainException(ErrorCodes.GuidIsNull,
-                    "The given parent Comment ID is null.");
-            }
-
             if (parentCommentId == Guid.Empty)
             {
                 throw new DomainException(ErrorCodes.GuidIsEmpty,

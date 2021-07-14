@@ -1,5 +1,4 @@
 ﻿using Autofac;
-using FollowUP.Core.Domain;
 using FollowUP.Infrastructure.IoC.Modules;
 using FollowUP.Infrastructure.Mappers;
 using Microsoft.Extensions.Configuration;

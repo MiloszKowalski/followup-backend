@@ -48,12 +48,6 @@ namespace FollowUP.Core.Domain
                 return;
             }
 
-            if (id == null)
-            {
-                throw new DomainException(ErrorCodes.GuidIsNull,
-                    "The given Guid is null.");
-            }
-
             if (id == Guid.Empty)
             {
                 throw new DomainException(ErrorCodes.GuidIsEmpty,
@@ -68,12 +62,6 @@ namespace FollowUP.Core.Domain
             if (InstagramAccountId == accountId)
             {
                 return;
-            }
-
-            if (accountId == null)
-            {
-                throw new DomainException(ErrorCodes.GuidIsNull,
-                    "The given Account ID is null.");
             }
 
             if (accountId == Guid.Empty)

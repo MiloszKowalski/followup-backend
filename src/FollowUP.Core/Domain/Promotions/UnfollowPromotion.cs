@@ -26,12 +26,6 @@ namespace FollowUP.Core.Domain
                 return;
             }
 
-            if (accountId == null)
-            {
-                throw new DomainException(ErrorCodes.GuidIsNull,
-                    "The given Account ID is null.");
-            }
-
             if (accountId == Guid.Empty)
             {
                 throw new DomainException(ErrorCodes.GuidIsEmpty,

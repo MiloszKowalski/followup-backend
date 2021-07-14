@@ -226,11 +226,12 @@ namespace FollowUP.Infrastructure.Services
 
         private async Task CheckForProfileBannedAsync()
         {
-            if (Profile.BannedUntil == null)
+            if (Profile.BannedUntil == default(DateTime))
             {
                 return;
             }
-            else if (Profile.BannedUntil > DateTime.UtcNow)
+
+            if (Profile.BannedUntil > DateTime.UtcNow)
             {
                 var interval = (Profile.BannedUntil - DateTime.UtcNow).Milliseconds;
                 _logger.LogUser($"Account banned until {Profile.BannedUntil}, " +

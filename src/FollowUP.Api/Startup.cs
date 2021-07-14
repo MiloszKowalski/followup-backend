@@ -1,5 +1,4 @@
 ﻿using Autofac;
-using Autofac.Extensions.DependencyInjection;
 using FollowUP.Api.Framework;
 using FollowUP.Infrastructure.EF;
 using FollowUP.Infrastructure.IoC;
@@ -10,14 +9,13 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Cors.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
-using System;
 using System.Globalization;
 using System.Text;
 
@@ -25,13 +23,13 @@ namespace FollowUP
 {
     public class Startup
     {
-        public Startup(IHostingEnvironment env)
+        public Startup(IWebHostEnvironment env)
         {
             Environment = env;
             var builder = new ConfigurationBuilder()
                 .SetBasePath(env.ContentRootPath)
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                .AddJsonFile("appsettings.secrets.json", optional: true, reloadOnChange: true)
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .AddJsonFile("appsettings.secrets.json", optional: false, reloadOnChange: true)
                 .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true)
                 .AddEnvironmentVariables();
             Configuration = builder.Build();
@@ -39,10 +37,10 @@ namespace FollowUP
 
         public IConfiguration Configuration { get; }
         public IContainer ApplicationContainer { get; private set; }
-        public IHostingEnvironment Environment { get; set; }
+        public IWebHostEnvironment Environment { get; set; }
 
         // This method gets called by the runtime. Use this method to add services to the container.
-        public IServiceProvider ConfigureServices(IServiceCollection services)
+        public void ConfigureServices(IServiceCollection services)
         {
             // Add SendGrid email sender
             services.AddSendGridEmailSender();
@@ -81,7 +79,7 @@ namespace FollowUP
             }
 
             services.AddMvc()
-                    .AddJsonOptions(x =>
+                    .AddNewtonsoftJson(x =>
                     {
                         var y = x.SerializerSettings;
                         y.DateFormatString = "yyyy-MM-dd HH:mm:ss";
@@ -90,12 +88,7 @@ namespace FollowUP
                         y.ContractResolver = new CamelCasePropertyNamesContractResolver();
                         y.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
                     })
-                    .SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
-
-            services.Configure<MvcOptions>(options =>
-            {
-                options.Filters.Add(new CorsAuthorizationFilterFactory("FollowUPCorsPolicy"));
-            });
+                    .SetCompatibilityVersion(CompatibilityVersion.Version_3_0);
 
             services.AddAuthentication(options => 
             {
@@ -120,20 +113,18 @@ namespace FollowUP
                 };
             });
 
-            services.AddEntityFrameworkSqlServer()
-                    .AddEntityFrameworkInMemoryDatabase()
-                    .AddDbContext<FollowUPContext>();
+            services.AddDbContext<FollowUPContext>();
 
-            var builder = new ContainerBuilder();
-            builder.Populate(services);
+            services.AddControllers();
+        }
+
+        public void ConfigureContainer(ContainerBuilder builder)
+        {
             builder.RegisterModule(new ContainerModule(Configuration));
-            ApplicationContainer = builder.Build();
-            
-            return new AutofacServiceProvider(ApplicationContainer);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
             {
@@ -145,7 +136,11 @@ namespace FollowUP
                 app.UseHsts();
             }
 
+            app.UseRouting();
+            app.UseCors("FollowUPCorsPolicy");
+
             app.UseAuthentication();
+            app.UseAuthorization();
             app.UseHttpsRedirection();
 
             var generalSettings = app.ApplicationServices.GetService<GeneralSettings>();
@@ -155,10 +150,12 @@ namespace FollowUP
                 dataInitializer.SeedAsync();
             }
 
-            app.UseCors("FollowUPCorsPolicy");
             app.UseCustomExceptionHandler();
             app.UseCustomTokenManager();
-            app.UseMvc();
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+            });
         }
     }
 }
